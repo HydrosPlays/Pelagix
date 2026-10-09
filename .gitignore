@@ -1,0 +1,16 @@
+node_modules/
+out/
+dist/
+dist-web/
+tools/extractor/.artifacts/
+data/pkhex/
+*.tsbuildinfo
+.vite/
+*.log
+.DS_Store
+Thumbs.db
+
+# Reference source trees, needed only to regenerate the datasets with `npm run data`.
+# They are other projects' repositories: clone them here yourself (see README).
+PKHeX/
+PokeAPI/
