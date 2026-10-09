@@ -1,0 +1,205 @@
+.ui-modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: flex;
+  background: var(--scrim);
+  animation: ui-modal-scrim-in var(--dur-3) var(--ease-out);
+  -webkit-app-region: no-drag;
+}
+
+.ui-modal--dialog {
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-10) var(--sp-6);
+}
+
+.ui-modal--drawer {
+  z-index: var(--z-drawer);
+}
+
+.ui-modal[data-state='closing'] {
+  opacity: 0;
+  transition: opacity 170ms var(--ease-out);
+  pointer-events: none;
+}
+
+@keyframes ui-modal-scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------------- dialog */
+
+.ui-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  max-height: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xl);
+  background: var(--surface-solid);
+  box-shadow:
+    var(--shadow-3),
+    var(--highlight-inset);
+  animation: ui-dialog-in var(--dur-3) var(--ease-out);
+}
+
+.ui-dialog--sm {
+  max-width: 400px;
+}
+
+.ui-dialog--lg {
+  max-width: 720px;
+}
+
+.ui-dialog--xl {
+  max-width: 980px;
+}
+
+.ui-dialog--chamfer {
+  border-radius: var(--r-md) 0 var(--r-md) 0;
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+}
+
+.ui-dialog--chamfer::after {
+  position: absolute;
+  inset: -1px;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 1px), var(--line-accent) calc(50% - 1px), var(--line-accent) calc(50% + 1px), transparent calc(50% + 1px)) top right / 18px 18px no-repeat,
+    linear-gradient(to top right, transparent calc(50% - 1px), var(--line-accent) calc(50% - 1px), var(--line-accent) calc(50% + 1px), transparent calc(50% + 1px)) bottom left / 18px 18px no-repeat;
+  content: '';
+  pointer-events: none;
+}
+
+.ui-modal[data-state='closing'] .ui-dialog {
+  transform: translateY(6px) scale(0.985);
+  transition: transform 170ms var(--ease-out);
+}
+
+@keyframes ui-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+
+/* ---------------------------------------------------------------- drawer */
+
+.ui-drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - var(--sp-12));
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-3);
+}
+
+.ui-drawer--right {
+  right: 0;
+  border-left: 1px solid var(--line-strong);
+  animation: ui-drawer-in-right var(--dur-3) var(--ease-out);
+}
+
+.ui-drawer--left {
+  left: 0;
+  border-right: 1px solid var(--line-strong);
+  animation: ui-drawer-in-left var(--dur-3) var(--ease-out);
+}
+
+.ui-modal[data-state='closing'] .ui-drawer--right {
+  transform: translateX(28px);
+  transition: transform 170ms var(--ease-out);
+}
+
+.ui-modal[data-state='closing'] .ui-drawer--left {
+  transform: translateX(-28px);
+  transition: transform 170ms var(--ease-out);
+}
+
+@keyframes ui-drawer-in-right {
+  from {
+    opacity: 0.4;
+    transform: translateX(40px);
+  }
+}
+
+@keyframes ui-drawer-in-left {
+  from {
+    opacity: 0.4;
+    transform: translateX(-40px);
+  }
+}
+
+/* The drawer header sits under the native window buttons in Electron. */
+.ui-drawer--right .ui-modal__header {
+  padding-top: max(var(--sp-5), calc(var(--wc-height) + var(--sp-2)));
+}
+
+/* ---------------------------------------------------------------- content */
+
+.ui-modal__header {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-5) var(--sp-3) var(--sp-6);
+}
+
+.ui-modal__media {
+  flex: none;
+}
+
+.ui-modal__heading {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.ui-modal__title {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+}
+
+.ui-modal__desc {
+  margin-top: var(--sp-1);
+  color: var(--text-2);
+  font-size: var(--fs-md);
+}
+
+.ui-modal__close {
+  margin: -2px -4px 0 0;
+}
+
+.ui-modal__body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--sp-2) var(--sp-6) var(--sp-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ui-modal__body--flush {
+  padding: 0;
+}
+
+.ui-modal__footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-6);
+  border-top: 1px solid var(--line);
+  background: var(--surface-1);
+}
+
+.ui-dialog:not(.ui-dialog--chamfer) .ui-modal__footer {
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+}

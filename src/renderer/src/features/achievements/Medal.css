@@ -1,0 +1,165 @@
+/*
+ * Medal metals. The design tokens only define gold, so bronze, silver and platinum are mixed from
+ * tokens that already exist (type colours, the Poké Ball primitives); nothing here is a new colour.
+ *
+ * .ach-tier--<tier> can sit on any element: it provides
+ *   --tier-hi / --tier-mid / --tier-lo   the metal, light to dark
+ *   --tier-ribbon                        ribbon colour of the two highest tiers
+ *   --tier-text                          the metal as a text colour that is readable in both themes
+ *   --tier-soft                          a faint tint for fills
+ */
+
+.ach-tier--bronze {
+  --tier-hi: color-mix(in srgb, var(--type-fighting) 35%, var(--ball-wood));
+  --tier-mid: color-mix(in srgb, var(--type-ground) 62%, var(--gold));
+  --tier-lo: color-mix(in srgb, var(--type-ground) 82%, var(--ball-band));
+  --tier-ribbon: var(--tier-lo);
+}
+
+.ach-tier--silver {
+  --tier-hi: var(--ball-white);
+  --tier-mid: color-mix(in srgb, var(--ball-steel) 55%, var(--ball-white));
+  --tier-lo: color-mix(in srgb, var(--ball-steel) 82%, var(--ball-band));
+  --tier-ribbon: var(--tier-lo);
+}
+
+.ach-tier--gold {
+  --tier-hi: color-mix(in srgb, var(--gold) 38%, var(--pure-white));
+  --tier-mid: var(--gold);
+  --tier-lo: color-mix(in srgb, var(--gold) 60%, var(--type-ground));
+  --tier-ribbon: var(--catch);
+}
+
+.ach-tier--platinum {
+  --tier-hi: var(--pure-white);
+  --tier-mid: color-mix(in srgb, var(--type-ice) 24%, var(--ball-white));
+  --tier-lo: color-mix(in srgb, var(--type-dragon) 40%, var(--ball-steel));
+  --tier-ribbon: var(--accent-1);
+}
+
+.ach-tier--bronze,
+.ach-tier--silver,
+.ach-tier--gold,
+.ach-tier--platinum {
+  --tier-text: color-mix(in srgb, var(--tier-mid) 50%, var(--text-1));
+  --tier-soft: color-mix(in srgb, var(--tier-mid) 14%, transparent);
+}
+
+/* ---------------------------------------------------------------- medal */
+
+.ach-medal {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+/* An earned medal sits a little above its surface. */
+.ach-medal:not(.is-locked) {
+  filter: drop-shadow(0 2px 2px var(--bevel-dark));
+}
+
+.ach-medal__stop-hi {
+  stop-color: var(--tier-hi);
+}
+
+.ach-medal__stop-mid {
+  stop-color: var(--tier-mid);
+}
+
+.ach-medal__stop-lo {
+  stop-color: var(--tier-lo);
+}
+
+.ach-medal__body {
+  stroke: var(--tier-lo);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.ach-medal__plate {
+  fill: color-mix(in srgb, var(--tier-mid) 50%, var(--tier-hi));
+}
+
+.ach-medal__ring {
+  stroke: var(--tier-lo);
+  stroke-width: 1.25;
+}
+
+.ach-medal__ring.has-accent {
+  stroke-width: 2.25;
+}
+
+.ach-medal__gloss {
+  stroke: var(--bevel-light-strong);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.ach-medal__glyph {
+  color: var(--type-ink-dark);
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.86;
+}
+
+.ach-medal__ribbon path {
+  fill: var(--tier-ribbon);
+  stroke: color-mix(in srgb, var(--tier-ribbon) 70%, var(--ball-band));
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+
+/* ---- locked: the shape stays, the metal goes ---- */
+
+.ach-medal.is-locked .ach-medal__body {
+  fill: var(--surface-3);
+  stroke: var(--line-strong);
+}
+
+.ach-medal.is-locked .ach-medal__plate {
+  fill: var(--surface-inset);
+}
+
+.ach-medal.is-locked .ach-medal__ring {
+  stroke: var(--line-strong);
+  stroke-dasharray: 2.5 3.5;
+}
+
+/* A type or game colour still shows through on a locked medal, muted (the inline stroke carries it). */
+.ach-medal.is-locked .ach-medal__ring.has-accent {
+  stroke-dasharray: none;
+  stroke-opacity: 0.5;
+}
+
+.ach-medal.is-locked .ach-medal__glyph {
+  color: var(--text-3);
+  opacity: 0.6;
+}
+
+.ach-medal.is-locked .ach-medal__ribbon path {
+  fill: var(--surface-2);
+  stroke: var(--line-strong);
+}
+
+.ach-medal__lock circle {
+  fill: var(--surface-solid-2);
+  stroke: var(--line-strong);
+  stroke-width: 1.25;
+}
+
+.ach-medal__lock g {
+  color: var(--text-2);
+  stroke: currentColor;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The shared toast draws a gold disc behind its medal slot; an achievement medal brings its own metal. */
+.ui-toast__medal:has(.ach-medal) {
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}

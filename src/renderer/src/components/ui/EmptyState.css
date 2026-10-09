@@ -1,0 +1,130 @@
+.ui-empty {
+  --empty-color: var(--accent);
+  --empty-soft: var(--accent-soft);
+  --empty-disc: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: var(--sp-10) var(--sp-6);
+  text-align: center;
+}
+
+.ui-empty--sm {
+  --empty-disc: 44px;
+  padding: var(--sp-5) var(--sp-4);
+}
+
+.ui-empty--lg {
+  --empty-disc: 84px;
+  padding: var(--sp-16) var(--sp-6);
+}
+
+.ui-empty--neutral {
+  --empty-color: var(--text-2);
+  --empty-soft: var(--surface-3);
+}
+
+.ui-empty--gold {
+  --empty-color: var(--gold-text);
+  --empty-soft: var(--gold-soft);
+}
+
+.ui-empty--danger {
+  --empty-color: var(--danger-text);
+  --empty-soft: var(--danger-soft);
+}
+
+.ui-empty__sonar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--empty-disc) * 2);
+  height: calc(var(--empty-disc) * 2);
+  margin-bottom: var(--sp-2);
+}
+
+.ui-empty--sm .ui-empty__sonar {
+  width: calc(var(--empty-disc) * 1.5);
+  height: calc(var(--empty-disc) * 1.5);
+  margin-bottom: 0;
+}
+
+.ui-empty__ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--empty-color);
+  border-radius: 50%;
+  opacity: 0.16;
+}
+
+.ui-empty__ring--2 {
+  inset: 18%;
+  opacity: 0.28;
+}
+
+.ui-empty__ring--1 {
+  animation: ui-empty-ping 3.2s var(--ease-out) infinite;
+}
+
+@keyframes ui-empty-ping {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.55);
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+.ui-empty__disc {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--empty-disc);
+  height: var(--empty-disc);
+  border: 1px solid color-mix(in srgb, var(--empty-color) 45%, transparent);
+  border-radius: 50%;
+  background: var(--empty-soft);
+  color: var(--empty-color);
+}
+
+.ui-empty__title {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+}
+
+.ui-empty--sm .ui-empty__title {
+  font-size: var(--fs-lg);
+}
+
+.ui-empty--lg .ui-empty__title {
+  font-size: var(--fs-2xl);
+}
+
+.ui-empty__desc {
+  margin-top: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  line-height: var(--lh-normal);
+}
+
+.ui-empty--sm .ui-empty__desc {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-sm);
+}
+
+.ui-empty__action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+}

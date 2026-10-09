@@ -1,0 +1,685 @@
+/*
+ * EntryCard: one logged catch, in three densities (card / row / compact).
+ * --entry-tint is the game's colour (set inline); shiny entries swap it for gold.
+ */
+
+.pk-entry {
+  --entry-tint: var(--accent);
+  --entry-glow: color-mix(in srgb, var(--entry-tint) 26%, transparent);
+  position: relative;
+  /* Own stacking context: the activation button sits under the content (z-index -1) but over the background. */
+  isolation: isolate;
+  display: block;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background-color: var(--surface-1);
+  color: var(--text-1);
+  text-align: left;
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out);
+}
+
+.pk-entry.is-shiny {
+  --entry-glow: color-mix(in srgb, var(--gold) 34%, transparent);
+  border-color: color-mix(in srgb, var(--gold) 38%, var(--line));
+}
+
+/* ---------------------------------------------------------------- activation */
+
+.pk-entry.is-openable {
+  cursor: pointer;
+}
+
+.pk-entry.is-openable:hover {
+  border-color: var(--line-strong);
+  background-color: var(--surface-2);
+}
+
+.pk-entry.is-shiny.is-openable:hover {
+  border-color: color-mix(in srgb, var(--gold) 62%, var(--line));
+}
+
+.pk-entry__open {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+}
+
+/* ---------------------------------------------------------------- shared pieces */
+
+/* The render's well. Its width is fixed here (the sprite fills it, square), so nothing shifts while images load. */
+.pk-entry__art {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 2px;
+  border-radius: var(--r-md);
+  background:
+    radial-gradient(circle at 50% 62%, var(--entry-glow), transparent 72%),
+    var(--surface-inset);
+}
+
+.pk-entry.is-shiny .pk-entry__art {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 42%, transparent);
+}
+
+.pk-entry__ident {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pk-entry__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pk-entry__name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Line under the heading: dex number, form, nickname, marks. */
+.pk-entry__sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  /* Clipped rather than hidden, with a margin, so the shiny mark keeps its glow. */
+  overflow: clip;
+  overflow-clip-margin: 4px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+  white-space: nowrap;
+}
+
+.pk-entry__sub > * {
+  flex: none;
+}
+
+.pk-entry__sub > span:not(.ui-chip) + span:not(.ui-chip)::before {
+  margin-right: 6px;
+  color: var(--text-3);
+  font-style: normal;
+  font-weight: var(--fw-regular);
+  content: '·';
+}
+
+.pk-entry__no {
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.03em;
+}
+
+.pk-entry__sub > .pk-entry__form,
+.pk-entry__sub > .pk-entry__nick {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pk-entry__form {
+  color: var(--text-1);
+  font-weight: var(--fw-medium);
+}
+
+.pk-entry__nick {
+  color: var(--text-2);
+  font-style: italic;
+}
+
+.pk-entry__place,
+.pk-entry__how {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-entry__place {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-snug);
+}
+
+.pk-entry__how {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
+.pk-entry__ball {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pk-entry__ball-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-entry__level,
+.pk-entry__date {
+  white-space: nowrap;
+}
+
+.pk-entry__blank {
+  color: var(--text-disabled);
+}
+
+/* Stand-in for the icon of a game this build does not know. */
+.pk-entry__nogame {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--line-strong);
+  border-radius: 24%;
+  background: var(--surface-inset);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.pk-entry__actions {
+  display: inline-flex;
+  flex: none;
+}
+
+.pk-entry__kebab {
+  color: var(--text-3);
+}
+
+/* Stays lit while its menu is open. */
+.pk-entry__actions [aria-expanded='true'] > .pk-entry__kebab {
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+/* The icon set's "more" glyph is horizontal; entries use it upright. */
+.pk-entry__kebab svg {
+  transform: rotate(90deg);
+}
+
+/* ================================================================ card */
+
+.pk-entry--card {
+  container: pk-entry-card / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background-image: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--entry-tint) 11%, transparent), transparent 62%);
+  box-shadow: var(--panel-shadow);
+}
+
+.pk-entry--card.is-shiny {
+  background-image: linear-gradient(150deg, var(--gold-soft), transparent 58%);
+}
+
+.pk-entry--card.is-openable:hover {
+  transform: translateY(-2px);
+}
+
+.pk-entry--card.is-openable:active {
+  transform: translateY(0);
+}
+
+.pk-entry__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.pk-entry--card .pk-entry__art {
+  width: 92px;
+  padding: 4px;
+  border-radius: var(--r-lg);
+}
+
+/* A card squeezed into a narrow column gives the text the room. */
+@container pk-entry-card (max-width: 270px) {
+  .pk-entry__head {
+    gap: 10px;
+  }
+
+  .pk-entry--card .pk-entry__art {
+    width: 60px;
+    padding: 2px;
+    border-radius: var(--r-md);
+  }
+
+  .pk-entry__meta {
+    gap: var(--sp-2);
+  }
+
+  /* The ball keeps its icon; its name is still read out, just not drawn. */
+  .pk-entry--card .pk-entry__ball-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+  }
+}
+
+.pk-entry--card .pk-entry__ident {
+  gap: 5px;
+}
+
+.pk-entry--card .pk-entry__name {
+  font-size: var(--fs-lg);
+  letter-spacing: var(--tracking-display);
+}
+
+.pk-entry--card .pk-entry__sub {
+  font-size: var(--fs-sm);
+}
+
+.pk-entry--card .pk-entry__actions {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+}
+
+/* Keeps the first line clear of the menu button. */
+.pk-entry--card.has-actions .pk-entry__ident > :first-child {
+  padding-right: 22px;
+}
+
+/* A card has the room to show a long game name in full ("Pokémon Legends: Z-A", "Pokémon XD:
+   Gale of Darkness"): it wraps onto a second line instead of being cut short. */
+.pk-entry--card .pk-gamebadge__name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.pk-entry__where {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.pk-entry__where-icon {
+  margin-top: 1px;
+  color: var(--text-3);
+}
+
+.pk-entry__where-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.pk-entry--card .pk-entry__place {
+  font-size: var(--fs-md);
+}
+
+.pk-entry--card .pk-entry__how {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.pk-entry__extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--sp-2);
+  min-width: 0;
+}
+
+.pk-entry--card .pk-entry__ot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.pk-entry__ot-label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+}
+
+.pk-entry__ot-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-1);
+  font-weight: var(--fw-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-entry__notes {
+  display: -webkit-box;
+  overflow: hidden;
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--line-strong);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.pk-entry.is-shiny .pk-entry__notes {
+  border-left-color: color-mix(in srgb, var(--gold) 55%, transparent);
+}
+
+/* Pinned to the bottom so the footers of a grid row line up whatever each card holds. */
+.pk-entry__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-width: 0;
+  margin-top: auto;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-sm);
+}
+
+.pk-entry--card .pk-entry__ball {
+  font-weight: var(--fw-medium);
+}
+
+.pk-entry__meta {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--text-2);
+}
+
+.pk-entry--card .pk-entry__level {
+  color: var(--text-1);
+  font-weight: var(--fw-medium);
+}
+
+.pk-entry--card .pk-entry__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pk-entry--card .pk-entry__date svg {
+  color: var(--text-3);
+}
+
+/* ================================================================ row */
+
+.pk-entry--row,
+.pk-entry-head {
+  container: pk-entry-row / inline-size;
+}
+
+.pk-entry--row {
+  border-radius: var(--r-md);
+}
+
+.pk-entry--row.is-shiny {
+  background-image: linear-gradient(90deg, var(--gold-soft), transparent 34%);
+}
+
+.pk-entry-head {
+  border: 1px solid transparent;
+}
+
+/*
+ * Every track has a size that does not depend on its content, so rows of the same width line up.
+ * The gap is the cells' left padding, which lets a collapsed track (0 px, cell hidden) vanish cleanly.
+ */
+.pk-entry__cols {
+  --c-name: minmax(0, 1.25fr);
+  --c-game: minmax(0, 0.95fr);
+  --c-where: minmax(0, 1.4fr);
+  --c-ball: minmax(0, 0.85fr);
+  --c-level: 62px;
+  --c-date: 100px;
+  --c-end: 30px;
+  display: grid;
+  grid-template-columns:
+    [art] 44px [name] var(--c-name) [game] var(--c-game) [where] var(--c-where)
+    [ball] var(--c-ball) [level] var(--c-level) [date] var(--c-date) [end] var(--c-end);
+  align-items: center;
+  height: 54px;
+  padding: 0 var(--sp-2) 0 5px;
+}
+
+.has-actions > .pk-entry__cols {
+  --c-end: 62px;
+}
+
+.no-species > .pk-entry__cols {
+  --c-name: 0px;
+  --c-game: minmax(0, 1.3fr);
+}
+
+.pk-entry__cols > * {
+  grid-row: 1;
+  min-width: 0;
+  padding-left: var(--sp-3);
+}
+
+.pk-entry__cols > :first-child {
+  grid-column: art;
+  padding-left: 2px;
+}
+
+.pk-entry__cell--name {
+  grid-column: name;
+}
+
+.pk-entry__cell--game {
+  grid-column: game;
+}
+
+.pk-entry__cell--where {
+  grid-column: where;
+}
+
+.pk-entry__cell--ball {
+  grid-column: ball;
+}
+
+.pk-entry__cell--level {
+  grid-column: level;
+}
+
+.pk-entry__cell--date {
+  grid-column: date;
+}
+
+.pk-entry__cell--end {
+  grid-column: end;
+}
+
+.pk-entry__cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.pk-entry--row .pk-entry__cell--ball,
+.pk-entry--row .pk-entry__cell--level,
+.pk-entry--row .pk-entry__cell--date {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.pk-entry--row .pk-entry__cell--end {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.pk-entry__noteflag {
+  display: inline-flex;
+  color: var(--text-3);
+}
+
+.pk-entry-head .pk-entry__cols {
+  height: 28px;
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pk-entry-head .pk-entry__cols > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- narrower containers drop the least important columns, in the same order for rows and header ---- */
+
+@container pk-entry-row (max-width: 900px) {
+  .pk-entry__cols {
+    --c-ball: 32px;
+  }
+
+  .pk-entry__ball-name,
+  .pk-entry-head .pk-entry__cell--ball {
+    display: none;
+  }
+}
+
+@container pk-entry-row (max-width: 700px) {
+  .pk-entry__cols {
+    --c-level: 0px;
+  }
+
+  .pk-entry__cell--level,
+  .pk-entry--row .pk-entry__ot {
+    display: none;
+  }
+}
+
+@container pk-entry-row (max-width: 580px) {
+  .pk-entry__cols {
+    --c-name: minmax(0, 1.5fr);
+    --c-game: 52px;
+    --c-where: minmax(0, 1fr);
+  }
+
+  /* Without the name column the game is the heading of the row: it keeps its text. */
+  .no-species > .pk-entry__cols {
+    --c-game: minmax(0, 1fr);
+  }
+
+  /* Still read out, just not drawn. */
+  .pk-entry--row:not(.no-species) .pk-gamebadge__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .pk-entry-head:not(.no-species) .pk-entry__cell--game {
+    visibility: hidden;
+  }
+}
+
+@container pk-entry-row (max-width: 460px) {
+  .pk-entry__cols {
+    --c-where: 0px;
+  }
+
+  .pk-entry__cell--where,
+  .pk-entry--row .pk-entry__sub > .ui-chip {
+    display: none;
+  }
+}
+
+@container pk-entry-row (max-width: 340px) {
+  .pk-entry__cols {
+    --c-date: 0px;
+  }
+
+  .pk-entry__cell--date {
+    display: none;
+  }
+}
+
+/* ================================================================ compact */
+
+.pk-entry--compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 var(--sp-2) 0 5px;
+  border-color: transparent;
+  border-radius: var(--r-md);
+  background-color: transparent;
+}
+
+.pk-entry--compact.is-shiny {
+  border-color: transparent;
+}
+
+.pk-entry--compact.is-openable:hover,
+.pk-entry--compact.is-shiny.is-openable:hover {
+  border-color: transparent;
+  background-color: var(--surface-hover);
+}
+
+.pk-entry__origin {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ================================================================ highlight (a just-added entry) */
+
+.pk-entry.pk-entry.is-highlight {
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 1px var(--gold),
+    0 0 26px var(--gold-soft);
+}

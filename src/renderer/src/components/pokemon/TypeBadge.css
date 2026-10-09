@@ -1,0 +1,68 @@
+.pk-types {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.pk-type {
+  --tc: var(--type-normal);
+  display: inline-flex;
+  flex: none;
+}
+
+.pk-type--pill {
+  align-items: center;
+  justify-content: center;
+  min-width: 68px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: var(--r-full);
+  background: var(--tc);
+  box-shadow:
+    inset 0 1px 0 var(--bevel-light),
+    inset 0 -1px 0 var(--bevel-dark);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.pk-type--pill.pk-type--sm {
+  min-width: 56px;
+  height: 18px;
+  padding: 0 7px;
+  font-size: 10px;
+}
+
+.pk-type--ink-dark {
+  color: var(--type-ink-dark);
+}
+
+/* White text needs a slightly deeper fill to reach AA on the redder types. */
+.pk-type--ink-light {
+  background: color-mix(in srgb, var(--tc) 88%, #000);
+  color: var(--type-ink-light);
+}
+
+.pk-type--dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tc);
+  box-shadow:
+    inset 0 1px 0 var(--bevel-light),
+    0 0 0 1px var(--bevel-dark);
+}
+
+.pk-type--dot.pk-type--sm {
+  width: 8px;
+  height: 8px;
+}
+
+/* Stellar is every type at once. */
+.pk-type--stellar {
+  background: var(--type-stellar-grad);
+  color: var(--type-ink-dark);
+}

@@ -1,0 +1,127 @@
+/* Achievements summary card (Home page). Prefix: ach-sum. */
+
+.ach-sum {
+  display: flex;
+  flex-direction: column;
+}
+
+.ach-sum__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--ctl-sm);
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-sm);
+  color: var(--gold-text);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  transition: background-color var(--dur-2) var(--ease-out);
+}
+
+.ach-sum__link:hover {
+  background: var(--gold-soft);
+  text-decoration: none;
+}
+
+.ach-sum__rank {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.ach-sum__rank-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ach-sum__name {
+  overflow: hidden;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-display);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ach-sum__line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.ach-sum__points {
+  color: var(--gold-text);
+  font-weight: var(--fw-semibold);
+}
+
+.ach-sum__bar {
+  margin-top: var(--sp-2);
+}
+
+.ach-sum__next {
+  margin-top: 6px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.ach-sum__heading {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+
+.ach-sum__empty {
+  margin-top: var(--sp-4);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.ach-sum__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.ach-sum__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.ach-sum__item-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ach-sum__item-title,
+.ach-sum__item-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ach-sum__item-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+}
+
+.ach-sum__item-desc {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
+.ach-sum__item-when {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}

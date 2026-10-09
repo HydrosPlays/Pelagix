@@ -1,0 +1,178 @@
+.ui-chip {
+  --chip-color: var(--text-2);
+  --chip-tint: var(--surface-3);
+  --chip-solid: var(--surface-solid-2);
+  --chip-on-solid: var(--text-1);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  background: var(--chip-tint);
+  color: var(--chip-color);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ui-chip--sm {
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+}
+
+.ui-chip__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- tones ---- */
+
+.ui-chip--neutral {
+  --chip-color: var(--text-2);
+}
+
+.ui-chip--accent {
+  --chip-color: var(--accent);
+  --chip-tint: var(--accent-soft);
+  --chip-solid: var(--accent-grad);
+  --chip-on-solid: var(--text-on-accent);
+}
+
+.ui-chip--gold {
+  --chip-color: var(--gold-text);
+  --chip-tint: var(--gold-soft);
+  --chip-solid: var(--gold-grad);
+  --chip-on-solid: var(--text-on-gold);
+}
+
+.ui-chip--catch {
+  --chip-color: var(--catch-text);
+  --chip-tint: var(--catch-soft);
+  --chip-solid: var(--catch-grad);
+  --chip-on-solid: var(--text-on-catch);
+}
+
+.ui-chip--success {
+  --chip-color: var(--success-text);
+  --chip-tint: var(--success-soft);
+  --chip-solid: var(--success);
+  --chip-on-solid: var(--type-ink-dark);
+}
+
+.ui-chip--warning {
+  --chip-color: var(--warning-text);
+  --chip-tint: var(--warning-soft);
+  --chip-solid: var(--warning);
+  --chip-on-solid: var(--type-ink-dark);
+}
+
+.ui-chip--danger {
+  --chip-color: var(--danger-text);
+  --chip-tint: var(--danger-soft);
+  --chip-solid: var(--danger-grad);
+  --chip-on-solid: var(--text-on-catch);
+}
+
+/* ---- variants ---- */
+
+.ui-chip--outline {
+  border-color: color-mix(in srgb, var(--chip-color) 45%, transparent);
+  background: transparent;
+}
+
+.ui-chip--neutral.ui-chip--outline {
+  border-color: var(--line-strong);
+}
+
+.ui-chip--solid {
+  background: var(--chip-solid);
+  color: var(--chip-on-solid);
+}
+
+.ui-chip--neutral.ui-chip--solid {
+  border-color: var(--line-strong);
+}
+
+/* ---- interactive ---- */
+
+.ui-chip-wrap {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.ui-chip--button {
+  border-color: var(--line);
+  background: var(--surface-1);
+  color: var(--text-2);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.ui-chip--button:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+.ui-chip--button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.ui-chip--button.is-selected {
+  border-color: color-mix(in srgb, var(--chip-color) 55%, transparent);
+  background: var(--chip-tint);
+  color: var(--chip-color);
+}
+
+.ui-chip--button.ui-chip--neutral.is-selected {
+  --chip-color: var(--accent);
+  --chip-tint: var(--accent-soft);
+}
+
+.ui-chip--button:disabled {
+  opacity: 0.45;
+}
+
+.ui-chip-wrap.has-remove .ui-chip {
+  padding-right: 26px;
+}
+
+.ui-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: -5px;
+  border-radius: var(--r-full);
+  color: inherit;
+  opacity: 0.7;
+}
+
+.ui-chip-wrap .ui-chip__remove {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  margin: -8px 0 0;
+  color: var(--text-2);
+}
+
+.ui-chip__remove:hover:not(:disabled) {
+  background: var(--surface-press);
+  opacity: 1;
+}

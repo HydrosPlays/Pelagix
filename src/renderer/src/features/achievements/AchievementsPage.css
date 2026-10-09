@@ -1,0 +1,664 @@
+/* Achievements page. Prefix: ach-. Medal metals come from Medal.css (.ach-tier--*). */
+
+.ach-page {
+  container: ach / inline-size;
+}
+
+/* ================================================================ hero */
+
+.ach-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.ach-hero__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-6) var(--sp-8);
+}
+
+/* ---- rank ---- */
+
+.ach-rank {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  min-width: 0;
+}
+
+.ach-rank__medal {
+  position: relative;
+  flex: none;
+}
+
+/* Soft light behind the rank medal. */
+.ach-rank__medal::before {
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--gold-soft), transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.ach-rank__medal .ach-medal {
+  position: relative;
+}
+
+.ach-rank__text {
+  flex: 1;
+  min-width: 0;
+  max-width: 520px;
+}
+
+.ach-rank__name {
+  margin-top: 2px;
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  overflow-wrap: anywhere;
+}
+
+.ach-ladder {
+  display: flex;
+  gap: 4px;
+  margin-top: var(--sp-4);
+}
+
+.ach-ladder__step {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--r-full);
+  background: var(--surface-inset);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.ach-ladder__step.is-current {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tier-mid) 55%, transparent);
+}
+
+.ach-ladder__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--tier-mid), var(--tier-hi));
+  transform-origin: left center;
+  transition: transform var(--dur-4) var(--ease-out);
+}
+
+.ach-rank__next {
+  margin-top: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+/* ---- stats ---- */
+
+.ach-stats {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-3);
+  margin: 0;
+}
+
+.ach-stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-width: 148px;
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-inset);
+}
+
+.ach-stat--ring {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.ach-stat__value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  white-space: nowrap;
+}
+
+.ach-stat__number {
+  color: var(--gold-text);
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-display);
+}
+
+.ach-stat__of {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.ach-stat__percent {
+  font-size: var(--fs-md);
+}
+
+/* ---- nearly there ---- */
+
+.ach-near {
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--line);
+}
+
+.ach-near__heading {
+  margin-bottom: var(--sp-3);
+}
+
+.ach-near__done {
+  color: var(--text-2);
+}
+
+.ach-near__list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+.ach-near__cell {
+  min-width: 0;
+}
+
+.ach-near__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  text-align: left;
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out);
+}
+
+.ach-near__item:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+.ach-near__item:active {
+  transform: translateY(0);
+}
+
+.ach-near__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ach-near__title {
+  overflow: hidden;
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ach-near__meter,
+.ach-cat__meter {
+  position: relative;
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--r-full);
+  background: var(--surface-inset);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.ach-near__fill,
+.ach-cat__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--gold-grad);
+  transform-origin: left center;
+  transition: transform var(--dur-4) var(--ease-out);
+}
+
+.ach-near__count {
+  flex: none;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
+/* ================================================================ layout */
+
+.ach-layout {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-6);
+  margin-top: var(--sp-8);
+  scroll-margin-top: var(--sp-4);
+}
+
+/* ---- categories ---- */
+
+.ach-cats {
+  position: sticky;
+  top: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ach-cat {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--text-2);
+  text-align: left;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.ach-cat:hover {
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+.ach-cat.is-selected {
+  border-color: color-mix(in srgb, var(--gold) 40%, transparent);
+  background: var(--gold-soft);
+  color: var(--text-1);
+}
+
+.ach-cat__icon {
+  display: flex;
+  color: var(--text-3);
+}
+
+.ach-cat.is-selected .ach-cat__icon,
+.ach-cat.is-complete .ach-cat__icon {
+  color: var(--gold-text);
+}
+
+.ach-cat__name {
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ach-cat.is-selected .ach-cat__name {
+  font-weight: var(--fw-semibold);
+}
+
+.ach-cat__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+}
+
+.ach-cat.is-complete .ach-cat__count {
+  color: var(--gold-text);
+}
+
+.ach-cat__meter {
+  grid-column: 2 / -1;
+  height: 3px;
+}
+
+/* ---- toolbar ---- */
+
+.ach-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+
+.ach-toolbar__heading {
+  min-width: 0;
+}
+
+.ach-toolbar__desc {
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.ach-toolbar__controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.ach-toolbar__sort {
+  width: 184px;
+}
+
+/* ================================================================ cards */
+
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: var(--sp-3);
+}
+
+/* An opened card grows on its own instead of stretching its whole row. */
+.ach-grid:has(.ach-card.is-open) {
+  align-items: start;
+}
+
+.ach-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  /* The first row takes the card's spare height, so the progress line sits on the bottom edge. */
+  grid-template-rows: 1fr;
+  grid-auto-rows: auto;
+  gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  box-shadow: var(--panel-shadow);
+  transition: border-color var(--dur-2) var(--ease-out);
+}
+
+.ach-card:hover {
+  border-color: var(--line-strong);
+}
+
+.ach-card:focus-visible {
+  outline-offset: 3px;
+}
+
+.ach-card.is-unlocked {
+  border-color: color-mix(in srgb, var(--tier-mid) 34%, var(--line));
+  background:
+    linear-gradient(150deg, var(--tier-soft), transparent 58%),
+    var(--surface-1);
+}
+
+.ach-card.is-unlocked:hover {
+  border-color: color-mix(in srgb, var(--tier-mid) 60%, var(--line));
+}
+
+.ach-card.is-fresh {
+  border-color: color-mix(in srgb, var(--gold) 62%, transparent);
+  box-shadow:
+    var(--panel-shadow),
+    0 0 0 3px var(--gold-soft);
+}
+
+.ach-card__fx {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.ach-card__sheen {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  background: linear-gradient(100deg, transparent, var(--bevel-light) 45%, var(--bevel-light) 55%, transparent);
+  opacity: 0.55;
+  transform: translateX(-140%);
+}
+
+.ach-card__medal {
+  position: relative;
+  align-self: start;
+}
+
+.ach-card__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ach-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.ach-card__title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.ach-card.is-locked .ach-card__title {
+  color: var(--text-2);
+}
+
+.ach-card__desc {
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  overflow-wrap: anywhere;
+}
+
+.ach-card.is-locked .ach-card__desc {
+  color: var(--text-3);
+}
+
+/*
+ * Tier · points · secret. Every item carries its separator dot in a left gutter that is pulled
+ * outside the row, so the first item of each line (also after wrapping) shows no stray dot.
+ */
+.ach-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 2px;
+  margin-top: var(--sp-2);
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.ach-card__meta > span {
+  position: relative;
+  margin: 0 18px 0 -18px;
+  padding-left: 18px;
+  white-space: nowrap;
+}
+
+.ach-card__meta > span::before {
+  position: absolute;
+  left: 6px;
+  color: var(--text-disabled);
+  content: '·';
+}
+
+.ach-card__tier {
+  color: var(--tier-text);
+}
+
+.ach-card__date,
+.ach-card__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: var(--ctl-sm);
+  margin-top: auto;
+  padding-top: var(--sp-2);
+  font-size: var(--fs-xs);
+}
+
+.ach-card__date {
+  color: var(--tier-text);
+  font-weight: var(--fw-medium);
+}
+
+.ach-card__progress .ui-progress {
+  flex: 1;
+  min-width: 40px;
+}
+
+.ach-card__count {
+  flex: none;
+  color: var(--text-2);
+  font-weight: var(--fw-medium);
+}
+
+.ach-card__toggle {
+  flex: none;
+  margin: -2px -6px -2px 0;
+}
+
+/* ---- what is still missing ---- */
+
+.ach-missing {
+  grid-column: 1 / -1;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+
+.ach-missing__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--sp-2);
+}
+
+.ach-missing__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-inset);
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out);
+}
+
+.ach-missing__item:hover {
+  border-color: var(--line-accent);
+  background: var(--accent-soft);
+  transform: translateY(-2px);
+}
+
+/* Missing Pokémon are shown as silhouettes; pointing at one (or focusing it) reveals it. */
+.ach-missing__sprite {
+  filter: var(--silhouette-filter);
+  opacity: 0.36;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.ach-missing__item:hover .ach-missing__sprite,
+.ach-missing__item:focus-visible .ach-missing__sprite {
+  filter: none;
+  opacity: 1;
+}
+
+.ach-missing__more {
+  padding: 0 var(--sp-2);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
+/* ================================================================ narrow layouts */
+
+@container ach (max-width: 980px) {
+  .ach-near__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ach-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-5);
+    margin-top: var(--sp-6);
+  }
+
+  /* The side list becomes a wrapping row of pills. */
+  .ach-cats {
+    position: static;
+    flex-flow: row wrap;
+    gap: 6px;
+  }
+
+  .ach-cat {
+    grid-template-columns: auto auto auto;
+    padding: 6px var(--sp-3);
+    border-color: var(--line);
+    border-radius: var(--r-full);
+    background: var(--surface-1);
+  }
+
+  .ach-cat__meter {
+    display: none;
+  }
+}
+
+@container ach (max-width: 860px) {
+  .ach-hero__top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ach-stats {
+    flex-wrap: wrap;
+  }
+
+  .ach-stat {
+    flex: 1;
+  }
+}
+
+@container ach (max-width: 560px) {
+  .ach-near__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ach-rank {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-4);
+  }
+}

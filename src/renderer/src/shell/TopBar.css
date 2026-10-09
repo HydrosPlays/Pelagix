@@ -1,0 +1,127 @@
+.shell-topbar {
+  position: relative;
+  z-index: var(--z-topbar);
+  display: flex;
+  grid-row: 1;
+  grid-column: 2;
+  align-items: center;
+  gap: var(--sp-4);
+  min-width: 0;
+  height: var(--topbar-h);
+  padding-left: var(--page-pad);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-1) 62%, transparent);
+  -webkit-app-region: drag;
+}
+
+.shell-topbar__title {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.shell-topbar__crumb {
+  flex: none;
+  padding: 2px 6px;
+  margin-left: -6px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  -webkit-app-region: no-drag;
+}
+
+.shell-topbar__crumb:hover {
+  background: var(--surface-hover);
+  color: var(--text-1);
+  text-decoration: none;
+}
+
+.shell-topbar__sep {
+  color: var(--text-disabled);
+}
+
+.shell-topbar__current {
+  overflow: hidden;
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+
+.shell-topbar__flag {
+  display: inline-flex;
+  flex: none;
+  -webkit-app-region: no-drag;
+}
+
+.shell-topbar__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-right: var(--sp-3);
+}
+
+/* Free space for the native minimise / maximise / close buttons (0 in a browser). */
+.shell-topbar__window-controls {
+  flex: none;
+  width: var(--wc-reserve);
+  height: 100%;
+}
+
+/* ---------------------------------------------------------------- search trigger */
+
+.shell-search {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 264px;
+  height: 28px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-inset);
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+  -webkit-app-region: no-drag;
+}
+
+.shell-search:hover {
+  border-color: var(--line-accent);
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+.shell-search__label {
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell-search .ui-kbd {
+  height: 18px;
+  border-bottom-width: 1px;
+}
+
+.shell-topbar__shiny.is-pressed {
+  border-color: color-mix(in srgb, var(--gold) 60%, transparent);
+  background: var(--gold-soft);
+  color: var(--gold-text);
+}
+
+@media (max-width: 1100px) {
+  .shell-search {
+    width: 208px;
+  }
+}

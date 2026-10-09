@@ -1,0 +1,77 @@
+/* ---------------------------------------------------------------- gender */
+
+.pk-gender--m {
+  color: var(--male);
+}
+
+.pk-gender--f {
+  color: var(--female);
+}
+
+.pk-gender--n {
+  color: var(--genderless);
+}
+
+/* ---------------------------------------------------------------- shiny */
+
+.pk-shiny {
+  color: var(--gold);
+  filter: drop-shadow(0 0 3px var(--gold-soft));
+}
+
+.pk-shiny--twinkle {
+  animation: pk-shiny-twinkle 2.4s ease-in-out infinite;
+}
+
+@keyframes pk-shiny-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(0.84) rotate(12deg);
+  }
+}
+
+/* ---------------------------------------------------------------- dex number */
+
+.pk-dexno {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pk-dexno--plain {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.03em;
+}
+
+.pk-dexno--badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 9px 0 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.06em;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+}
+
+.pk-dexno--watermark {
+  display: block;
+  color: var(--text-1);
+  font-size: var(--fs-watermark);
+  font-weight: var(--fw-black);
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  opacity: 0.055;
+  pointer-events: none;
+  user-select: none;
+}

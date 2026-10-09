@@ -1,0 +1,91 @@
+.ui-seg {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: stretch;
+  height: var(--ctl-md);
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-inset);
+  -webkit-app-region: no-drag;
+}
+
+.ui-seg--sm {
+  height: var(--ctl-sm);
+  padding: 2px;
+  border-radius: var(--r-sm);
+}
+
+.ui-seg--fill {
+  display: flex;
+}
+
+.ui-seg--fill .ui-seg__item {
+  flex: 1;
+}
+
+.ui-seg[aria-disabled='true'] {
+  opacity: 0.5;
+}
+
+.ui-seg__item {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 30px;
+  padding: 0 var(--sp-3);
+  border-radius: calc(var(--r-md) - 3px);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  transition: color var(--dur-2) var(--ease-out);
+}
+
+.ui-seg--sm .ui-seg__item {
+  min-width: 26px;
+  padding: 0 var(--sp-2);
+  border-radius: calc(var(--r-sm) - 2px);
+  font-size: var(--fs-xs);
+}
+
+.ui-seg__item:hover:not(:disabled) {
+  color: var(--text-1);
+}
+
+.ui-seg__item[aria-checked='true'] {
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+}
+
+.ui-seg__item:disabled {
+  opacity: 0.4;
+}
+
+/* Width is set at once; only the slide is animated. */
+.ui-seg__thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: calc(var(--r-md) - 3px);
+  background: var(--surface-solid-2);
+  box-shadow: var(--shadow-1), var(--highlight-inset);
+  opacity: 0;
+  transition:
+    transform var(--dur-3) var(--ease-out),
+    opacity var(--dur-2) linear;
+  pointer-events: none;
+}
+
+.ui-seg--sm .ui-seg__thumb {
+  top: 2px;
+  bottom: 2px;
+  border-radius: calc(var(--r-sm) - 2px);
+}

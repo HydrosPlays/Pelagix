@@ -1,0 +1,42 @@
+.pk-sprite {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.pk-sprite__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity var(--dur-3) var(--ease-out);
+}
+
+.pk-sprite.is-loaded .pk-sprite__img {
+  opacity: 1;
+}
+
+/* Uncaught slot: the render flattened to a single tone and sunk into the surface. */
+.pk-sprite--silhouette .pk-sprite__img {
+  filter: var(--silhouette-filter);
+}
+
+.pk-sprite--silhouette.is-loaded .pk-sprite__img {
+  opacity: var(--silhouette-opacity);
+}
+
+.pk-sprite__placeholder {
+  width: 46%;
+  height: 46%;
+  color: var(--line-strong);
+}
+
+.pk-sprite__placeholder.is-failed {
+  color: var(--text-disabled);
+}

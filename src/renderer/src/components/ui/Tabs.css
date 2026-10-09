@@ -1,0 +1,83 @@
+.ui-tabs {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-1);
+  /* Too many tabs for the width scroll sideways (no scrollbar; arrow keys bring tabs into view). */
+  overflow-x: auto;
+  box-shadow: inset 0 -1px 0 var(--line);
+  scrollbar-width: none;
+}
+
+.ui-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ui-tabs--fill .ui-tabs__tab {
+  flex: 1;
+}
+
+.ui-tabs__tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: 40px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  transition:
+    color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+}
+
+.ui-tabs--sm .ui-tabs__tab {
+  height: 34px;
+  padding: 0 10px;
+  font-size: var(--fs-sm);
+}
+
+.ui-tabs__tab:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+.ui-tabs__tab[aria-selected='true'] {
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+}
+
+.ui-tabs__tab:disabled {
+  opacity: 0.4;
+}
+
+.ui-tabs__tab:focus-visible {
+  outline-offset: -2px;
+}
+
+/* A 1 px wide bar, stretched and moved with transforms only. */
+.ui-tabs__marker {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 -1px 8px var(--accent);
+  opacity: 0;
+  transform-origin: left center;
+  transition:
+    transform var(--dur-3) var(--ease-out),
+    opacity var(--dur-2) linear;
+  pointer-events: none;
+}
+
+.ui-tabpanel:focus-visible {
+  outline-offset: 4px;
+  border-radius: var(--r-sm);
+}

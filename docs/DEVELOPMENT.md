@@ -1,0 +1,195 @@
+# Developing Pelagix
+
+How to run, test, package and find your way around the code. For what the app does, see the
+[README](../README.md); for the datasets, see [DATA.md](DATA.md).
+
+- [Setup](#setup)
+- [Scripts](#scripts)
+- [Ways to run the app](#ways-to-run-the-app)
+- [How the app is put together](#how-the-app-is-put-together)
+- [The save file](#the-save-file)
+- [Tests](#tests)
+- [Packaging](#packaging)
+- [Assets and screenshots](#assets-and-screenshots)
+
+## Setup
+
+- Windows 10 or 11, 64-bit. The packaging scripts target Windows x64 only.
+- Node.js 24 and npm 11. The data scripts run `.ts` files directly, which relies on Node's
+  built-in type stripping.
+- Only for rebuilding the datasets: the .NET SDK 10 and the `PKHeX/` and `PokeAPI/` source trees
+  (see [DATA.md](DATA.md#rebuilding-the-datasets)).
+- Only for redrawing the app icon: Python 3 with Pillow.
+
+```
+npm install
+```
+
+Electron 44 has no install script, so its binary is not downloaded by `npm install`. `npm run dev`
+and `npm run preview` fetch it on first use; `npx install-electron` does it by hand.
+
+## Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Starts the app in Electron with hot reload. |
+| `npm run dev:web` | Serves only the interface at http://127.0.0.1:5199 for a normal browser. Set `PELAGIX_WEB_PORT` to use another port. |
+| `npm run build` | Type-checks, then builds main, preload and renderer into `out/`. |
+| `npm run preview` | Builds and runs the production build in Electron. |
+| `npm run dist` | Builds, then packages a Windows installer and a portable executable into `dist/`. |
+| `npm run typecheck` | Type-checks the app: main, preload, renderer and shared. |
+| `npm run typecheck:tools` | Type-checks the tooling in `tools/`. |
+| `npm test` | Runs the unit tests with Vitest. |
+| `npm run data:extract` | Runs the PKHeX extractor (`tools/extractor`). Needs the .NET SDK and `PKHeX/`. |
+| `npm run data:build` | Builds the datasets into `src/renderer/public/data/`. |
+| `npm run data:validate` | Checks the built datasets. Read-only. |
+| `npm run data` | `data:extract`, `data:build` and `data:validate` in sequence. |
+| `npm run screenshots` | Re-creates the pictures in `docs/screenshots/`. |
+
+## Ways to run the app
+
+**In Electron, with hot reload:** `npm run dev`. This uses your real save in `%APPDATA%\Pelagix`.
+
+**In a browser:** `npm run dev:web`. There is no Electron API there, so the save goes to
+`localStorage` and renders load straight from the CDN. Each port has its own save. This is the
+quickest way to work on the interface.
+
+**The production build, against a scratch profile:** to try the built app without touching your
+own save, give Electron another data folder:
+
+```
+npx install-electron
+npm run build
+npx electron-vite preview --skipBuild -- --user-data-dir=C:\path\to\a\scratch\folder
+```
+
+The first line fetches the Electron binary if it is not there yet. Calling `electron-vite`
+directly skips the step that does this for `npm run dev` and `npm run preview`.
+
+Setting `PELAGIX_SMOKE=1` makes the app print `SMOKE_OK Pelagix` once its window has loaded and
+then quit, which is enough to confirm that a build boots.
+
+Two things exist only in development and are left out of every production build:
+
+- a small **fixture dataset** (`src/renderer/public/data-fixture`, 24 species) that the app falls
+  back to when the real datasets are missing. The title bar shows a "Fixture data" chip when it
+  is in use;
+- the **component gallery** at `#/_kit`, described in
+  [`src/renderer/src/components/README.md`](../src/renderer/src/components/README.md).
+
+## How the app is put together
+
+```
+src/main/        Electron main process
+src/preload/     Exposes window.api to the page
+src/shared/      Types and static data shared with the data tools
+src/renderer/    The React interface
+```
+
+**Main process** (`src/main`)
+
+- `index.ts` starts the app, allows a single instance, and refuses every permission request
+  except copying text.
+- `window.ts` creates the one window (1360 × 860 by default, 1040 × 680 at least), remembers its
+  size, position and theme in `window.json`, and blocks navigation away from the app's own page.
+  Links open in the system browser, `https` only.
+- `save.ts` reads and writes the save: one queue for loads and writes, atomic writes, a daily
+  backup (the newest 14 are kept) and recovery from an unreadable file.
+- `sprites.ts` serves the `sprite://` protocol: Pokémon HOME renders, downloaded once and then
+  read from `sprite-cache\`, with thumbnails made on demand.
+- `ipc.ts` holds the handlers behind `window.api`. Each one checks that the call comes from the
+  app's own page and validates its arguments.
+
+**Preload** (`src/preload/index.ts`) exposes exactly the methods of `PelagixApi`
+([`src/shared/api.ts`](../src/shared/api.ts)): `loadSave`, `writeSave`, `exportSave`,
+`importSave`, `spriteCacheInfo`, `clearSpriteCache`, `appInfo`, `openExternal` and `setTheme`.
+The page runs sandboxed, with context isolation on and Node integration off, under a Content
+Security Policy that allows network requests only to the two sprite hosts.
+
+**Renderer** (`src/renderer/src`)
+
+| Folder | Contents |
+| --- | --- |
+| `features/` | One folder per page or app-wide feature: `home`, `pokedex`, `species`, `entry`, `living`, `journal`, `achievements`, `settings`, `search` (and `kit`, development only). |
+| `domain/` | The rules, as pure functions: Living Dex slots, progress, encounters, achievements. |
+| `components/` | Shared components (`ui/`) and Pokémon-specific ones (`pokemon/`). |
+| `lib/` | Data loading, sprites, storage, search, formatting, animation helpers. |
+| `store/` | zustand stores: the save, and the interface state. |
+| `shell/` | The app frame: navigation rail, title bar and routing. |
+| `styles/` | Design tokens and base styles. |
+
+Routing is hash-based: `#/`, `#/dex`, `#/dex/<number>?form=<index>`, `#/living`, `#/journal`,
+`#/achievements` and `#/settings`.
+
+Animation goes through `lib/anim.ts`, a thin layer over anime.js that honours the reduce-motion
+setting.
+
+Preferences that belong to a device rather than to a collection (tile size, sort orders, the
+Living Dex view, the shiny toggle, recently opened Pokémon) are kept in `localStorage`, not in
+the save.
+
+## The save file
+
+`save.json` is plain JSON, described by
+[`src/shared/save-types.ts`](../src/shared/save-types.ts):
+
+| Part | Contents |
+| --- | --- |
+| `version` | The format version, currently 1. |
+| `entries` | Every logged catch: species, form, optional sweet, gender, shiny, Gigantamax, Alpha, game, how it was obtained, method, location, what it was caught as, ball, level, date, nickname, Original Trainer, notes, and when it was logged and last changed. |
+| `settings` | The Living Dex rules, theme, reduce motion and trainer name. |
+| `achievements` | The id of each unlocked achievement and when it was unlocked. |
+
+Species and forms are stored as National Pokédex numbers and PKHeX form indices, games as the
+ids in [`src/shared/games.ts`](../src/shared/games.ts), balls as PKHeX ball ids. Those ids are
+part of the save format and must never be renamed.
+
+The main process only checks the top-level shape. The renderer validates each entry when a save
+is loaded or imported, and reports what it had to drop or repair.
+
+## Tests
+
+```
+npm test
+```
+
+Vitest, in a Node environment: 752 tests in 30 files at the time of writing. They cover the
+logic: slot rules, progress, encounter handling, achievements (including that every one of them
+can be earned on the real datasets), search, the entry editor's draft handling, the page models,
+the save store and the sprite protocol's request parsing.
+
+There is no DOM test environment, so components are not tested automatically. What is on screen
+is checked by running the app.
+
+## Packaging
+
+```
+npm run dist
+```
+
+runs `npm run build` and then `electron-builder --win` with
+[`electron-builder.yml`](../electron-builder.yml). It writes to `dist/`:
+
+| File | Target |
+| --- | --- |
+| `Pelagix-<version>-setup.exe` | NSIS installer, x64. Not one-click: it lets the user choose the folder. |
+| `Pelagix-<version>-portable.exe` | Portable executable, x64. |
+
+- electron-builder also leaves its working files in `dist/`: the unpacked app in `win-unpacked/`,
+  `latest.yml`, a `.blockmap` beside the installer and `builder-debug.yml`. None of them is needed
+  to run or to share the app.
+- The package contains `out/` and `package.json`. The datasets are in `out/renderer/data`, so
+  there are no extra resources.
+- The executables are **not code-signed**.
+- There is no auto-update code in the app.
+- The version comes from `package.json`.
+
+## Assets and screenshots
+
+- `build/make-assets.py` draws the app icon and derives the logo sizes and game icons used by the
+  interface: `python -I build/make-assets.py <project root> [icon|logo|games|all]`.
+- `games/` holds the 46 game icons as supplied; the copies the app ships are in
+  `src/renderer/public/games/`.
+- `npm run screenshots` drives the built app over the DevTools protocol on a generated demo save
+  and writes `docs/screenshots/`. See
+  [`tools/screenshots/README.md`](../tools/screenshots/README.md).

@@ -1,0 +1,29 @@
+.ui-tooltip-anchor {
+  display: contents;
+}
+
+.ui-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-tooltip);
+  visibility: hidden;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-solid-2);
+  box-shadow: var(--shadow-2);
+  color: var(--text-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-snug);
+  pointer-events: none;
+  animation: ui-tooltip-in var(--dur-2) var(--ease-out);
+}
+
+@keyframes ui-tooltip-in {
+  from {
+    opacity: 0;
+  }
+}

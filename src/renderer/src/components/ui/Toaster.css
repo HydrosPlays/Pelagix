@@ -1,0 +1,260 @@
+.ui-toaster {
+  position: fixed;
+  right: var(--sp-5);
+  bottom: var(--sp-5);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-2);
+  width: min(380px, calc(100vw - var(--sp-10)));
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+}
+
+/* While something modal is up, the toasts keep clear of its buttons. A dialog has its actions
+   along the bottom and its close button top right, so the toasts sit at the top centre, over the
+   empty middle of its header; a drawer opens on the right, so they move to the bottom left. */
+body:has(> .ui-modal--drawer:not([data-state='closing'])) > .ui-toaster {
+  right: auto;
+  left: var(--sp-5);
+  align-items: flex-start;
+}
+
+body:has(> .ui-modal--drawer:not([data-state='closing'])) > .ui-toaster .ui-toast.is-leaving {
+  transform: translateX(-16px);
+}
+
+body:has(> .ui-modal--dialog:not([data-state='closing'])) > .ui-toaster {
+  top: var(--sp-3);
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  align-items: center;
+  margin-left: calc(min(380px, 100vw - var(--sp-10)) / -2);
+}
+
+body:has(> .ui-modal--dialog:not([data-state='closing'])) > .ui-toaster .ui-toast {
+  animation-name: ui-toast-in-top;
+}
+
+body:has(> .ui-modal--dialog:not([data-state='closing'])) > .ui-toaster .ui-toast.is-leaving {
+  transform: translateY(-12px);
+}
+
+@keyframes ui-toast-in-top {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.94);
+  }
+
+  45% {
+    opacity: 1;
+  }
+}
+
+.ui-toast {
+  --toast-color: var(--accent);
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface-solid-2);
+  box-shadow: var(--shadow-3);
+  pointer-events: auto;
+  animation: ui-toast-in var(--dur-4) var(--ease-spring);
+  transition:
+    opacity 170ms var(--ease-out),
+    transform 170ms var(--ease-out);
+}
+
+@keyframes ui-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+
+  45% {
+    opacity: 1;
+  }
+}
+
+/* Coloured spine on the left edge. */
+.ui-toast::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--toast-color);
+  content: '';
+}
+
+.ui-toast.is-leaving {
+  opacity: 0;
+  transform: translateX(16px);
+}
+
+.ui-toast--success {
+  --toast-color: var(--success);
+}
+
+.ui-toast--error {
+  --toast-color: var(--danger);
+}
+
+.ui-toast__icon {
+  margin-top: 1px;
+  color: var(--toast-color);
+}
+
+.ui-toast__image {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.ui-toast__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-toast__title {
+  color: var(--text-1);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  overflow-wrap: anywhere;
+}
+
+.ui-toast__body {
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  overflow-wrap: anywhere;
+}
+
+/* Optional action ("Undo", "View"): sits between the text and the close button. */
+.ui-toast__action {
+  flex: none;
+  align-self: center;
+  max-width: 44%;
+  height: var(--ctl-sm);
+  padding: 0 var(--sp-3);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.ui-toast__action:hover:not(:disabled) {
+  border-color: var(--line-accent);
+  background: var(--accent-soft);
+}
+
+.ui-toast__action:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.ui-toast__action:disabled {
+  opacity: 0.55;
+}
+
+.ui-toast--achievement .ui-toast__action {
+  border-color: color-mix(in srgb, var(--gold) 45%, transparent);
+  color: var(--gold-text);
+}
+
+.ui-toast--achievement .ui-toast__action:hover:not(:disabled) {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.ui-toast__close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: -2px -2px 0 0;
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+}
+
+.ui-toast__close:hover {
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+/* ---------------------------------------------------------------- achievement */
+
+.ui-toast--achievement {
+  --toast-color: var(--gold);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-3);
+  border-color: color-mix(in srgb, var(--gold) 55%, transparent);
+  background:
+    linear-gradient(120deg, var(--gold-soft), transparent 62%),
+    var(--surface-solid-2);
+  box-shadow:
+    var(--shadow-3),
+    0 0 26px var(--gold-soft);
+}
+
+.ui-toast--achievement::before {
+  display: none;
+}
+
+.ui-toast__medal {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--gold-grad);
+  box-shadow:
+    inset 0 1px 0 var(--bevel-light-strong),
+    inset 0 -3px 6px color-mix(in srgb, var(--text-on-gold) 40%, transparent),
+    0 0 0 3px var(--gold-soft);
+  color: var(--text-on-gold);
+}
+
+.ui-toast__medal img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.ui-toast__eyebrow {
+  margin-bottom: 1px;
+  color: var(--gold-text);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.ui-toast--achievement .ui-toast__close {
+  align-self: flex-start;
+}

@@ -1,0 +1,600 @@
+/* Journal page. Prefix: journal-. */
+
+.journal {
+  display: flex;
+  flex-direction: column;
+}
+
+.journal > .page-header {
+  margin-bottom: var(--sp-5);
+}
+
+.journal-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.journal-actions__sort {
+  width: 190px;
+}
+
+/* ================================================================ summary strip */
+
+.journal-summary {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  box-shadow: var(--panel-shadow);
+}
+
+.journal-stat {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 104px;
+  padding: var(--sp-3) var(--sp-5);
+}
+
+.journal-stat + .journal-stat {
+  border-left: 1px solid var(--line);
+}
+
+.journal-stat__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  letter-spacing: var(--tracking-display);
+}
+
+.journal-stat--shiny .journal-stat__value {
+  color: var(--gold-text);
+}
+
+.journal-stat--wide {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.journal-icons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 32px;
+  /* Icons that do not fit are cut whole, never squeezed. */
+  overflow: hidden;
+}
+
+.journal-icons__item {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 9px;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.journal-icons__item:hover {
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+.journal-icons__item:focus-visible {
+  outline-offset: 0;
+}
+
+.journal-icons__item.is-on {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.journal-icons__item--system {
+  width: 32px;
+  height: 32px;
+  color: var(--text-2);
+}
+
+.journal-icons__item--system.is-on {
+  color: var(--accent);
+}
+
+.journal-icons__more {
+  flex: none;
+  margin-left: var(--sp-1);
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+/* ================================================================ sticky filter bar */
+
+.journal-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+  padding: 10px var(--sp-3) 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-solid);
+  box-shadow: var(--panel-shadow);
+}
+
+/* Stuck to the top of the scroller: flush with the title bar, lifted off the rows below. */
+.journal-bar[data-stuck] {
+  border-top-color: transparent;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  box-shadow: var(--shadow-2);
+}
+
+.journal-bar:not(:has(.journal-bar__columns)) {
+  padding-bottom: 10px;
+}
+
+.journal-bar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.journal-bar__text {
+  flex: 1 1 200px;
+  min-width: 180px;
+}
+
+/* ---- filter buttons ---- */
+
+.journal-filter {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: var(--ctl-md);
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-inset);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.journal-filter:hover {
+  border-color: var(--line-strong);
+  color: var(--text-1);
+}
+
+.journal-filter.is-open {
+  border-color: var(--line-accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  color: var(--text-1);
+}
+
+.journal-filter.is-active {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+
+.journal-filter__chevron {
+  color: var(--text-3);
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+.journal-filter.is-open .journal-filter__chevron {
+  transform: rotate(180deg);
+}
+
+/* ---- counts, chips, selection ---- */
+
+.journal-bar__status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 28px;
+  padding: 0 2px;
+}
+
+.journal-bar__counts {
+  flex: none;
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.journal-bar__of {
+  color: var(--text-3);
+  font-weight: var(--fw-regular);
+}
+
+.journal-chips {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.journal-chips__clear {
+  padding: 2px 6px;
+  border-radius: var(--r-xs);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.journal-chips__clear:hover {
+  background: var(--surface-hover);
+}
+
+.journal-bar__status--select {
+  gap: var(--sp-4);
+}
+
+.journal-bar__picked {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.journal-bar__picked b {
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+}
+
+.journal-bar__hint {
+  margin-right: auto;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+/* Column labels: lined up with the rows below (which gain a checkbox column while selecting). */
+.journal-bar__columns {
+  margin: 0 calc(-1 * var(--sp-3));
+  /* One pixel less than the rows' inset: the bar's own border already takes it. */
+  padding: 0 calc(var(--sp-3) - 1px);
+  border-top: 1px solid var(--line);
+}
+
+.journal-bar__columns.is-selecting {
+  padding-left: calc(var(--sp-3) + 29px);
+}
+
+/* ================================================================ list */
+
+.journal-list {
+  position: relative;
+  width: 100%;
+  /* The rows sit inside the bar's padding box, so their columns meet its labels. */
+  padding: 0;
+}
+
+.journal-row {
+  position: absolute;
+  top: 0;
+  right: var(--sp-3);
+  left: var(--sp-3);
+}
+
+.journal-row--header {
+  right: 0;
+  left: 0;
+}
+
+.journal-entry {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.journal-entry__check {
+  display: flex;
+  flex: none;
+  align-items: center;
+  width: 30px;
+}
+
+.journal-entry__card {
+  flex: 1;
+  min-width: 0;
+}
+
+.journal-entry__card.is-selected {
+  border-color: var(--line-accent);
+  background-color: var(--accent-soft);
+}
+
+/* ---- group headers ---- */
+
+.journal-group {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  height: 100%;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-solid-2);
+  white-space: nowrap;
+}
+
+.journal-group__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+}
+
+.journal-group .pk-gamebadge__name {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+}
+
+.journal-group__count {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.journal-group__shiny {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gold-text);
+  font-size: var(--fs-sm);
+}
+
+/* The current group's header, held under the filter bar while its rows scroll by. */
+.journal-float {
+  position: sticky;
+  z-index: var(--z-raised);
+  height: 0;
+}
+
+.journal-float__inner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 40px;
+  visibility: hidden;
+}
+
+.journal-float__inner[data-on] {
+  visibility: visible;
+}
+
+.journal-float__inner .journal-group {
+  box-shadow: var(--shadow-2);
+}
+
+/* ================================================================ filter popovers */
+
+.journal-pop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-popover);
+  display: flex;
+  visibility: hidden;
+  flex-direction: column;
+  min-width: 240px;
+  max-width: min(360px, calc(100vw - 16px));
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-3);
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+
+.journal-pop__menu,
+.journal-pop__dates {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.journal-pop__search {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 38px;
+  padding: 0 var(--sp-3);
+  border-bottom: 1px solid var(--line);
+  color: var(--text-3);
+}
+
+.journal-pop__search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-1);
+  outline: none;
+}
+
+.journal-pop__search input::placeholder {
+  color: var(--text-3);
+}
+
+.journal-pop__list {
+  flex: 1;
+  min-height: 0;
+  padding: 4px;
+  overflow-y: auto;
+  outline: none;
+  overscroll-behavior: contain;
+}
+
+.journal-pop__group {
+  padding: 10px 10px 4px;
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.journal-pop__none {
+  padding: 10px 12px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.journal-pop__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 4px 10px 4px 8px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+
+.journal-pop__option.is-active {
+  background: var(--surface-hover);
+}
+
+.journal-pop__list:focus-visible .journal-pop__option.is-active {
+  box-shadow: inset 0 0 0 1px var(--line-accent);
+}
+
+.journal-pop__tick {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  color: var(--text-on-accent);
+}
+
+.journal-pop__option.is-on .journal-pop__tick {
+  border-color: transparent;
+  background: var(--accent-grad);
+}
+
+.journal-pop__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  color: var(--text-2);
+}
+
+.journal-pop__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.journal-pop__count {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.journal-pop__foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 6px 6px 6px var(--sp-3);
+  border-top: 1px solid var(--line);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.journal-pop__dates {
+  width: 340px;
+}
+
+.journal-pop__range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+
+.journal-pop__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+
+.journal-pop__preset {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.journal-pop__preset:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+.journal-pop__preset.is-on {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ================================================================ narrow windows */
+
+@media (max-width: 1100px) {
+  .journal-stat {
+    min-width: 88px;
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .journal-actions__sort {
+    width: 170px;
+  }
+}

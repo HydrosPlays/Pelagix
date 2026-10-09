@@ -1,0 +1,331 @@
+/*
+ * Pelagix design tokens - "Abyss".
+ * Everything visual goes through these custom properties; components never hard-code a colour.
+ * Theme-independent tokens live on :root, colours on :root[data-theme]. Dark is the default.
+ */
+
+:root {
+  /* ---- typography ---- */
+  --font-sans: 'Outfit Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+  --fs-3xl: 34px;
+  --fs-4xl: 46px;
+  --fs-display: 64px;
+  --fs-watermark: 132px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-black: 800;
+
+  --lh-tight: 1.08;
+  --lh-snug: 1.3;
+  --lh-normal: 1.5;
+  --tracking-caps: 0.09em;
+  --tracking-display: -0.015em;
+
+  /* ---- spacing (4 px scale) ---- */
+  --sp-0: 0px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 28px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* ---- radii ---- */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-full: 999px;
+  /* Corner cut of chamfered panels. */
+  --chamfer: 14px;
+
+  /* ---- control sizes ---- */
+  --ctl-sm: 28px;
+  --ctl-md: 36px;
+  --ctl-lg: 44px;
+
+  /* ---- layout ---- */
+  --rail-w: 228px;
+  --rail-w-collapsed: 68px;
+  --topbar-h: 40px;
+  --page-pad: 28px;
+  --page-max: 1480px;
+  /* Width kept free for the native window buttons; set by the shell (0 in a browser). */
+  --wc-reserve: 0px;
+  /* Height of that native button strip (0 in a browser). */
+  --wc-height: 0px;
+
+  /* ---- layers ---- */
+  --z-base: 0;
+  --z-raised: 5;
+  --z-sticky: 10;
+  --z-rail: 20;
+  --z-topbar: 30;
+  --z-drawer: 40;
+  --z-dialog: 50;
+  --z-popover: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
+
+  /* ---- motion ---- */
+  --dur-1: 90ms;
+  --dur-2: 160ms;
+  --dur-3: 240ms;
+  --dur-4: 420ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---- Pokémon types (game colours; identical in both themes) ---- */
+  --type-normal: #9fa19f;
+  --type-fighting: #ff8000;
+  --type-flying: #81b9ef;
+  --type-poison: #9141cb;
+  --type-ground: #915121;
+  --type-rock: #afa981;
+  --type-bug: #91a119;
+  --type-ghost: #704170;
+  --type-steel: #60a1b8;
+  --type-fire: #e62829;
+  --type-water: #2980ef;
+  --type-grass: #3fa129;
+  --type-electric: #fac000;
+  --type-psychic: #ef4179;
+  --type-ice: #3dcef3;
+  --type-dragon: #5060e1;
+  --type-dark: #624d4e;
+  --type-fairy: #ef70ef;
+  --type-stellar: #40b5a5;
+  /* Text colours that pass AA on a solid type fill. */
+  --type-ink-dark: #0a1322;
+  --type-ink-light: #ffffff;
+
+  /* ---- Poké Ball primitives (theme independent, used by BallIcon and the loader) ---- */
+  --ball-red: #f0413e;
+  --ball-white: #f6f8fc;
+  --ball-band: #1b2233;
+  --ball-wood: #ead9b5;
+  --ball-steel: #9aa3b2;
+
+  /* ---- bevels: light and shade laid over coloured fills (buttons, pills, medals, the lens) ---- */
+  --pure-white: #ffffff;
+  --bevel-light: rgba(255, 255, 255, 0.3);
+  --bevel-light-strong: rgba(255, 255, 255, 0.55);
+  --bevel-dark: rgba(0, 0, 0, 0.17);
+  --bevel-dark-strong: rgba(0, 12, 40, 0.5);
+  --type-stellar-grad: conic-gradient(from 210deg, #f6a1c8, #f7d86a, #8fe3a1, #7cc8f5, #b59cf2, #f6a1c8);
+}
+
+/* ============================================================== dark (default) */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-0: #050a14;
+  --bg-1: #0a1528;
+  --bg-2: #0f1f38;
+  --bg-3: #16294a;
+  /* Opaque surfaces for anything that floats over content (menus, dialogs, toasts). */
+  --surface-solid: #0d1a30;
+  --surface-solid-2: #13243f;
+  /* Glass: translucent white over the navy stack. */
+  --surface-1: rgba(255, 255, 255, 0.04);
+  --surface-2: rgba(255, 255, 255, 0.058);
+  --surface-3: rgba(255, 255, 255, 0.085);
+  --surface-hover: rgba(140, 195, 255, 0.1);
+  --surface-press: rgba(140, 195, 255, 0.16);
+  --surface-inset: rgba(0, 8, 22, 0.42);
+
+  --line: rgba(124, 172, 255, 0.15);
+  --line-strong: rgba(124, 172, 255, 0.28);
+  --line-accent: rgba(60, 200, 255, 0.55);
+  --highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  /* Resting elevation of a panel. */
+  --panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --switch-thumb: #a9bcda;
+
+  --text-1: #eaf2ff;
+  --text-2: #a9bcda;
+  --text-3: #8a9ec0;
+  --text-disabled: #55688a;
+  --text-on-accent: #04121f;
+
+  --accent-1: #1d7dff;
+  --accent-2: #3cc8ff;
+  --accent-3: #9be7ff;
+  /* Accent for text, icons and borders on the page background. */
+  --accent: #3cc8ff;
+  --accent-strong: #9be7ff;
+  --accent-grad: linear-gradient(135deg, #2f8cff 0%, #3cc8ff 55%, #9be7ff 100%);
+  --accent-soft: rgba(60, 200, 255, 0.13);
+  --accent-softer: rgba(60, 200, 255, 0.07);
+  --accent-glow: 0 0 0 1px rgba(60, 200, 255, 0.35), 0 0 22px rgba(60, 200, 255, 0.28);
+
+  --catch: #f0413e;
+  --catch-text: #ff6f66;
+  --catch-grad: linear-gradient(180deg, #de3331 0%, #c42727 100%);
+  --catch-soft: rgba(240, 65, 62, 0.16);
+  --text-on-catch: #ffffff;
+
+  --gold: #f7c64e;
+  --gold-text: #f7c64e;
+  --gold-grad: linear-gradient(135deg, #ffe89a 0%, #f7c64e 45%, #e29a1e 100%);
+  --gold-soft: rgba(247, 198, 78, 0.15);
+  --text-on-gold: #2a1c00;
+
+  --success: #2fd6a3;
+  --success-text: #2fd6a3;
+  --success-soft: rgba(47, 214, 163, 0.15);
+  --warning: #ffb547;
+  --warning-text: #ffb547;
+  --warning-soft: rgba(255, 181, 71, 0.15);
+  --danger: #ff5d6c;
+  --danger-text: #ff7380;
+  --danger-grad: linear-gradient(180deg, #d93046 0%, #bb2338 100%);
+  --danger-soft: rgba(255, 93, 108, 0.15);
+
+  --male: #5aa9ff;
+  --female: #ff7eb6;
+  --genderless: #a9bcda;
+
+  --focus-ring: #9be7ff;
+  --selection: rgba(60, 200, 255, 0.32);
+  --scrim: rgba(2, 6, 14, 0.7);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 22px -6px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 28px 64px -16px rgba(0, 0, 0, 0.75), 0 8px 20px -8px rgba(0, 0, 0, 0.5);
+
+  /* Far background art and Pokédex hardware. */
+  --backdrop-base: linear-gradient(180deg, #0a1528 0%, #071020 38%, #050a14 100%);
+  --backdrop-glow-1: rgba(29, 125, 255, 0.2);
+  --backdrop-glow-2: rgba(60, 200, 255, 0.1);
+  --contour: rgba(120, 190, 255, 0.075);
+  --contour-strong: rgba(120, 200, 255, 0.14);
+  --scan-grid: rgba(120, 200, 255, 0.08);
+  --stage-glow: rgba(60, 200, 255, 0.2);
+  /* Uncaught slots: the render flattened to one colour, then faded into the surface. */
+  --silhouette-filter: brightness(0) invert(1);
+  --silhouette-opacity: 0.15;
+  --skeleton-a: rgba(255, 255, 255, 0.05);
+  --skeleton-b: rgba(255, 255, 255, 0.11);
+  --lens-core: #9be7ff;
+  --lens-mid: #2aa6ff;
+  --lens-deep: #0b3c9a;
+  /* Hairline around ball icons so the dark ones do not sink into the background. */
+  --ball-rim: rgba(190, 215, 255, 0.42);
+  --scrollbar: rgba(124, 172, 255, 0.24);
+  --scrollbar-hover: rgba(124, 172, 255, 0.42);
+}
+
+/* ============================================================== light */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-0: #eef4fb;
+  --bg-1: #e3ecf7;
+  --bg-2: #ffffff;
+  --bg-3: #f5f9fe;
+  --surface-solid: #ffffff;
+  --surface-solid-2: #f3f7fc;
+  --surface-1: #ffffff;
+  --surface-2: #f7fafe;
+  --surface-3: #ecf2fa;
+  --surface-hover: rgba(11, 87, 208, 0.08);
+  --surface-press: rgba(11, 87, 208, 0.14);
+  --surface-inset: rgba(18, 52, 110, 0.06);
+
+  --line: rgba(22, 62, 128, 0.14);
+  --line-strong: rgba(22, 62, 128, 0.28);
+  --line-accent: rgba(11, 98, 214, 0.55);
+  --highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --panel-shadow: 0 1px 2px rgba(18, 44, 92, 0.05), 0 8px 20px -12px rgba(18, 44, 92, 0.16);
+  --switch-thumb: #ffffff;
+
+  --text-1: #0b1830;
+  --text-2: #3a4c6b;
+  --text-3: #506487;
+  --text-disabled: #93a3bd;
+  --text-on-accent: #ffffff;
+
+  --accent-1: #0b57d0;
+  --accent-2: #0b74c4;
+  --accent-3: #1596dd;
+  --accent: #0a5bc8;
+  --accent-strong: #0a4fb8;
+  --accent-grad: linear-gradient(135deg, #0b57d0 0%, #0b6bcb 55%, #0b74c4 100%);
+  --accent-soft: rgba(11, 98, 214, 0.11);
+  --accent-softer: rgba(11, 98, 214, 0.06);
+  --accent-glow: 0 0 0 1px rgba(11, 98, 214, 0.3), 0 4px 18px rgba(11, 98, 214, 0.18);
+
+  --catch: #de3331;
+  --catch-text: #b92323;
+  --catch-grad: linear-gradient(180deg, #de3331 0%, #c22626 100%);
+  --catch-soft: rgba(222, 51, 49, 0.11);
+  --text-on-catch: #ffffff;
+
+  --gold: #e0a41c;
+  --gold-text: #8a5a00;
+  --gold-grad: linear-gradient(135deg, #ffe08a 0%, #f2bd3c 45%, #dc971b 100%);
+  --gold-soft: rgba(224, 164, 28, 0.17);
+  --text-on-gold: #2a1c00;
+
+  --success: #12a37a;
+  --success-text: #096e4f;
+  --success-soft: rgba(18, 163, 122, 0.13);
+  --warning: #d98a12;
+  --warning-text: #8c5200;
+  --warning-soft: rgba(217, 138, 18, 0.15);
+  --danger: #d4334a;
+  --danger-text: #b52033;
+  --danger-grad: linear-gradient(180deg, #d4334a 0%, #b82238 100%);
+  --danger-soft: rgba(212, 51, 74, 0.11);
+
+  --male: #1a63c4;
+  --female: #c22a72;
+  --genderless: #566a8a;
+
+  --focus-ring: #0b62d6;
+  --selection: rgba(11, 98, 214, 0.22);
+  --scrim: rgba(16, 30, 58, 0.42);
+
+  --shadow-1: 0 1px 2px rgba(18, 44, 92, 0.1);
+  --shadow-2: 0 8px 22px -8px rgba(18, 44, 92, 0.22), 0 2px 6px rgba(18, 44, 92, 0.08);
+  --shadow-3: 0 28px 64px -18px rgba(18, 44, 92, 0.34), 0 8px 20px -10px rgba(18, 44, 92, 0.16);
+
+  --backdrop-base: linear-gradient(180deg, #f4f8fd 0%, #eef4fb 40%, #e6eef9 100%);
+  --backdrop-glow-1: rgba(11, 98, 214, 0.1);
+  --backdrop-glow-2: rgba(21, 150, 221, 0.08);
+  --contour: rgba(22, 80, 170, 0.07);
+  --contour-strong: rgba(22, 80, 170, 0.12);
+  --scan-grid: rgba(22, 80, 170, 0.07);
+  --stage-glow: rgba(11, 116, 196, 0.16);
+  --silhouette-filter: brightness(0);
+  --silhouette-opacity: 0.2;
+  --skeleton-a: rgba(22, 62, 128, 0.07);
+  --skeleton-b: rgba(22, 62, 128, 0.13);
+  --lens-core: #d9f4ff;
+  --lens-mid: #3aa8f0;
+  --lens-deep: #0b57d0;
+  --ball-rim: rgba(11, 24, 48, 0);
+  --scrollbar: rgba(22, 62, 128, 0.24);
+  --scrollbar-hover: rgba(22, 62, 128, 0.42);
+}

@@ -1,0 +1,60 @@
+.ui-scroll {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ui-scroll__viewport {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.ui-scroll__viewport--y {
+  overflow: hidden auto;
+}
+
+.ui-scroll__viewport--x {
+  overflow: auto hidden;
+  scrollbar-gutter: auto;
+}
+
+.ui-scroll__viewport--both {
+  overflow: auto;
+}
+
+.ui-scroll__viewport:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Soft edges, faded in by data attributes that follow the scroll position. */
+.ui-scroll--edges::before,
+.ui-scroll--edges::after {
+  position: absolute;
+  right: 12px;
+  left: 0;
+  z-index: var(--z-raised);
+  height: 28px;
+  content: '';
+  opacity: 0;
+  transition: opacity var(--dur-2) linear;
+  pointer-events: none;
+}
+
+.ui-scroll--edges::before {
+  top: 0;
+  background: linear-gradient(180deg, var(--bg-0), transparent);
+}
+
+.ui-scroll--edges::after {
+  bottom: 0;
+  background: linear-gradient(0deg, var(--bg-0), transparent);
+}
+
+.ui-scroll--edges[data-top='true']::before,
+.ui-scroll--edges[data-bottom='true']::after {
+  opacity: 0.85;
+}

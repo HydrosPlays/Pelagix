@@ -1,0 +1,164 @@
+.ui-btn {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  height: var(--ctl-md);
+  padding: 0 var(--sp-4);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--text-1);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    filter var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out),
+    opacity var(--dur-2) var(--ease-out);
+  -webkit-app-region: no-drag;
+}
+
+.ui-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+}
+
+.ui-btn:disabled {
+  opacity: 0.45;
+}
+
+.ui-btn.is-loading {
+  cursor: progress;
+}
+
+.ui-btn__label {
+  min-width: 0;
+  overflow: hidden;
+  padding-block: 2px;
+  text-overflow: ellipsis;
+}
+
+.ui-btn--sm {
+  gap: 6px;
+  height: var(--ctl-sm);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+
+.ui-btn--lg {
+  height: var(--ctl-lg);
+  padding: 0 var(--sp-5);
+  border-radius: var(--r-lg);
+  font-size: var(--fs-lg);
+}
+
+.ui-btn--block {
+  display: flex;
+  width: 100%;
+}
+
+/* ---- variants ---- */
+
+.ui-btn--primary {
+  background: var(--accent-grad);
+  color: var(--text-on-accent);
+  box-shadow:
+    inset 0 1px 0 var(--bevel-light),
+    var(--shadow-1);
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 1px 0 var(--bevel-light),
+    var(--accent-glow);
+}
+
+.ui-btn--catch {
+  background: var(--catch-grad);
+  color: var(--text-on-catch);
+  box-shadow:
+    inset 0 1px 0 var(--bevel-light),
+    inset 0 -2px 0 var(--bevel-dark),
+    var(--shadow-1);
+}
+
+.ui-btn--catch:hover:not(:disabled) {
+  filter: brightness(1.07);
+  box-shadow:
+    inset 0 1px 0 var(--bevel-light),
+    inset 0 -2px 0 var(--bevel-dark),
+    0 0 0 1px var(--catch-soft),
+    0 0 22px var(--catch-soft);
+}
+
+.ui-btn--danger {
+  background: var(--danger-grad);
+  color: var(--text-on-catch);
+  box-shadow:
+    inset 0 1px 0 var(--bevel-light),
+    var(--shadow-1);
+}
+
+.ui-btn--danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.ui-btn--subtle {
+  border-color: var(--line);
+  background: var(--surface-2);
+  box-shadow: var(--highlight-inset);
+}
+
+.ui-btn--subtle:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+}
+
+.ui-btn--ghost {
+  color: var(--text-2);
+}
+
+.ui-btn--ghost:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+.ui-btn--ghost:active:not(:disabled),
+.ui-btn--subtle:active:not(:disabled) {
+  background: var(--surface-press);
+}
+
+/* ---- spinner ---- */
+
+.ui-spinner {
+  flex: none;
+  animation: ui-spin 0.7s linear infinite;
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* With motion off the spinner breathes instead of turning. */
+:root[data-motion='off'] .ui-spinner {
+  animation: ui-breathe 1.2s ease-in-out infinite alternate !important;
+}
+
+@keyframes ui-breathe {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

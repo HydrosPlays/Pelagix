@@ -1,0 +1,28 @@
+appId: com.pelagix.app
+productName: Pelagix
+directories:
+  buildResources: build
+  output: dist
+# The datasets live in src/renderer/public/data and ship inside out/renderer, so the asar holds
+# everything the app needs and there are no extraResources.
+# The development fixture (public/data-fixture) is already removed by the build (vite.shared.ts);
+# the exclusion below keeps it out even if out/ was produced some other way.
+files:
+  - out/**
+  - "!out/renderer/data-fixture/**"
+  - package.json
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup.${ext}
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}
+npmRebuild: false

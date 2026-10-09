@@ -1,0 +1,101 @@
+.ui-progress {
+  --progress-fill: var(--accent-grad);
+  --progress-glow: var(--accent-soft);
+  position: relative;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--r-full);
+  background: var(--surface-inset);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.ui-progress--sm {
+  height: 4px;
+}
+
+.ui-progress--lg {
+  height: 12px;
+}
+
+.ui-progress--gold {
+  --progress-fill: var(--gold-grad);
+  --progress-glow: var(--gold-soft);
+}
+
+.ui-progress--success {
+  --progress-fill: var(--success);
+  --progress-glow: var(--success-soft);
+}
+
+.ui-progress--catch {
+  --progress-fill: var(--catch-grad);
+  --progress-glow: var(--catch-soft);
+}
+
+.ui-progress__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--progress-fill);
+  transform-origin: left center;
+  transition: transform var(--dur-4) var(--ease-out);
+}
+
+.ui-progress__fill--secondary {
+  opacity: 0.32;
+}
+
+/* ---------------------------------------------------------------- ring */
+
+.ui-ring {
+  --ring-color: var(--accent);
+  position: relative;
+  flex: none;
+}
+
+.ui-ring--gold {
+  --ring-color: var(--gold);
+}
+
+.ui-ring--success {
+  --ring-color: var(--success);
+}
+
+.ui-ring--catch {
+  --ring-color: var(--catch);
+}
+
+.ui-ring svg {
+  overflow: visible;
+}
+
+.ui-ring__track {
+  stroke: var(--line);
+}
+
+.ui-ring__arc {
+  stroke: var(--ring-color);
+  transition: stroke-dashoffset 620ms var(--ease-out);
+}
+
+.ui-ring.is-complete .ui-ring__arc {
+  filter: drop-shadow(0 0 4px var(--ring-color));
+}
+
+.ui-ring__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+}
+
+/* ---------------------------------------------------------------- ticker */
+
+.ui-ticker {
+  position: relative;
+  font-variant-numeric: tabular-nums;
+}

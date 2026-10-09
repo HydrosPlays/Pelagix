@@ -1,0 +1,227 @@
+/* ---------------------------------------------------------------- trigger */
+
+.ui-select {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-width: 0;
+  height: var(--ctl-md);
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-inset);
+  color: var(--text-1);
+  text-align: left;
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+  -webkit-app-region: no-drag;
+}
+
+.ui-select--sm {
+  height: var(--ctl-sm);
+  padding: 0 6px 0 var(--sp-2);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+
+.ui-select--lg {
+  height: var(--ctl-lg);
+  padding: 0 var(--sp-3) 0 var(--sp-4);
+  border-radius: var(--r-lg);
+  font-size: var(--fs-lg);
+}
+
+.ui-select:hover:not(:disabled) {
+  border-color: var(--line-strong);
+}
+
+.ui-select.is-open,
+.ui-select:focus-visible {
+  border-color: var(--line-accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+}
+
+.ui-select.is-invalid {
+  border-color: var(--danger);
+}
+
+.ui-select:disabled {
+  opacity: 0.5;
+}
+
+.ui-select__icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-3);
+}
+
+.ui-select__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-select__value.is-placeholder {
+  color: var(--text-3);
+}
+
+.ui-select__chevron {
+  color: var(--text-3);
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+.is-open > .ui-select__chevron,
+.is-open .ui-combobox__toggle .ui-select__chevron {
+  transform: rotate(180deg);
+}
+
+/* ---------------------------------------------------------------- combobox */
+
+.ui-combobox {
+  padding-right: 4px;
+  cursor: text;
+}
+
+.ui-combobox__toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+}
+
+.ui-combobox__toggle:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.ui-combobox__spinner {
+  color: var(--text-3);
+}
+
+/* ---------------------------------------------------------------- list popover (also used by Menu) */
+
+.ui-listbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-popover);
+  display: flex;
+  visibility: hidden;
+  flex-direction: column;
+  min-width: 160px;
+  max-width: calc(100vw - 16px);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-3);
+  animation: ui-listbox-in var(--dur-2) var(--ease-out);
+  -webkit-app-region: no-drag;
+}
+
+.ui-listbox[data-side='top'] {
+  animation-name: ui-listbox-in-up;
+}
+
+@keyframes ui-listbox-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes ui-listbox-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.ui-listbox__scroll {
+  flex: 1;
+  min-height: 0;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ui-listbox__group {
+  padding: 10px 10px 4px;
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.ui-listbox__empty,
+.ui-listbox__more {
+  padding: 10px 12px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.ui-listbox__more {
+  flex: none;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-xs);
+}
+
+.ui-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  color: var(--text-1);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+
+.ui-option.is-active {
+  background: var(--surface-hover);
+}
+
+.ui-option[aria-selected='true'] {
+  color: var(--accent);
+  font-weight: var(--fw-medium);
+}
+
+.ui-option[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ui-option__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-option__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-option__desc {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+}
+
+.ui-option__check {
+  flex: none;
+  color: var(--accent);
+}

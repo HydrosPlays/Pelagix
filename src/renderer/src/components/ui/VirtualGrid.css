@@ -1,0 +1,34 @@
+.ui-vgrid {
+  width: 100%;
+  min-width: 0;
+}
+
+.ui-vgrid--self {
+  height: 100%;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.ui-vgrid__inner {
+  position: relative;
+  width: 100%;
+  contain: layout style;
+}
+
+.ui-vgrid__row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  width: 100%;
+  contain: layout style;
+}
+
+.ui-vgrid__cell {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  border-radius: var(--r-lg);
+  outline-offset: 2px;
+}

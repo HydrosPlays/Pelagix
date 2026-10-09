@@ -1,0 +1,76 @@
+.shell {
+  position: relative;
+  display: grid;
+  grid-template-rows: var(--topbar-h) minmax(0, 1fr);
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Below this width the rail shows icons only. Keep in sync with COLLAPSE_QUERY in NavRail.tsx. */
+@media (max-width: 1100px) {
+  .shell {
+    --rail-w: var(--rail-w-collapsed);
+    --page-pad: 20px;
+  }
+}
+
+.shell-main {
+  position: relative;
+  z-index: 1;
+  grid-row: 2;
+  grid-column: 2;
+}
+
+.shell-main__content {
+  min-height: 100%;
+  outline: none;
+}
+
+/* Pages get the full height of the main region to lay themselves out in (see .page--fill). */
+.shell-outlet {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.shell-main__content,
+.shell-main .ui-scroll__viewport {
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-main__content,
+.shell-outlet {
+  flex: 1 0 auto;
+}
+
+.shell-suspense {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  color: var(--text-3);
+}
+
+.shell-skip {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: var(--z-tooltip);
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface-solid-2);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  transform: translateY(-200%);
+  -webkit-app-region: no-drag;
+}
+
+.shell-skip:focus-visible {
+  transform: none;
+}

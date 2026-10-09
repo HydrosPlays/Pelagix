@@ -1,0 +1,229 @@
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ui-field__label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.ui-field__optional {
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-regular);
+}
+
+.ui-field__hint {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
+.ui-field__hint.is-error {
+  color: var(--danger-text);
+}
+
+/* ---------------------------------------------------------------- the input box */
+
+.ui-input {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  height: var(--ctl-md);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-inset);
+  color: var(--text-1);
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+  -webkit-app-region: no-drag;
+}
+
+.ui-input--sm {
+  height: var(--ctl-sm);
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+
+.ui-input--lg {
+  height: var(--ctl-lg);
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-lg);
+  font-size: var(--fs-lg);
+}
+
+.ui-input:hover:not(.is-disabled) {
+  border-color: var(--line-strong);
+}
+
+.ui-input:focus-within {
+  border-color: var(--line-accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.ui-input.is-invalid {
+  border-color: var(--danger);
+}
+
+.ui-input.is-invalid:focus-within {
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+
+.ui-input.is-disabled {
+  opacity: 0.5;
+}
+
+.ui-input__control {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  cursor: text;
+}
+
+.ui-input__control::placeholder {
+  color: var(--text-3);
+  opacity: 1;
+}
+
+.ui-input__control:disabled {
+  cursor: not-allowed;
+}
+
+.ui-input__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--text-3);
+}
+
+.ui-input__icon--button {
+  margin-left: -4px;
+  padding: 4px;
+  border-radius: var(--r-xs);
+}
+
+.ui-input__icon--button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+.ui-input__suffix {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.ui-input__clear {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: -4px;
+  border-radius: var(--r-full);
+  color: var(--text-3);
+}
+
+.ui-input__clear:hover {
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+/* ---- text area ---- */
+
+.ui-input--area {
+  position: relative;
+  align-items: stretch;
+  height: auto;
+  padding: 0;
+}
+
+.ui-input--area .ui-input__control {
+  min-height: 72px;
+  padding: var(--sp-2) var(--sp-3);
+  line-height: var(--lh-normal);
+  resize: vertical;
+}
+
+.ui-input__counter {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  padding: 0 4px;
+  border-radius: var(--r-xs);
+  background: var(--surface-solid);
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  pointer-events: none;
+}
+
+/* ---- number ---- */
+
+.ui-input--number {
+  padding-right: 3px;
+}
+
+.ui-input__steppers {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}
+
+.ui-input__steppers button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+}
+
+.ui-input--sm .ui-input__steppers button {
+  width: 20px;
+  height: 20px;
+}
+
+.ui-input__steppers button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+.ui-input__steppers button:disabled {
+  opacity: 0.35;
+}
+
+/* ---- date: the native indicator is replaced by our calendar button ---- */
+
+.ui-input--date .ui-input__control::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.ui-input--date .ui-input__control::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+.ui-input--date .ui-input__control:invalid::-webkit-datetime-edit,
+.ui-input--date .ui-input__control[value='']::-webkit-datetime-edit {
+  color: var(--text-3);
+}

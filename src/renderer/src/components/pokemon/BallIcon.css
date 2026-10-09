@@ -1,0 +1,10 @@
+.pk-ball {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+/* Thin halo so dark balls (Luxury, Dusk, Ultra) keep their shape on the dark theme. */
+.pk-ball__rim {
+  stroke: var(--ball-rim);
+}

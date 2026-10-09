@@ -1,0 +1,252 @@
+/* The command palette. Prefix: cmdk-. */
+
+.cmdk {
+  position: fixed;
+  inset: 0;
+  /* Above dialogs and any popover that was open underneath; below toasts. */
+  z-index: calc(var(--z-popover) + 5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 11vh var(--sp-6) var(--sp-6);
+  background: var(--scrim);
+  -webkit-app-region: no-drag;
+}
+
+.cmdk[data-state='closing'] {
+  opacity: 0;
+  transition: opacity 110ms var(--ease-out);
+  pointer-events: none;
+}
+
+.cmdk__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  max-height: min(580px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xl);
+  background: var(--surface-solid);
+  box-shadow:
+    var(--shadow-3),
+    var(--highlight-inset);
+  outline: none;
+}
+
+/* ---------------------------------------------------------------- search row */
+
+.cmdk__search {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-3);
+  height: 58px;
+  padding: 0 var(--sp-4) 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cmdk__search-icon {
+  color: var(--accent);
+}
+
+.cmdk__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-1);
+  font-size: var(--fs-lg);
+  outline: none;
+  cursor: text;
+}
+
+.cmdk__input::placeholder {
+  color: var(--text-3);
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------- results */
+
+.cmdk__list {
+  flex: 1;
+  min-height: 0;
+  padding: 2px var(--sp-2) var(--sp-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 34px 8px;
+}
+
+.cmdk__group-title {
+  padding: var(--sp-3) 10px 6px;
+}
+
+.cmdk-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 44px;
+  padding: 2px 10px;
+  border-radius: var(--r-md);
+  color: var(--text-1);
+  cursor: pointer;
+}
+
+.cmdk-item--pokemon {
+  min-height: 50px;
+}
+
+.cmdk-item.is-active {
+  background: var(--surface-hover);
+}
+
+/* Marker bar on the highlighted row. */
+.cmdk-item.is-active::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: var(--r-full);
+  background: var(--accent-grad);
+  content: '';
+}
+
+.cmdk-item__media,
+.cmdk-item__icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+}
+
+.cmdk-item__icon {
+  height: 32px;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+
+.cmdk-item.is-active .cmdk-item__icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.cmdk-item__icon.is-gold,
+.cmdk-item.is-active .cmdk-item__icon.is-gold {
+  background: var(--gold-soft);
+  color: var(--gold-text);
+}
+
+.cmdk-item__icon.is-catch,
+.cmdk-item.is-active .cmdk-item__icon.is-catch {
+  background: var(--catch-soft);
+}
+
+.cmdk-item__text {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.cmdk-item__label {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmdk-item--pokemon .cmdk-item__label {
+  font-weight: var(--fw-semibold);
+}
+
+.cmdk-item__sub {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.04em;
+}
+
+.cmdk-item__types {
+  flex: none;
+}
+
+.cmdk-item__state {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 58px;
+}
+
+.cmdk-item__hint {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+/* The Enter key cap takes the place of nothing: it is laid out always and shown on the highlighted row. */
+.cmdk-item__enter {
+  display: inline-flex;
+  flex: none;
+  opacity: 0;
+}
+
+.cmdk-item.is-active .cmdk-item__enter {
+  opacity: 1;
+}
+
+.cmdk__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-10) var(--sp-6);
+  color: var(--text-3);
+  text-align: center;
+}
+
+.cmdk__empty-title {
+  margin-top: var(--sp-2);
+  overflow-wrap: anywhere;
+  color: var(--text-1);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+}
+
+.cmdk__empty-hint {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.cmdk__footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-5);
+  height: 38px;
+  padding: 0 var(--sp-4);
+  border-top: 1px solid var(--line);
+  background: var(--surface-1);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.cmdk__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

@@ -1,0 +1,241 @@
+.shell-rail {
+  position: relative;
+  z-index: var(--z-rail);
+  display: flex;
+  flex-direction: column;
+  grid-row: 1 / 3;
+  grid-column: 1;
+  min-height: 0;
+  padding: 0 var(--sp-3) var(--sp-3);
+  border-right: 1px solid var(--line);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-2) 72%, transparent), color-mix(in srgb, var(--bg-1) 86%, transparent));
+}
+
+/* ---------------------------------------------------------------- brand: lens, LEDs, wordmark */
+
+.shell-rail__brand {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-3);
+  height: 72px;
+  margin: 0 calc(var(--sp-3) * -1) var(--sp-2);
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  -webkit-app-region: drag;
+}
+
+/* The stepped notch under the header, as on a Pokédex shell. */
+.shell-rail__brand::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  width: 42%;
+  height: 1px;
+  background: var(--line-accent);
+  content: '';
+  opacity: 0.7;
+}
+
+.shell-rail__brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shell-rail__wordmark {
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 19px;
+  font-weight: var(--fw-black);
+  line-height: 1.1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.shell-rail__tagline {
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.shell-rail__leds {
+  position: absolute;
+  top: 14px;
+  right: var(--sp-4);
+}
+
+/* ---------------------------------------------------------------- links */
+
+.shell-rail__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--sp-2);
+}
+
+.shell-rail__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  height: 40px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-md);
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.shell-rail__link:hover {
+  background: var(--surface-hover);
+  color: var(--text-1);
+  text-decoration: none;
+}
+
+.shell-rail__link.is-active {
+  background: linear-gradient(90deg, var(--accent-soft), var(--accent-softer));
+  color: var(--accent-strong);
+  font-weight: var(--fw-semibold);
+}
+
+/* Glowing marker on the outer edge of the active item. */
+.shell-rail__link.is-active::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: calc(var(--sp-3) * -1);
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+  content: '';
+}
+
+.shell-rail__link--minor {
+  height: 34px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.shell-rail__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- foot: progress readout */
+
+.shell-rail__foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: auto;
+}
+
+.shell-rail__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 10px var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  box-shadow: var(--highlight-inset);
+  color: var(--text-1);
+  text-decoration: none;
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+}
+
+.shell-rail__progress:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
+.shell-rail__pct {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+}
+
+.shell-rail__progress-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shell-rail__count {
+  font-size: var(--fs-md);
+  line-height: var(--lh-snug);
+  white-space: nowrap;
+}
+
+.shell-rail__caught {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+}
+
+.shell-rail__total {
+  color: var(--text-3);
+}
+
+/* ---------------------------------------------------------------- collapsed (icons only) */
+
+@media (max-width: 1100px) {
+  .shell-rail {
+    padding: 0 var(--sp-2) var(--sp-2);
+  }
+
+  .shell-rail__brand {
+    justify-content: center;
+    margin: 0 calc(var(--sp-2) * -1) var(--sp-2);
+    padding: 0;
+  }
+
+  .shell-rail__brand-text,
+  .shell-rail__label,
+  .shell-rail__progress-text {
+    display: none;
+  }
+
+  .shell-rail__leds {
+    top: 8px;
+    right: 50%;
+    transform: translateX(50%);
+  }
+
+  .shell-rail__brand .ui-lens {
+    margin-top: 12px;
+  }
+
+  .shell-rail__link {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  .shell-rail__link.is-active::before {
+    left: calc(var(--sp-2) * -1 - 4px);
+  }
+
+  .shell-rail__progress {
+    justify-content: center;
+    padding: 6px;
+    border-color: transparent;
+    background: none;
+    box-shadow: none;
+  }
+}

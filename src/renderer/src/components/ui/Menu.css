@@ -1,0 +1,38 @@
+.ui-menu-anchor {
+  display: contents;
+}
+
+.ui-menu__item {
+  width: 100%;
+  text-align: left;
+  outline: none;
+}
+
+.ui-menu__item:focus {
+  background: var(--surface-hover);
+}
+
+.ui-menu__item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--line-accent);
+}
+
+.ui-menu__icon {
+  width: 16px;
+  color: var(--text-2);
+}
+
+.ui-menu__item.is-danger,
+.ui-menu__item.is-danger .ui-menu__icon {
+  color: var(--danger-text);
+}
+
+.ui-menu__item.is-danger:focus {
+  background: var(--danger-soft);
+}
+
+.ui-menu__separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line);
+}

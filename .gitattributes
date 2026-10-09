@@ -1,0 +1,7 @@
+# Text files are stored and checked out with LF line endings on every platform, whatever
+# core.autocrlf is set to. The project's own tools write LF (Vitest snapshots, the dataset build,
+# the screenshot tool), so a CRLF checkout would show their output as modified.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary

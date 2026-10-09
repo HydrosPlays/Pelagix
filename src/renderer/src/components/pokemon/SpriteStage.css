@@ -1,0 +1,60 @@
+.pk-stage {
+  --stage-a: var(--stage-glow);
+  --stage-b: var(--stage-glow);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface-inset);
+  isolation: isolate;
+  container-type: inline-size;
+}
+
+/* A round glow whatever the shape of the stage: a square as wide as the stage, centred on it. */
+.pk-stage__glow {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: -2;
+  width: 100%;
+  aspect-ratio: 1;
+  background:
+    radial-gradient(circle closest-side at 42% 54%, color-mix(in srgb, var(--stage-a) 36%, transparent) 0%, transparent 78%),
+    radial-gradient(circle closest-side at 60% 46%, color-mix(in srgb, var(--stage-b) 30%, transparent) 0%, transparent 78%);
+  transform: translateY(-50%);
+}
+
+/* Scan grid, fading towards the edges. */
+.pk-stage__grid {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(var(--scan-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--scan-grid) 1px, transparent 1px);
+  background-position: center;
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 78%);
+}
+
+/* Scales with the stage so the five characters always fit. */
+.pk-stage__number {
+  position: absolute;
+  right: 4%;
+  bottom: 5%;
+  z-index: -1;
+  font-size: clamp(40px, 27cqw, var(--fs-watermark));
+}
+
+.pk-stage__content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}

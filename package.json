@@ -1,0 +1,51 @@
+{
+  "name": "pelagix",
+  "productName": "Pelagix",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Living Dex tracker for Pokemon games",
+  "author": "HydrosPlays",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HydrosPlays/Pelagix.git"
+  },
+  "main": "./out/main/index.js",
+  "scripts": {
+    "predev": "install-electron",
+    "dev": "electron-vite dev",
+    "dev:web": "vite --config vite.web.config.ts",
+    "build": "npm run typecheck && electron-vite build",
+    "prepreview": "install-electron",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json --composite false && tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck:tools": "tsc --noEmit -p tsconfig.tools.json",
+    "test": "vitest run",
+    "dist": "npm run build && electron-builder --win",
+    "data:extract": "node tools/extractor/run.mjs",
+    "data:build": "node tools/build-data/index.ts",
+    "data:validate": "node tools/build-data/validate.ts",
+    "data": "npm run data:extract && npm run data:build && npm run data:validate",
+    "screenshots": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/screenshots/run.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@fontsource-variable/outfit": "5.3.0",
+    "@tanstack/react-virtual": "3.14.13",
+    "@types/node": "24.19.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "animejs": "4.5.0",
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3",
+    "electron-vite": "5.0.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "7.0.2",
+    "vite": "7.3.7",
+    "vitest": "5.0.3",
+    "wouter": "3.13.0",
+    "zustand": "5.0.15"
+  }
+}

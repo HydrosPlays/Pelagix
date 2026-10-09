@@ -1,0 +1,38 @@
+/* The caught pill: a Poké Ball with a tick and the number of logged entries. */
+
+.dex-caught {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 7px 0 2px;
+  border-radius: var(--r-full);
+  background: var(--success-soft);
+  color: var(--success-text);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.dex-caught--sm {
+  gap: 2px;
+  height: 17px;
+  padding: 0 5px 0 1px;
+  font-size: 10px;
+}
+
+.dex-caught__ball {
+  flex: none;
+  overflow: visible;
+}
+
+.dex-caught__tick {
+  fill: var(--success);
+  stroke: var(--surface-solid);
+  stroke-width: 1.3;
+}
+
+.dex-caught__check {
+  stroke: var(--type-ink-dark);
+}

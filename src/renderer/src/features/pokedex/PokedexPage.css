@@ -1,0 +1,760 @@
+/* The Pokédex browser. Prefix: dex-. */
+
+/* ---------------------------------------------------------------- header */
+
+.dex-header {
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.dex-heading {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.dex-count {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dex-count__shown {
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+}
+
+.dex-view {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.dex-sort {
+  width: 186px;
+}
+
+/* ---------------------------------------------------------------- toolbar */
+
+.dex-toolbar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  container: dex-toolbar / inline-size;
+}
+
+.dex-search {
+  flex: 1 1 160px;
+  min-width: 150px;
+  max-width: 320px;
+}
+
+/* Filter buttons: the shared subtle button, a touch quieter, lit while the filter is on. */
+.ui-btn.dex-filter {
+  gap: 7px;
+  padding: 0 10px 0 var(--sp-3);
+  color: var(--text-2);
+  font-weight: var(--fw-medium);
+}
+
+.ui-btn.dex-filter:hover:not(:disabled),
+.ui-btn.dex-filter.is-open {
+  color: var(--text-1);
+}
+
+.ui-btn.dex-filter[aria-pressed] {
+  padding-right: var(--sp-3);
+}
+
+.ui-btn.dex-filter.is-active {
+  border-color: var(--line-accent);
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+
+.dex-filter > svg:first-child {
+  color: var(--text-3);
+}
+
+.dex-filter.is-active > svg:first-child {
+  color: var(--accent);
+}
+
+.dex-filter > svg:last-child {
+  margin-left: -2px;
+  color: var(--text-3);
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+.dex-filter.is-open > svg:last-child {
+  transform: rotate(180deg);
+}
+
+/* Where the row is tight (the 1040 px window), the leading glyphs go so that it stays one line. */
+@container dex-toolbar (max-width: 1010px) {
+  .dex-filter > svg:first-child {
+    display: none;
+  }
+}
+
+.dex-filter .ui-btn__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dex-filter__summary {
+  display: inline-flex;
+  align-items: center;
+  max-width: 132px;
+  height: 20px;
+  padding: 0 7px;
+  overflow: hidden;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dex-filter__dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.dex-filter__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 1px 0 var(--bevel-light),
+    0 0 0 1px var(--bevel-dark);
+}
+
+/* ---------------------------------------------------------------- active filters */
+
+.dex-active {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  margin-top: var(--sp-3);
+}
+
+.dex-active__label {
+  flex: none;
+}
+
+.dex-active__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- filter panels */
+
+.dex-pop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-popover);
+  display: flex;
+  visibility: hidden;
+  flex-direction: column;
+  max-width: calc(100vw - 16px);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface-solid);
+  box-shadow:
+    var(--shadow-3),
+    var(--highlight-inset);
+  outline: none;
+  transform-origin: 24px 0;
+  -webkit-app-region: no-drag;
+}
+
+.dex-pop__head {
+  display: flex;
+  flex: none;
+  order: -1;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: var(--sp-3) 14px 0;
+}
+
+.dex-pop__clear {
+  margin-right: -6px;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.dex-pop__clear:hover {
+  background: var(--surface-hover);
+}
+
+.dex-pop__body {
+  flex: 1;
+  min-height: 0;
+  padding: 10px 14px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dex-pop__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+
+.dex-pop__label {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+/* ---- generations */
+
+.dex-gens {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+.dex-gen {
+  display: grid;
+  grid-template:
+    'num region' auto
+    'num count' auto / 30px minmax(0, 1fr);
+  column-gap: var(--sp-2);
+  align-items: center;
+  padding: 7px 10px 7px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  text-align: left;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.dex-gen:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+}
+
+.dex-gen:active,
+.dex-typeopt:active {
+  transform: scale(0.97);
+}
+
+.dex-gen__num {
+  grid-area: num;
+  color: var(--text-3);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-black);
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.dex-gen__region {
+  grid-area: region;
+  overflow: hidden;
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: 1.25;
+  text-overflow: ellipsis;
+}
+
+.dex-gen__count {
+  grid-area: count;
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  line-height: 1.3;
+}
+
+.dex-gen.is-on {
+  border-color: var(--line-accent);
+  background: var(--accent-soft);
+}
+
+.dex-gen.is-on .dex-gen__num {
+  color: var(--accent);
+}
+
+/* ---- types */
+
+.dex-types {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.dex-typeopt {
+  --tc: var(--type-normal);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.dex-typeopt:hover {
+  border-color: color-mix(in srgb, var(--tc) 55%, var(--line-strong));
+  color: var(--text-1);
+}
+
+.dex-typeopt__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tc);
+  box-shadow:
+    inset 0 1px 0 var(--bevel-light),
+    0 0 0 1px var(--bevel-dark);
+}
+
+.dex-typeopt.is-on {
+  border-color: color-mix(in srgb, var(--tc) 75%, transparent);
+  background: color-mix(in srgb, var(--tc) 20%, transparent);
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+}
+
+/* ---- status */
+
+.dex-statuses {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 -6px -4px;
+}
+
+.dex-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--r-md);
+  text-align: left;
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+
+.dex-status:hover {
+  background: var(--surface-hover);
+}
+
+.dex-status__icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+
+.dex-status__icon.is-gold {
+  background: var(--gold-soft);
+  color: var(--gold-text);
+}
+
+.dex-status.is-on .dex-status__icon:not(.is-gold) {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.dex-status__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dex-status__label {
+  color: var(--text-1);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  line-height: 1.3;
+}
+
+.dex-status.is-on .dex-status__label {
+  font-weight: var(--fw-semibold);
+}
+
+.dex-status__desc {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: 1.3;
+}
+
+.dex-status__check {
+  color: var(--accent);
+  opacity: 0;
+}
+
+.dex-status.is-on .dex-status__check {
+  opacity: 1;
+}
+
+/* ---- game, categories */
+
+.dex-game {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dex-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dex-tags__count {
+  margin-left: 3px;
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-regular);
+}
+
+/* ---------------------------------------------------------------- grid */
+
+/* The scroller reaches into the page padding: the scrollbar sits at the window edge, and tiles in
+   the first column have room for their lift and glow. */
+.dex-grid {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: var(--sp-1) calc(-1 * var(--page-pad)) 0 -10px;
+}
+
+.dex-grid__scroll {
+  padding: 14px calc(var(--page-pad) - 12px) var(--sp-10) 10px;
+  /* Rows slide out under the toolbar instead of being cut off. */
+  mask-image: linear-gradient(to bottom, transparent 0, var(--pure-white) 14px);
+}
+
+.dex-grid__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 var(--page-pad) 8vh 10px;
+}
+
+.dex-skeleton {
+  display: grid;
+  padding: 14px var(--page-pad) 0 10px;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------- tile */
+
+.ui-vgrid__cell.dex-cell {
+  cursor: pointer;
+}
+
+/* The ring is drawn on the tile so that it lifts with it. */
+.ui-vgrid__cell.dex-cell:focus-visible {
+  outline: none;
+}
+
+.dex-tile {
+  --dex-type: var(--accent);
+  --dex-type-2: var(--accent);
+  position: relative;
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  box-shadow: var(--panel-shadow);
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+
+/* Type-tinted glow, faded in on hover and focus. */
+.dex-tile::before {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--dex-type) 72%, transparent),
+    0 14px 30px -14px color-mix(in srgb, var(--dex-type) 80%, transparent),
+    0 0 26px -8px color-mix(in srgb, var(--dex-type) 60%, transparent);
+  content: '';
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+  pointer-events: none;
+}
+
+.dex-cell:hover .dex-tile,
+.dex-cell:focus-visible .dex-tile {
+  transform: translateY(-3px);
+}
+
+.dex-cell:hover .dex-tile::before,
+.dex-cell:focus-visible .dex-tile::before {
+  opacity: 1;
+}
+
+.dex-cell:active .dex-tile {
+  transform: translateY(-1px) scale(0.985);
+}
+
+.dex-cell:focus-visible .dex-tile {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:root[data-motion='off'] .dex-cell .dex-tile {
+  transform: none;
+}
+
+/* In the Living Dex: a green frame and wash, so a caught tile reads as done at a glance. A species
+   with forms still to catch gets the lighter version until the last one is in. */
+.dex-tile.is-caught {
+  border-color: color-mix(in srgb, var(--success) 26%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--success) 6%, transparent) 0%, transparent 46%),
+    var(--surface-1);
+}
+
+.dex-tile.is-caught.is-complete {
+  border-color: color-mix(in srgb, var(--success) 48%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--success) 12%, transparent) 0%, transparent 54%),
+    var(--surface-1);
+}
+
+.dex-tile__body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 10px var(--sp-3) var(--sp-3);
+}
+
+.dex-tile__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-1);
+  height: 20px;
+}
+
+.dex-tile__no {
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+}
+
+.dex-tile__marks {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+}
+
+.dex-tile__stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+/* A soft pool of the Pokémon's type colours behind the render. */
+.dex-tile__stage::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 124px;
+  height: 124px;
+  margin: -62px 0 0 -62px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--dex-type) 30%, transparent) 0%, color-mix(in srgb, var(--dex-type-2) 12%, transparent) 55%, transparent 100%);
+  content: '';
+  opacity: 0.55;
+  transition:
+    opacity var(--dur-3) var(--ease-out),
+    transform var(--dur-3) var(--ease-out);
+  pointer-events: none;
+}
+
+.dex-cell:hover .dex-tile__stage::before,
+.dex-cell:focus-visible .dex-tile__stage::before {
+  opacity: 1;
+  transform: scale(1.12);
+}
+
+.dex-tile__stage .pk-sprite {
+  transition: transform var(--dur-3) var(--ease-out);
+}
+
+.dex-cell:hover .dex-tile__stage .pk-sprite,
+.dex-cell:focus-visible .dex-tile__stage .pk-sprite {
+  transform: scale(1.06);
+}
+
+.dex-tile__title {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.dex-tile__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-1);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Form names get two lines; the space is reserved so every render sits at the same height. */
+.dex-tile--forms .dex-tile__name {
+  display: -webkit-box;
+  min-height: 2.6em;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.dex-tile__gender {
+  display: inline-block;
+  margin-left: 4px;
+  vertical-align: -1px;
+}
+
+.dex-tile__gender svg {
+  display: inline-block;
+}
+
+.dex-tile__forms {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  color: var(--text-2);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.dex-tile__forms.is-complete {
+  border-color: transparent;
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+
+.dex-tile__foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  height: 18px;
+  margin-top: 6px;
+}
+
+/* ---- compact */
+
+.dex-tile--compact .dex-tile__body {
+  padding: 6px var(--sp-2) var(--sp-2);
+}
+
+.dex-tile--compact .dex-tile__head {
+  height: 18px;
+}
+
+.dex-tile--compact .dex-tile__no {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.dex-tile--compact .dex-tile__marks {
+  gap: 3px;
+}
+
+.dex-tile--compact .dex-tile__stage::before {
+  width: 72px;
+  height: 72px;
+  margin: -36px 0 0 -36px;
+}
+
+.dex-tile--compact .dex-tile__title {
+  margin-top: 3px;
+}
+
+.dex-tile--compact .dex-tile__name {
+  font-size: var(--fs-xs);
+  line-height: 1.3;
+}
+
+.dex-tile--compact .dex-tile__foot {
+  height: 14px;
+  margin-top: 4px;
+}
+
+.dex-tile--compact .pk-type--dot {
+  width: 10px;
+  height: 10px;
+}
+
+.dex-tile--compact .dex-tile__forms {
+  height: 14px;
+  padding: 0 5px;
+  font-size: 10px;
+}

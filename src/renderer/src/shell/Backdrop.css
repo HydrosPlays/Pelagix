@@ -1,0 +1,30 @@
+.shell-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(900px 620px at 84% -8%, var(--backdrop-glow-1) 0%, transparent 70%),
+    radial-gradient(760px 560px at 8% 108%, var(--backdrop-glow-2) 0%, transparent 70%),
+    var(--backdrop-base);
+  pointer-events: none;
+}
+
+.shell-backdrop__chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.shell-backdrop__chart path {
+  stroke: var(--contour);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Every fourth line is an index contour. */
+.shell-backdrop__chart path.is-index {
+  stroke: var(--contour-strong);
+}

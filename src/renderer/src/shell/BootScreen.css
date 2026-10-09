@@ -1,0 +1,179 @@
+.boot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.boot__drag {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 2;
+  height: var(--topbar-h);
+  -webkit-app-region: drag;
+}
+
+.boot__body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--sp-8);
+}
+
+/* A fast start should not flash the splash: it only fades in if loading takes a moment. */
+.boot--loading .boot__body {
+  animation: boot-in 420ms var(--ease-out) 140ms both;
+}
+
+@keyframes boot-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.boot__logo {
+  width: min(300px, 60vw);
+  height: auto;
+  filter: drop-shadow(0 18px 34px var(--bevel-dark-strong));
+}
+
+.boot__status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-top: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5) var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--surface-1);
+  box-shadow: var(--highlight-inset);
+}
+
+.boot__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.boot__step {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: 20px;
+}
+
+.boot__step.is-active {
+  color: var(--text-1);
+}
+
+.boot__step.is-done {
+  color: var(--text-2);
+}
+
+.boot__step-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+
+.boot__step.is-done .boot__step-mark {
+  border-color: transparent;
+  background: var(--success);
+  color: var(--type-ink-dark);
+  opacity: 1;
+}
+
+.boot__step.is-active .boot__step-mark {
+  border-color: var(--accent);
+  opacity: 1;
+  animation: ui-breathe 0.9s ease-in-out infinite alternate;
+}
+
+/* ---------------------------------------------------------------- error */
+
+.boot__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(560px, 100%);
+  padding: var(--sp-8);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xl);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-3);
+  text-align: center;
+}
+
+.boot__error-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  margin-bottom: var(--sp-4);
+  border-radius: 50%;
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+
+.boot__error-title {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+}
+
+.boot__error-hint {
+  margin-top: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-lg);
+  line-height: var(--lh-normal);
+}
+
+.boot__error-hint code {
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  background: var(--surface-inset);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  user-select: text;
+}
+
+.boot__error-detail {
+  width: 100%;
+  max-height: 140px;
+  margin: var(--sp-5) 0 0;
+  padding: var(--sp-3) var(--sp-4);
+  overflow: auto;
+  border-radius: var(--r-md);
+  background: var(--surface-inset);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.boot__error-actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-6);
+}

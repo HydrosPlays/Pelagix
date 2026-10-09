@@ -1,0 +1,392 @@
+/*
+ * The entry editor (log a catch / edit an entry). Prefix: ee-.
+ * A wide dialog: the form on the left, a live preview that stays in view on the right.
+ */
+
+.ee-dialog .ui-modal__body {
+  /* The preview column sticks to the top of this scroller. */
+  scroll-padding-top: var(--sp-4);
+}
+
+.ee {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 316px;
+  gap: var(--sp-6);
+  align-items: start;
+  padding: var(--sp-2) var(--sp-6) var(--sp-6);
+}
+
+.ee-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+
+.ee-form[inert] {
+  opacity: 0.6;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+/* ---------------------------------------------------------------- groups */
+
+.ee-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ee-group__title {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--sp-3);
+  padding: 0 0 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ee-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3) var(--sp-4);
+  align-items: start;
+}
+
+.ee-span {
+  grid-column: 1 / -1;
+}
+
+/* ---- the Pokémon, when it is a given ---- */
+
+.ee-mon {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  min-height: 58px;
+  padding: 6px var(--sp-3) 6px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-inset);
+}
+
+.ee-mon__art {
+  display: flex;
+  flex: none;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+
+.ee-mon__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.ee-mon__name {
+  overflow: hidden;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ee-mon__no {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.03em;
+}
+
+/* ---- hints, notes, warnings ---- */
+
+.ee-hint,
+.ee-note {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
+.ee-hint {
+  margin-top: -4px;
+}
+
+.ee-known {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--success-text);
+  font-weight: var(--fw-medium);
+}
+
+.ee-link {
+  border-radius: var(--r-xs);
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--dur-2) var(--ease-out);
+}
+
+.ee-link:hover {
+  text-decoration-color: currentColor;
+}
+
+.ee-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+  border-radius: var(--r-md);
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.ee-warning svg {
+  margin-top: 1px;
+}
+
+.ee-saved {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid color-mix(in srgb, var(--success) 40%, transparent);
+  border-radius: var(--r-md);
+  background: var(--success-soft);
+  color: var(--success-text);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.ee-saved svg {
+  margin-top: 2px;
+}
+
+.ee-warning[role='alert'] {
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
+
+.ee-static {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--ctl-md);
+  color: var(--text-2);
+  font-size: var(--fs-md);
+}
+
+.ee-opt {
+  font-weight: var(--fw-medium);
+}
+
+.ee-opt--ok {
+  color: var(--success-text);
+}
+
+.ee-opt--event {
+  color: var(--gold-text);
+}
+
+/* ---- ball picker ---- */
+
+.ee-balls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ee-balls__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.ee-balls__value {
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.ee-balls__value.is-empty {
+  color: var(--text-3);
+  font-weight: var(--fw-regular);
+}
+
+.ee-balls__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-inset);
+}
+
+.ee-balls__rule {
+  flex: none;
+  width: 1px;
+  margin: 4px 4px;
+  background: var(--line-strong);
+}
+
+.ee-ball {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
+}
+
+.ee-ball:hover:not(.is-selected) {
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+.ee-ball.is-selected {
+  border-color: var(--line-accent);
+  background: var(--accent-soft);
+  box-shadow: var(--accent-glow);
+}
+
+.ee-balls__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px var(--sp-3);
+  min-height: var(--ctl-sm);
+}
+
+.ee-balls__foot .ui-btn {
+  margin-left: auto;
+}
+
+/* ---- switches ---- */
+
+/* Sits beside the date field; the top padding lines the first switch up with that field's box. */
+.ee-switches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding-top: 31px;
+}
+
+.ee-switchlabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------------------------------------------------------------- preview column */
+
+.ee-side {
+  position: sticky;
+  top: var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.ee-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.ee-cap {
+  position: relative;
+}
+
+.ee-cap__stage {
+  width: 100%;
+  height: 176px;
+}
+
+.ee-cap__stage.is-shiny {
+  border-color: color-mix(in srgb, var(--gold) 40%, var(--line));
+}
+
+.ee-cap__sprite {
+  width: 148px;
+}
+
+.ee-cap__ball {
+  position: absolute;
+  right: var(--sp-3);
+  bottom: var(--sp-3);
+  z-index: 2;
+  display: flex;
+}
+
+.ee-cap__ball.is-default {
+  opacity: 0.4;
+}
+
+.ee-preview__card {
+  display: flex;
+  min-width: 0;
+}
+
+.ee-preview__card > .pk-entry {
+  flex: 1;
+}
+
+/* Without a game the card would say "Unknown game"; the line is kept, just not shown. */
+.ee-preview__card--nogame .pk-gamebadge {
+  visibility: hidden;
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.ee-foot__left {
+  display: flex;
+  gap: var(--sp-1);
+  margin-right: auto;
+  margin-left: calc(var(--sp-3) * -1);
+}
+
+.ee-foot__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: var(--sp-2);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+/* ---------------------------------------------------------------- narrow windows */
+
+@media (max-width: 900px) {
+  .ee {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ee-side {
+    position: static;
+    order: -1;
+  }
+
+  .ee-foot__hint {
+    display: none;
+  }
+}

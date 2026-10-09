@@ -1,0 +1,92 @@
+.pk-game {
+  --game-color: var(--surface-solid-2);
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  overflow: hidden;
+  border-radius: 24%;
+  background: var(--surface-3);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.pk-game img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pk-game--fallback {
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  background: linear-gradient(150deg, color-mix(in srgb, var(--game-color) 80%, #fff), color-mix(in srgb, var(--game-color) 82%, #000));
+  color: var(--pure-white);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-shadow: 0 1px 2px var(--bevel-dark-strong);
+}
+
+/* ---------------------------------------------------------------- badge */
+
+.pk-gamebadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.pk-gamebadge--sm {
+  gap: 6px;
+}
+
+.pk-gamebadge--lg {
+  gap: 10px;
+}
+
+.pk-gamebadge__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pk-gamebadge__name {
+  overflow: hidden;
+  color: var(--text-1);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-gamebadge--sm .pk-gamebadge__name {
+  font-size: var(--fs-sm);
+}
+
+.pk-gamebadge--lg .pk-gamebadge__name {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+}
+
+.pk-gamebadge__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.pk-gamebadge__system {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--text-3);
+}
+
+.pk-gamebadge--compact {
+  gap: 5px;
+}
