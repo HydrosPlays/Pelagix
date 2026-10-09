@@ -15,6 +15,14 @@
   <sub>Windows 10 and 11 · version 0.1.0 · GPL-3.0 · an unofficial fan project</sub>
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/License-GPLv3-green?style=flat" alt="License: GPLv3">
+  <img src="https://img.shields.io/badge/Based%20On-PKHeX & PokeAPI-red?style=flat" alt="Based on PKHeX & PokeAPI">
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blue?style=flat" alt="Platform: Windows 10 | 11">
+  <img src="https://img.shields.io/github/v/release/HydrosPlays/Pelagix?include_prereleases&style=flat&label=Version&color=orange" alt="Latest version">
+  <a href="https://github.com/HydrosPlays/Pelagix/releases"><img src="https://img.shields.io/github/downloads/HydrosPlays/Pelagix/total?style=flat&label=Downloads&color=purple" alt="Total downloads"></a>
+</p>
+
 > The screenshots on this page come from version 0.1.0 running a generated demo collection
 > (389 entries, trainer "Hydro"), so the numbers in them are that collection's. They can be
 > re-created with `npm run screenshots`.
