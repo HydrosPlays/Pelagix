@@ -14,6 +14,13 @@ export type EntryGender = 'm' | 'f' | 'n'
 /** How the user got the Pokémon. Encounter kinds from the datasets plus the ones only a user can assert. */
 export type EntryKind = EncounterKind | 'evolved' | 'bred' | 'transfer' | 'other'
 
+/** Six values, one per stat, in the order HP, Attack, Defense, Sp. Atk, Sp. Def, Speed. */
+export type StatSpread = [number, number, number, number, number, number]
+
+export const PID_PATTERN = /^[0-9A-F]{8}$/
+export const MAX_IV = 31
+export const MAX_EV = 255
+
 /** One logged Pokémon. A species/form may have any number of entries, across any games. */
 export interface CatchEntry {
   id: string
@@ -44,6 +51,12 @@ export interface CatchEntry {
   /** Original Trainer name. */
   ot?: string
   notes?: string
+  /** Personality value: exactly 8 uppercase hex digits. */
+  pid?: string
+  /** Individual values, 0 to 31 each. */
+  ivs?: StatSpread
+  /** Effort values, 0 to 255 each. */
+  evs?: StatSpread
   /**
    * Set on entries made by "Import from a game save": the reader's fingerprint of that Pokémon
    * (`GameSavePokemon.fingerprint`), so the same Pokémon is not imported twice. Never shown.
@@ -65,6 +78,8 @@ export interface DexRules {
   genderDiffs: boolean
   cosmetic: boolean
   changeable: boolean
+  /** Forms kept only while holding an item: Arceus plates, Silvally memories, Genesect drives, Ogerpon masks, the Origin Formes. */
+  heldItem: boolean
   fusion: boolean
   event: boolean
   partner: boolean
@@ -104,6 +119,7 @@ export const DEFAULT_RULES: DexRules = {
   genderDiffs: true,
   cosmetic: true,
   changeable: true,
+  heldItem: true,
   fusion: false,
   event: false,
   partner: false,

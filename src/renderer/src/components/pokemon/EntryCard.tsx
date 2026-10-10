@@ -7,7 +7,7 @@ import { entryDay } from '@renderer/domain/progress'
 import { popIn } from '@renderer/lib/anim'
 import { useDexStore, type Dex } from '@renderer/lib/data'
 import { entryMenuItems, entryMethodText, entryOriginText, entrySummary, type EntryMenuOptions } from '@renderer/lib/entry-actions'
-import { dexNo, formatDate } from '@renderer/lib/format'
+import { dexNo, entryValues, formatDate } from '@renderer/lib/format'
 import { speciesSpritePath } from '@renderer/lib/sprites'
 import { Tag } from '../ui/Chip'
 import { cx } from '../ui/cx'
@@ -155,6 +155,7 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
   const gender = entry.gender ?? view.form?.gender
   const nickname = entry.nickname !== undefined && entry.nickname !== '' ? entry.nickname : undefined
   const notes = entry.notes !== undefined && entry.notes.trim() !== '' ? entry.notes.trim() : undefined
+  const values = entryValues(entry)
   const date = formatDate(view.day)
   const dateTitle = `${entry.date !== undefined ? 'Caught' : 'Logged'} ${formatDate(view.day, 'long')}`
   const withMenu = actions && variant !== 'compact'
@@ -344,10 +345,22 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
             )}
           </div>
           <div className="pk-entry__cell pk-entry__cell--end">
-            {notes !== undefined && (
-              <Tooltip content={clip(notes, 320)} placement="left">
+            {(notes !== undefined || values.length > 0) && (
+              <Tooltip
+                content={
+                  <span className="pk-entry__tip">
+                    {notes !== undefined && <span>{clip(notes, 320)}</span>}
+                    {values.map((v) => (
+                      <span key={v.label} className="pk-entry__tip-value">
+                        {v.label} {v.text}
+                      </span>
+                    ))}
+                  </span>
+                }
+                placement="left"
+              >
                 <span className="pk-entry__noteflag">
-                  <Icon name="note" size={15} label={`Notes: ${clip(notes, 320)}`} />
+                  <Icon name={notes !== undefined ? 'note' : 'chart'} size={15} label={[notes !== undefined ? `Notes: ${clip(notes, 320)}` : '', ...values.map((v) => `${v.label} ${v.text}`)].filter(Boolean).join('. ')} />
                 </span>
               </Tooltip>
             )}
@@ -402,6 +415,17 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
             </span>
           )}
         </div>
+      )}
+
+      {values.length > 0 && (
+        <dl className="pk-entry__values">
+          {values.map((v) => (
+            <div key={v.label} title={v.title}>
+              <dt>{v.label}</dt>
+              <dd>{v.text}</dd>
+            </div>
+          ))}
+        </dl>
       )}
 
       {notes !== undefined && <p className="pk-entry__notes">{notes}</p>}

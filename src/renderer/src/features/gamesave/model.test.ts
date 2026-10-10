@@ -3,7 +3,7 @@ import type { GameSaveContents, GameSaveEncounter, GameSavePokemon, PkhexVersion
 import { DEFAULT_RULES } from '@shared/save-types'
 import { checkEntry } from '@renderer/lib/storage'
 import { fixtureDex as dex, ID, makeEntry } from '@renderer/lib/test-fixture'
-import { buildPreview, countChosen, entriesToImport, entryFromPokemon, failureText, gamesOfVersion, originGames, saveGameName, selectAllNew, selectFilling } from './model'
+import { buildPreview, countChosen, entriesToComplete, entriesToImport, entryFromPokemon, failureText, gamesOfVersion, originGames, saveGameName, missingValues, selectAllNew, selectFilling } from './model'
 
 const TODAY = '2026-06-01'
 const NOW = '2026-06-01T10:00:00.000Z'
@@ -18,6 +18,7 @@ function mon(species: number, extra: Partial<GameSavePokemon> = {}): GameSavePok
     metLocation: { id: 1, name: 'Route 1' }, eggLocation: null, metLevel: 5, metDate: '2024-03-02', level: 30,
     nickname: null, ot: 'Red', fateful: false, legal: true,
     encounter: { kind: 'wild', type: 'slot', species, form: 0, version: v('SW'), location: { id: 1, name: 'Route 1' }, levelMin: 3, levelMax: 5 },
+    pid: null, ivs: null, evs: null,
     fingerprint: `44:0000${serial}:abcd`,
     ...extra
   }
@@ -123,7 +124,7 @@ describe('buildPreview', () => {
     )
     expect(p.rows.map((r) => r.status)).toEqual(['new', 'imported', 'egg', 'unsupported', 'unsupported', 'unsupported'])
     expect(p.rows.map((r) => r.reason)).toEqual([undefined, undefined, undefined, 'Pelagix does not know this Pokémon.', 'Pelagix does not know this form.', 'It comes from a game that Pelagix does not track.'])
-    expect(p.counts).toEqual({ new: 1, imported: 1, egg: 1, unsupported: 3, fills: 1 })
+    expect(p.counts).toEqual({ new: 1, imported: 1, egg: 1, unsupported: 3, fills: 1, completes: 0 })
     expect(p.rows[2]?.name).toBe('Pichu Egg')
     expect(p.rows[2]?.entry).toBeUndefined()
     expect(p.askGames).toEqual([])
@@ -191,5 +192,90 @@ describe('entriesToImport', () => {
     const later = buildPreview(dex, save([{ ...traded, species: ID.raichu, level: 60, nickname: 'Volt', box: 3, slot: 9 }], 'SH'), first, DEFAULT_RULES, { today: TODAY })
     expect(later.rows[0]?.status).toBe('imported')
     expect(selectAllNew(later.rows).size).toBe(0)
+  })
+})
+
+const VALUES: Pick<GameSavePokemon, 'pid' | 'ivs' | 'evs'> = { pid: '0000ABCD', ivs: [31, 30, 29, 28, 27, 26], evs: [4, 252, 0, 0, 0, 252] }
+
+describe('PID, IVs and EVs of an imported Pokémon', () => {
+  it('go into the entry as the reader gave them', () => {
+    const entry = entryFromPokemon(dex, mon(ID.pikachu, VALUES), 'sword', TODAY)
+    expect(entry).toMatchObject({ pid: '0000ABCD', ivs: [31, 30, 29, 28, 27, 26], evs: [4, 252, 0, 0, 0, 252] })
+    expect(checkEntry({ ...entry, id: 'x', createdAt: NOW, updatedAt: NOW }, NOW).repaired).toBe(false)
+  })
+
+  it('are left out where the reader has none or something broken', () => {
+    const gameBoy = entryFromPokemon(dex, mon(ID.pikachu, { pid: null, ivs: [15, 15, 15, 15, 15, 15], evs: null }), 'sword', TODAY)
+    expect(gameBoy.ivs).toEqual([15, 15, 15, 15, 15, 15])
+    expect(gameBoy).not.toHaveProperty('pid')
+    expect(gameBoy).not.toHaveProperty('evs')
+    const hostile = { ...mon(ID.pikachu), pid: 'zz', ivs: [31, 31, 99, 31, 31, 31], evs: 'many' } as unknown as GameSavePokemon
+    const entry = entryFromPokemon(dex, hostile, 'sword', TODAY)
+    for (const key of ['pid', 'ivs', 'evs']) expect(entry).not.toHaveProperty(key)
+    const old = { ...mon(ID.pikachu, VALUES) } as Partial<GameSavePokemon>
+    delete old.pid
+    delete old.ivs
+    delete old.evs
+    expect(preview([old as GameSavePokemon]).rows[0]?.status).toBe('new')
+  })
+})
+
+describe('completing earlier entries', () => {
+  /** An entry as version 0.3.0 imported it: with the fingerprint, without the three values. */
+  const earlier = (pokemon: GameSavePokemon, id: string, extra: object = {}) => {
+    const { pid: _pid, ivs: _ivs, evs: _evs, ...rest } = entryFromPokemon(dex, pokemon, 'sword', TODAY)
+    return checkEntry({ ...rest, id, createdAt: NOW, updatedAt: NOW, ...extra }, NOW).entry!
+  }
+
+  it('only names what the earlier entry lacks', () => {
+    const now = { pid: '0000ABCD', ivs: [1, 2, 3, 4, 5, 6] as [number, number, number, number, number, number] }
+    expect(missingValues(now, {})).toEqual(now)
+    expect(missingValues(now, { pid: 'FFFFFFFF' })).toEqual({ ivs: now.ivs })
+    expect(missingValues(now, { pid: 'FFFFFFFF', ivs: [0, 0, 0, 0, 0, 0] })).toBeNull()
+    expect(missingValues({}, {})).toBeNull()
+  })
+
+  it('counts the already imported Pokémon whose entry gets values, and adds them without a new entry', () => {
+    const a = mon(ID.pikachu, VALUES)
+    const b = mon(ID.raichu, VALUES)
+    const c = mon(ID.eevee, VALUES)
+    const existing = [earlier(a, 'a'), earlier(b, 'b', { pid: 'FFFFFFFF', ivs: [0, 0, 0, 0, 0, 0], evs: [1, 1, 1, 1, 1, 1] })]
+    const p = buildPreview(dex, save([a, b, c]), existing, DEFAULT_RULES, { today: TODAY })
+    expect(p.rows.map((r) => [r.status, r.completes === true])).toEqual([['imported', true], ['imported', false], ['new', false]])
+    expect(p.counts).toMatchObject({ new: 1, imported: 2, completes: 1 })
+    expect(entriesToComplete(p.rows, existing)).toEqual([{ id: 'a', patch: { pid: '0000ABCD', ivs: [31, 30, 29, 28, 27, 26], evs: [4, 252, 0, 0, 0, 252] } }])
+    // Nothing chosen: the new one is not added, the earlier one is still completed.
+    expect(entriesToImport(p.rows, new Set(), existing, NOW, () => 'n')).toEqual([])
+  })
+
+  it('never overwrites a value the entry already has', () => {
+    const a = mon(ID.pikachu, VALUES)
+    const existing = [earlier(a, 'a', { ivs: [0, 1, 2, 3, 4, 5] })]
+    const p = buildPreview(dex, save([a]), existing, DEFAULT_RULES, { today: TODAY })
+    expect(entriesToComplete(p.rows, existing)).toEqual([{ id: 'a', patch: { pid: '0000ABCD', evs: [4, 252, 0, 0, 0, 252] } }])
+  })
+
+  it('has nothing to complete from a save without the values, or once it is done', () => {
+    const gameBoy = mon(ID.pikachu, { pid: null, ivs: null, evs: null })
+    const existing = [earlier(gameBoy, 'a')]
+    const p = buildPreview(dex, save([gameBoy]), existing, DEFAULT_RULES, { today: TODAY })
+    expect(p.counts.completes).toBe(0)
+    expect(entriesToComplete(p.rows, existing)).toEqual([])
+
+    const a = mon(ID.raichu, VALUES)
+    const before = [earlier(a, 'b')]
+    const stale = buildPreview(dex, save([a]), before, DEFAULT_RULES, { today: TODAY })
+    const [done] = entriesToComplete(stale.rows, before)
+    const after = [{ ...before[0]!, ...done!.patch }]
+    expect(entriesToComplete(stale.rows, after)).toEqual([])
+    expect(buildPreview(dex, save([a]), after, DEFAULT_RULES, { today: TODAY }).counts.completes).toBe(0)
+  })
+
+  it('completes one entry once when the same Pokémon is in the save twice', () => {
+    const a = mon(ID.pikachu, VALUES)
+    const existing = [earlier(a, 'a')]
+    const p = buildPreview(dex, save([a, { ...a, slot: 99 }]), existing, DEFAULT_RULES, { today: TODAY })
+    expect(p.counts.completes).toBe(1)
+    expect(entriesToComplete(p.rows, existing)).toHaveLength(1)
   })
 })

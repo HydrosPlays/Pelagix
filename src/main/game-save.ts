@@ -14,7 +14,7 @@ import type {
   GameSaveContents, GameSaveEncounter, GameSaveEncounterKind, GameSaveFailure, GameSaveInfo, GameSaveLocation,
   GameSavePokemon, GameSaveResult, PkhexVersion
 } from '@shared/game-save-types'
-import type { EntryGender } from '@shared/save-types'
+import { MAX_EV, MAX_IV, PID_PATTERN, type EntryGender, type StatSpread } from '@shared/save-types'
 import { isPlainObject } from './save'
 
 export const READER_EXE = 'pelagix-save-reader.exe'
@@ -87,6 +87,13 @@ function encounter(value: unknown): GameSaveEncounter | null {
   }
 }
 
+/** Six whole numbers from 0 to `max`, or null: a spread is taken whole or not at all. */
+function spread(value: unknown, max: number): StatSpread | null {
+  if (!Array.isArray(value) || value.length !== 6) return null
+  const stats = value.map((v) => int(v, 0, max))
+  return stats.includes(null) ? null : (stats as StatSpread)
+}
+
 const ISO_DAY = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
 
 /** One Pokémon, or null when any of the facts an entry is built from is missing or out of range. */
@@ -106,7 +113,7 @@ function pokemon(value: unknown): GameSavePokemon | null {
   const level = int(value['level'], 0, 100)
   const ot = text(value['ot'], MAX_NAME)
   const fingerprint = value['fingerprint']
-  const { shiny, gmax, alpha, egg, fateful, legal, metDate } = value
+  const { shiny, gmax, alpha, egg, fateful, legal, metDate, pid } = value
   if (place === 'box' && (box === null || boxName === null)) return null
   if (slot === null || species === null || form === null || ball === null || origin === null) return null
   if (gender !== 'm' && gender !== 'f' && gender !== 'n') return null
@@ -130,6 +137,10 @@ function pokemon(value: unknown): GameSavePokemon | null {
     nickname: nickname === null || nickname.length === 0 ? null : nickname,
     ot, fateful, legal,
     encounter: encounter(value['encounter']),
+    // Optional facts: one that is missing or broken is left out, the Pokémon is still read.
+    pid: typeof pid === 'string' && PID_PATTERN.test(pid) ? pid : null,
+    ivs: spread(value['ivs'], MAX_IV),
+    evs: spread(value['evs'], MAX_EV),
     fingerprint
   }
 }

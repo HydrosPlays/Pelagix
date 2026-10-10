@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { DexIndex, FormSummary, SpeciesSummary } from '@shared/dex-types'
 import { DEFAULT_RULES, type CatchEntry, type DexRules } from '@shared/save-types'
-import { Dex } from '@renderer/lib/data'
+import { Dex, validateDexIndex } from '@renderer/lib/data'
 import { fixtureDex as dex, ID, makeEntry, makeSave } from '@renderer/lib/test-fixture'
 import {
-  buildSlots, collectionFor, computeCollection, isFormSlotted, matchRulePreset, RULE_INFO, RULE_KEYS, RULE_PRESETS, slotKeyFor, slotTarget,
+  buildSlots, collectionFor, computeCollection, HELD_ITEM_FORM_SPECIES, isFormSlotted, matchRulePreset, RULE_INFO, RULE_KEYS, RULE_PRESETS, slotKeyFor, slotTarget,
   type LivingSlot
 } from './slots'
 
@@ -60,7 +60,8 @@ describe('buildSlots', () => {
     ['genderForms', 25], // + Meowstic (Female)
     ['genderDiffs', 29], // Venusaur, Pikachu, Raichu, Eevee, Meowstic split in two
     ['cosmetic', 76], // + 27 Unown, 17 Vivillon, 8 Alcremie creams
-    ['changeable', 46], // + 5 Rotom, 17 Arceus
+    ['changeable', 29], // + 5 Rotom
+    ['heldItem', 41], // + 17 Arceus plates
     ['fusion', 26], // + 2 Kyurem
     ['event', 35], // + 8 cap Pikachu, Spiky-eared Pichu, Fancy and Poké Ball Vivillon
     ['partner', 26], // + partner Pikachu and Eevee
@@ -378,7 +379,7 @@ describe('slotKeyFor', () => {
         checked++
       }
     }
-    expect(checked).toBe(probes.length * 4096)
+    expect(checked).toBe(probes.length * 8192)
   })
 
   it('round-trips: an entry built from a slot target lands in that slot', () => {
@@ -453,5 +454,77 @@ describe('computeCollection', () => {
     expect(second).not.toBe(first)
     expect(second.totals.caught).toBe(2)
     expect(first.totals.caught).toBe(1)
+  })
+})
+
+const realIndex = Object.values(import.meta.glob<DexIndex>('../../public/data/dex.json', { eager: true, import: 'default' }))[0]
+
+describe('held-item forms', () => {
+  it('puts the Arceus plates under heldItem and leaves Rotom under changeable (all four combinations)', () => {
+    const both = only('changeable', 'heldItem')
+    expect(keysOf(buildSlots(dex, both), ID.arceus)).toHaveLength(18)
+    expect(keysOf(buildSlots(dex, both), ID.rotom)).toHaveLength(6)
+    expect(keysOf(buildSlots(dex, only('changeable')), ID.arceus)).toEqual(['493'])
+    expect(keysOf(buildSlots(dex, only('changeable')), ID.rotom)).toHaveLength(6)
+    expect(keysOf(buildSlots(dex, only('heldItem')), ID.arceus)).toHaveLength(18)
+    expect(keysOf(buildSlots(dex, only('heldItem')), ID.rotom)).toEqual(['479'])
+    expect(keysOf(buildSlots(dex, NONE), ID.arceus)).toEqual(['493'])
+    expect(keysOf(buildSlots(dex, NONE), ID.rotom)).toEqual(['479'])
+  })
+
+  it('sends a plate Arceus to the base slot when only heldItem is off', () => {
+    const rules = { ...DEFAULT_RULES, heldItem: false }
+    expect(key(DEFAULT_RULES, ID.arceus, 3)).toBe('493-3')
+    expect(key(rules, ID.arceus, 3)).toBe('493')
+    expect(key(rules, ID.rotom, 2)).toBe('479-2')
+    expect(buildSlots(dex, rules)).toHaveLength(104 - 17)
+    expect(matchRulePreset(rules)).toBeNull()
+  })
+
+  it('is off in Species, on in Forms and Completionist', () => {
+    expect(RULE_PRESETS.species.rules.heldItem).toBe(false)
+    expect(RULE_PRESETS.forms.rules.heldItem).toBe(true)
+    expect(RULE_PRESETS.completionist.rules.heldItem).toBe(true)
+  })
+
+  describe.skipIf(!realIndex)('on the real dataset', () => {
+    const real = realIndex ? new Dex(validateDexIndex(realIndex)) : dex
+    const count = (rules: DexRules): number => buildSlots(real, rules).length
+    const heldForms = (): Array<{ species: SpeciesSummary; form: FormSummary }> =>
+      real.speciesList.flatMap((species) =>
+        species.forms.filter((form) => form !== species.forms[0] && isFormSlotted(species, form, only('heldItem'))).map((form) => ({ species, form }))
+      )
+
+    it('covers exactly the 44 forms of the seven species', () => {
+      const forms = heldForms()
+      expect(forms).toHaveLength(44)
+      expect(forms.every(({ form }) => form.cat === 'changeable')).toBe(true)
+      const perSpecies = new Map<number, number>()
+      for (const { species } of forms) perSpecies.set(species.id, (perSpecies.get(species.id) ?? 0) + 1)
+      expect(Object.fromEntries(perSpecies)).toEqual({ 483: 1, 484: 1, 487: 1, 493: 17, 649: 4, 773: 17, 1017: 3 })
+      expect([...perSpecies.keys()].sort((a, b) => a - b)).toEqual([...HELD_ITEM_FORM_SPECIES].sort((a, b) => a - b))
+    })
+
+    it('keeps Rotom, Deoxys and Shaymin under changeable', () => {
+      for (const id of [479, 386, 492]) {
+        const species = real.species(id)!
+        const forms = species.forms.filter((form) => form.cat === 'changeable')
+        expect(forms.length, species.name).toBeGreaterThan(0)
+        for (const form of forms) {
+          expect(isFormSlotted(species, form, only('changeable')), form.full).toBe(true)
+          expect(isFormSlotted(species, form, only('heldItem')), form.full).toBe(false)
+        }
+      }
+    })
+
+    it('leaves the preset counts as they were and takes 44 slots off without the rule', () => {
+      expect(count(RULE_PRESETS.species.rules)).toBe(1025)
+      expect(count(RULE_PRESETS.forms.rules)).toBe(1365)
+      expect(count(RULE_PRESETS.completionist.rules)).toBe(1627)
+      expect(count({ ...DEFAULT_RULES, heldItem: false })).toBe(1365 - 44)
+      expect(count(only('heldItem'))).toBe(1025 + 44)
+      // The two switches are independent: together they add what each adds alone.
+      expect(count(only('changeable', 'heldItem')) - 1025).toBe(count(only('changeable')) - 1025 + 44)
+    })
   })
 })

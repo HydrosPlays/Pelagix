@@ -27,7 +27,7 @@ export const RULE_GROUPS: readonly RuleGroup[] = [
     id: 'box',
     title: 'Forms you can keep in a box',
     description: 'Switch a kind of form on and every one of them gets a slot of its own.',
-    keys: ['regional', 'genderForms', 'genderDiffs', 'cosmetic', 'changeable', 'fusion', 'event', 'partner', 'alcremieSweets']
+    keys: ['regional', 'genderForms', 'genderDiffs', 'cosmetic', 'changeable', 'heldItem', 'fusion', 'event', 'partner', 'alcremieSweets']
   },
   {
     id: 'battle',

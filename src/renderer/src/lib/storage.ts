@@ -12,8 +12,8 @@
 import type { ExportResult, PelagixApi } from '@shared/api'
 import { BALL_BY_ID } from '@shared/balls'
 import {
-  createEmptySave, DEFAULT_RULES, DEFAULT_SETTINGS, SAVE_VERSION,
-  type AppSettings, type CatchEntry, type DexRules, type EntryGender, type EntryKind, type SaveFile
+  createEmptySave, DEFAULT_RULES, DEFAULT_SETTINGS, MAX_EV, MAX_IV, PID_PATTERN, SAVE_VERSION,
+  type AppSettings, type CatchEntry, type DexRules, type EntryGender, type EntryKind, type SaveFile, type StatSpread
 } from '@shared/save-types'
 import { isIsoDate, isIsoTimestamp, toIsoDate } from './format'
 import { newId } from './id'
@@ -132,6 +132,11 @@ export function checkEntry(raw: unknown, now: string): EntryCheck {
   const nickname = text('nickname')
   const ot = text('ot')
   const notes = text('notes')
+  const pid = optional('pid', (v) => (typeof v === 'string' && PID_PATTERN.test(v) ? v : undefined))
+  const spread = (key: 'ivs' | 'evs', max: number): StatSpread | undefined =>
+    optional(key, (v) => (Array.isArray(v) && v.length === 6 && v.every((n) => isInt(n, 0, max)) ? (v.slice() as StatSpread) : undefined))
+  const ivs = spread('ivs', MAX_IV)
+  const evs = spread('evs', MAX_EV)
   // Compared, never shown: kept exactly as written or not at all.
   const fingerprint = optional('fingerprint', (v) => (typeof v === 'string' && v !== '' && v.length <= FINGERPRINT_LIMIT ? v : undefined))
 
@@ -156,6 +161,9 @@ export function checkEntry(raw: unknown, now: string): EntryCheck {
     ...(nickname !== undefined && { nickname }),
     ...(ot !== undefined && { ot }),
     ...(notes !== undefined && { notes }),
+    ...(pid !== undefined && { pid }),
+    ...(ivs !== undefined && { ivs }),
+    ...(evs !== undefined && { evs }),
     ...(fingerprint !== undefined && { fingerprint }),
     createdAt,
     updatedAt
@@ -170,7 +178,11 @@ export function sanitizeEntry(raw: unknown, now: string = new Date().toISOString
 
 // ---------------------------------------------------------------- settings
 
-/** Rules with every missing or non-boolean flag replaced by its default. */
+/**
+ * Rules with every missing or non-boolean flag replaced by its default. `heldItem` was split off
+ * `changeable` after the first saves were written: where it is missing it takes the value the save
+ * has for `changeable`, so a Living Dex keeps its size when such a save is read.
+ */
 export function sanitizeRules(raw: unknown): DexRules {
   const rules: DexRules = { ...DEFAULT_RULES }
   if (isObject(raw)) {
@@ -178,6 +190,7 @@ export function sanitizeRules(raw: unknown): DexRules {
       const v = raw[key]
       if (typeof v === 'boolean') rules[key] = v
     }
+    if (typeof raw.heldItem !== 'boolean') rules.heldItem = rules.changeable
   }
   return rules
 }

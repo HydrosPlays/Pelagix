@@ -22,6 +22,12 @@ export type EntryInput = Omit<CatchEntry, 'id' | 'createdAt' | 'updatedAt'>
 /** Fields to change on an entry. A key set to `undefined` clears that optional field. */
 export type EntryPatch = Partial<EntryInput>
 
+/** Values to add to one existing entry. */
+export interface EntryCompletion {
+  id: string
+  patch: EntryPatch
+}
+
 export interface MergeResult {
   added: number
   /** Entries left out because their id already exists or they were invalid. */
@@ -59,6 +65,8 @@ export interface SaveState {
   replaceSave(save: SaveFile): void
   /** Adds entries whose id is not present yet (import "merge", undo of a delete). */
   mergeEntries(entries: readonly CatchEntry[]): MergeResult
+  /** Changes several entries in one step; unknown ids and changes that would make an entry invalid are skipped. Returns how many changed. */
+  patchEntries(changes: readonly EntryCompletion[]): number
   /** Deletes all entries and achievements; settings too unless `keepSettings`. */
   resetAll(options?: { keepSettings?: boolean }): void
   /** Writes pending changes now. Resolves true when everything is on disk, false when the write failed. */
@@ -224,7 +232,7 @@ export function createSaveStore(options: SaveStoreOptions = {}) {
           if (!old) return null
           const stamp = now()
           // The copy is another Pokémon: it does not stand for the one that was read from a game save.
-          const { fingerprint: _fingerprint, ...rest } = old
+          const { fingerprint: _fingerprint, pid: _pid, ivs: _ivs, evs: _evs, ...rest } = old
           const copy: CatchEntry = { ...rest, id: newId(), createdAt: stamp, updatedAt: stamp }
           commit({ ...save, entries: [...save.entries, copy] }, stamp)
           return copy
@@ -285,6 +293,25 @@ export function createSaveStore(options: SaveStoreOptions = {}) {
           }
           if (added.length > 0) commit({ ...save, entries: [...save.entries, ...added] }, stamp)
           return { added: added.length, skipped: incoming.length - added.length }
+        },
+
+        patchEntries(changes) {
+          requireReady('patchEntries')
+          const save = get().save
+          const stamp = now()
+          const entries = save.entries.slice()
+          let changed = 0
+          for (const { id, patch } of changes) {
+            const index = entries.findIndex((e) => e.id === id)
+            const old = entries[index]
+            if (!old) continue
+            const { entry } = checkEntry({ ...old, ...patch, id: old.id, createdAt: old.createdAt, updatedAt: stamp }, stamp)
+            if (!entry) continue
+            entries[index] = entry
+            changed++
+          }
+          if (changed > 0) commit({ ...save, entries }, stamp)
+          return changed
         },
 
         resetAll(resetOptions) {

@@ -227,3 +227,21 @@ export function errorMessage(err: unknown, fallback = 'Something went wrong.'): 
   const text = raw.replace(IPC_PREFIX, '').trim()
   return text === '' ? fallback : text
 }
+
+export interface EntryValueLine {
+  label: 'PID' | 'IVs' | 'EVs'
+  text: string
+  /** What the line holds, spelled out. */
+  title: string
+}
+
+const STAT_ORDER = 'HP / Attack / Defense / Sp. Atk / Sp. Def / Speed'
+
+/** An entry's PID, IVs and EVs as short lines ("31 / 31 / 31 / 31 / 31 / 31"); only the ones it has. */
+export function entryValues(entry: { pid?: string; ivs?: readonly number[]; evs?: readonly number[] }): EntryValueLine[] {
+  const lines: EntryValueLine[] = []
+  if (entry.pid !== undefined) lines.push({ label: 'PID', text: entry.pid, title: `PID ${entry.pid}` })
+  if (entry.ivs !== undefined) lines.push({ label: 'IVs', text: entry.ivs.join(' / '), title: `IVs: ${STAT_ORDER}` })
+  if (entry.evs !== undefined) lines.push({ label: 'EVs', text: entry.evs.join(' / '), title: `EVs: ${STAT_ORDER}` })
+  return lines
+}

@@ -153,6 +153,19 @@ describe('parseSave: valid and partial saves', () => {
     expect(sanitizeRules(null)).not.toBe(DEFAULT_RULES)
   })
 
+  it('gives a save from before the held-item rule the value it has for changeable', () => {
+    const { heldItem: _split, ...older } = DEFAULT_RULES
+    expect(sanitizeRules({ ...older, changeable: true }).heldItem).toBe(true)
+    expect(sanitizeRules({ ...older, changeable: false }).heldItem).toBe(false)
+    expect(sanitizeRules({ ...older, changeable: false, heldItem: 'yes' }).heldItem).toBe(false)
+    // A save that already has the rule keeps its value, whatever changeable says.
+    expect(sanitizeRules({ ...older, changeable: false, heldItem: true }).heldItem).toBe(true)
+    expect(sanitizeRules({ ...older, changeable: true, heldItem: false }).heldItem).toBe(false)
+    const save = parseSave({ version: 1, entries: [], settings: { rules: { ...older, changeable: false } } }, NOW)
+    expect(save.settings.rules).toEqual({ ...DEFAULT_RULES, changeable: false, heldItem: false })
+    expect(save.version).toBe(SAVE_VERSION)
+  })
+
   it('keeps achievements, repairing bad timestamps and dropping bad ids', () => {
     const save = parseSave({ version: 1, entries: [], updatedAt: T2, achievements: { ok: T1, stale: 'last week', '': T1, numeric: 5 } }, NOW)
     expect(save.achievements).toEqual({ ok: T1, stale: T2, numeric: T2 })
@@ -482,5 +495,44 @@ describe('exportFileName', () => {
   it('matches the main process: pelagix-save-YYYY-MM-DD.json in local time', () => {
     expect(exportFileName(new Date(2026, 9, 9, 23, 59))).toBe('pelagix-save-2026-10-09.json')
     expect(exportFileName(new Date(2026, 0, 5))).toBe('pelagix-save-2026-01-05.json')
+  })
+})
+
+describe('PID, IVs and EVs of an entry', () => {
+  const base = { id: 'v1', species: 25, form: 0, shiny: false, game: 'red', kind: 'wild', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }
+  const NOW = '2026-02-02T00:00:00.000Z'
+
+  it('keeps valid values, in the order of the interface', () => {
+    const raw = { ...base, fingerprint: '44:1:2', evs: [252, 0, 0, 4, 0, 252], ivs: [31, 31, 31, 0, 31, 31], pid: '0000BEEF' }
+    const { entry, repaired } = checkEntry(raw, NOW)
+    expect(repaired).toBe(false)
+    expect(entry).toMatchObject({ pid: '0000BEEF', ivs: [31, 31, 31, 0, 31, 31], evs: [252, 0, 0, 4, 0, 252] })
+    expect(Object.keys(entry!).slice(-6)).toEqual(['pid', 'ivs', 'evs', 'fingerprint', 'createdAt', 'updatedAt'])
+    expect(entry!.ivs).not.toBe(raw.ivs)
+  })
+
+  it('leaves them out of an entry that has none', () => {
+    const { entry, repaired } = checkEntry(base, NOW)
+    expect(repaired).toBe(false)
+    for (const key of ['pid', 'ivs', 'evs']) expect(entry).not.toHaveProperty(key)
+  })
+
+  it.each([
+    ['pid', 'beef'], ['pid', '0000beef'], ['pid', '0000BEEF0'], ['pid', 'GGGGGGGG'], ['pid', 48879], ['pid', ''],
+    ['ivs', [31, 31, 31, 31, 31]], ['ivs', [31, 31, 31, 31, 31, 32]], ['ivs', [31, 31, 31, 31, 31, -1]], ['ivs', [31, 31, 31, 31, 31, '31']], ['ivs', '31'], ['ivs', { 0: 1, length: 6 }],
+    ['evs', [0, 0, 0, 0, 0, 256]], ['evs', [0, 0, 0, 0, 0, 1.5]], ['evs', [0, 0, 0, 0, 0, 0, 0]], ['evs', []]
+  ])('drops an invalid %s (%j) instead of repairing it into something else', (key, bad) => {
+    const { entry, repaired } = checkEntry({ ...base, pid: '0000BEEF', ivs: [1, 2, 3, 4, 5, 6], evs: [6, 5, 4, 3, 2, 1], [key]: bad }, NOW)
+    expect(repaired).toBe(true)
+    expect(entry).not.toHaveProperty(key)
+    expect(Object.keys(entry!).filter((k) => ['pid', 'ivs', 'evs'].includes(k))).toHaveLength(2)
+  })
+
+  it('carries them through a whole save, out and in again', () => {
+    const entry = { ...base, pid: '0000BEEF', ivs: [31, 31, 31, 0, 31, 31], evs: [252, 0, 0, 4, 0, 252] }
+    const first = parseSaveReport({ version: 1, entries: [entry], settings: {}, achievements: {}, createdAt: NOW, updatedAt: NOW }, NOW)
+    const again = parseSaveReport(JSON.parse(JSON.stringify(first.save)), NOW)
+    expect(again.save.entries[0]).toEqual(entry)
+    expect(again.save.version).toBe(1)
   })
 })

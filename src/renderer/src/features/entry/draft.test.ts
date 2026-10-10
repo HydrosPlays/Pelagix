@@ -19,11 +19,14 @@ import {
   draftToPreview,
   genderChoices,
   hasErrors,
+  hasValues,
   levelHint,
   levelOutside,
   locationOptions,
   matchSuggestion,
   methodOptions,
+  parsePid,
+  parseSpread,
   pickForm,
   sameDraft,
   settleDraft,
@@ -348,5 +351,61 @@ describe('hints', () => {
     expect(levelOutside(rod, 60)).toBe(false)
     expect(levelOutside(rod, null)).toBe(false)
     expect(levelOutside(find('static||Route 11'), 1)).toBe(false)
+  })
+})
+
+describe('PID, IVs and EVs in the editor', () => {
+  const options = { today: '2026-10-09' }
+  const NONE = [null, null, null, null, null, null]
+  const base = (): Draft => ({ ...draftFromPreset(dex, { species: ID.pikachu, form: 0 }, DEFAULTS), game: 'red' })
+
+  it('stores a PID padded to 8 digits, upper case', () => {
+    expect(parsePid('')).toBeUndefined()
+    expect(parsePid('   ')).toBeUndefined()
+    expect(parsePid('beef')).toBe('0000BEEF')
+    expect(parsePid(' 1a2B3c4D ')).toBe('1A2B3C4D')
+    expect(parsePid('0')).toBe('00000000')
+    for (const bad of ['123456789', 'xyz', '0x1F', '12 34', '-1']) expect(parsePid(bad)).toBeNull()
+  })
+
+  it('takes six values or none', () => {
+    expect(parseSpread(NONE, 31)).toBeUndefined()
+    expect(parseSpread([31, 0, 31, 0, 31, 0], 31)).toEqual([31, 0, 31, 0, 31, 0])
+    expect(parseSpread([31, null, 31, 0, 31, 0], 31)).toBeNull()
+    expect(parseSpread([31, 32, 31, 0, 31, 0], 31)).toBeNull()
+    expect(parseSpread([31, 1.5, 31, 0, 31, 0], 31)).toBeNull()
+    expect(parseSpread([31, -1, 31, 0, 31, 0], 31)).toBeNull()
+    expect(parseSpread([255, 0, 0, 0, 0, 0], 255)).toEqual([255, 0, 0, 0, 0, 0])
+    expect(parseSpread([], 31)).toBeUndefined()
+  })
+
+  it('starts empty, and reads an entry back exactly', () => {
+    const fresh = base()
+    expect(fresh).toMatchObject({ pid: '', ivs: NONE, evs: NONE })
+    expect(hasValues(fresh)).toBe(false)
+    expect(hasErrors(validateDraft(dex, fresh, options))).toBe(false)
+    const input = draftToInput(fresh)
+    for (const key of ['pid', 'ivs', 'evs']) expect(input).not.toHaveProperty(key)
+
+    const entry = makeEntry(ID.pikachu, 0, { game: 'red', pid: '0000BEEF', ivs: [31, 31, 31, 31, 31, 0], evs: [0, 0, 0, 0, 0, 0] })
+    const draft = draftFromEntry(entry)
+    expect(hasValues(draft)).toBe(true)
+    expect(draftToPatch(draft)).toMatchObject({ pid: '0000BEEF', ivs: [31, 31, 31, 31, 31, 0], evs: [0, 0, 0, 0, 0, 0] })
+    expect(sameDraft(draft, draftFromEntry(entry))).toBe(true)
+  })
+
+  it('says plainly what is wrong', () => {
+    expect(validateDraft(dex, { ...base(), pid: 'nope' }, options)).toEqual({ pid: 'Use 1 to 8 hex digits (0–9, A–F).' })
+    expect(validateDraft(dex, { ...base(), ivs: [31, null, null, null, null, null] }, options)).toEqual({ ivs: 'Fill in all six IVs, or leave all six empty.' })
+    expect(validateDraft(dex, { ...base(), evs: [0, 0, 0, 0, 0, 300] }, options)).toEqual({ evs: 'Use whole numbers from 0 to 255 for the EVs.' })
+    expect(validateDraft(dex, { ...base(), pid: 'a', ivs: [0, 0, 0, 0, 0, 0], evs: [255, 255, 255, 255, 255, 255] }, options)).toEqual({})
+  })
+
+  it('clears a value with a patch, and does not carry any to another game', () => {
+    const draft = { ...base(), pid: 'beef', ivs: [1, 2, 3, 4, 5, 6] }
+    expect(draftToInput(draft)).toMatchObject({ pid: '0000BEEF', ivs: [1, 2, 3, 4, 5, 6] })
+    const cleared = draftToPatch({ ...draft, pid: '', ivs: NONE })
+    expect('pid' in cleared && cleared.pid === undefined && 'ivs' in cleared && cleared.ivs === undefined).toBe(true)
+    expect(draftForAnotherGame(dex, draft, DEFAULTS)).toMatchObject({ pid: '', ivs: NONE, evs: NONE })
   })
 })

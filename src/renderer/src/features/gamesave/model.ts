@@ -12,7 +12,7 @@ import { collectionFor, slotKeyFor } from '@renderer/domain/slots'
 import { draftToInput, settleDraft, TEXT_LIMITS, type Draft } from '@renderer/features/entry/draft'
 import type { Dex } from '@renderer/lib/data'
 import { isIsoDate, kindLabel } from '@renderer/lib/format'
-import type { EntryInput } from '@renderer/store/save'
+import type { EntryCompletion, EntryInput, EntryPatch } from '@renderer/store/save'
 
 // ---------------------------------------------------------------- wording
 
@@ -145,9 +145,33 @@ export function entryFromPokemon(dex: Dex, pokemon: GameSavePokemon, gameId: str
     date: isIsoDate(pokemon.metDate) && pokemon.metDate <= today ? pokemon.metDate : '',
     nickname: (pokemon.nickname ?? '').trim().slice(0, TEXT_LIMITS.nickname),
     ot: pokemon.ot.trim().slice(0, TEXT_LIMITS.ot),
-    notes: ''
+    notes: '',
+    // A value the reader left open, or one that is not what it should be, is left out by the draft's own rules.
+    pid: typeof pokemon.pid === 'string' ? pokemon.pid : '',
+    ivs: Array.isArray(pokemon.ivs) ? pokemon.ivs : [],
+    evs: Array.isArray(pokemon.evs) ? pokemon.evs : []
   }
   return { ...draftToInput(settleDraft(dex, draft)), fingerprint: pokemon.fingerprint }
+}
+
+/**
+ * The PID, IVs and EVs that `entry` (a Pokémon as it would be imported now) has and `existing`
+ * (the entry made from it earlier) lacks. Nothing `existing` already has is touched. Null when
+ * there is nothing to add.
+ */
+export function missingValues(entry: Pick<EntryInput, 'pid' | 'ivs' | 'evs'>, existing: Pick<CatchEntry, 'pid' | 'ivs' | 'evs'>): EntryPatch | null {
+  const patch: EntryPatch = {}
+  if (existing.pid === undefined && entry.pid !== undefined) patch.pid = entry.pid
+  if (existing.ivs === undefined && entry.ivs !== undefined) patch.ivs = entry.ivs
+  if (existing.evs === undefined && entry.evs !== undefined) patch.evs = entry.evs
+  return Object.keys(patch).length > 0 ? patch : null
+}
+
+/** The first entry made from each fingerprint. */
+function byFingerprint(existing: readonly CatchEntry[]): Map<string, CatchEntry> {
+  const known = new Map<string, CatchEntry>()
+  for (const e of existing) if (e.fingerprint !== undefined && !known.has(e.fingerprint)) known.set(e.fingerprint, e)
+  return known
 }
 
 // ---------------------------------------------------------------- preview
@@ -178,11 +202,13 @@ export interface PreviewRow {
   slotKey?: string
   /** A `new` row that is the first in this save to fill a slot that is still empty. */
   fills: boolean
+  /** An `imported` row whose earlier entry lacks a PID, IVs or EVs that this save has: confirming adds them to it. */
+  completes?: boolean
 }
 
 export interface Preview {
   rows: PreviewRow[]
-  counts: Record<RowStatus, number> & { fills: number }
+  counts: Record<RowStatus, number> & { fills: number; completes: number }
   /**
    * Games to ask the user about: some Pokémon only say which pair of games they are from (the
    * Game Boy saves do not record more). Empty when nothing needs asking.
@@ -204,12 +230,13 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
  * A row that cannot be made sense of becomes `unsupported`; nothing in here throws.
  */
 export function buildPreview(dex: Dex, contents: GameSaveContents, existing: readonly CatchEntry[], rules: DexRules, options: PreviewOptions): Preview {
-  const known = new Set<string>()
-  for (const e of existing) if (e.fingerprint !== undefined) known.add(e.fingerprint)
+  const known = byFingerprint(existing)
+  /** Earlier entries a row of this preview already completes: one entry is completed once. */
+  const completed = new Set<string>()
   const collection = collectionFor(dex, existing, rules)
   const claimed = new Set<string>()
   const asked = new Set<GameDef>()
-  const counts = { new: 0, imported: 0, egg: 0, unsupported: 0, fills: 0 }
+  const counts = { new: 0, imported: 0, egg: 0, unsupported: 0, fills: 0, completes: 0 }
   const list: readonly unknown[] = Array.isArray(contents?.pokemon) ? contents.pokemon : []
 
   const rows = list.map((raw, index): PreviewRow => {
@@ -235,7 +262,12 @@ export function buildPreview(dex: Dex, contents: GameSaveContents, existing: rea
 
       const entry = entryFromPokemon(dex, pokemon, game.id, options.today)
       const slotKey = slotKeyFor(entry, dex, rules) ?? undefined
-      if (known.has(pokemon.fingerprint)) return { index, pokemon, status: 'imported', name, game, entry, slotKey, fills: false }
+      const earlier = known.get(pokemon.fingerprint)
+      if (earlier) {
+        const completes = !completed.has(earlier.id) && missingValues(entry, earlier) !== null
+        if (completes) completed.add(earlier.id)
+        return { index, pokemon, status: 'imported', name, game, entry, slotKey, fills: false, ...(completes && { completes }) }
+      }
       const fills = slotKey !== undefined && !collection.caught.has(slotKey) && !claimed.has(slotKey)
       if (fills) claimed.add(slotKey)
       return { index, pokemon, status: 'new', name, game, entry, slotKey, fills }
@@ -247,6 +279,7 @@ export function buildPreview(dex: Dex, contents: GameSaveContents, existing: rea
   for (const row of rows) {
     counts[row.status]++
     if (row.fills) counts.fills++
+    if (row.completes === true) counts.completes++
   }
   return { rows, counts, askGames: GAMES.filter((g) => asked.has(g)) }
 }
@@ -277,6 +310,27 @@ export function entriesToImport(rows: readonly PreviewRow[], selected: ReadonlyS
   for (const row of rows) {
     if (row.status !== 'new' || !row.entry || !selected.has(row.index) || known.has(row.pokemon.fingerprint)) continue
     out.push({ ...row.entry, id: makeId(), createdAt: now, updatedAt: now })
+  }
+  return out
+}
+
+/**
+ * What confirming adds to earlier entries: for every `imported` row, the PID, IVs and EVs its
+ * entry in `existing` lacks. Worked out against `existing` as it is now, so a stale preview
+ * overwrites nothing; each entry is completed at most once.
+ */
+export function entriesToComplete(rows: readonly PreviewRow[], existing: readonly CatchEntry[]): EntryCompletion[] {
+  const known = byFingerprint(existing)
+  const seen = new Set<string>()
+  const out: EntryCompletion[] = []
+  for (const row of rows) {
+    if (row.status !== 'imported' || !row.entry) continue
+    const earlier = known.get(row.pokemon.fingerprint)
+    if (!earlier || seen.has(earlier.id)) continue
+    const patch = missingValues(row.entry, earlier)
+    if (patch === null) continue
+    seen.add(earlier.id)
+    out.push({ id: earlier.id, patch })
   }
   return out
 }

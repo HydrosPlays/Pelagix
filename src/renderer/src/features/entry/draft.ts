@@ -6,7 +6,7 @@
  */
 
 import type { EncounterRow, FormSummary, SpeciesDetail, SpeciesSummary } from '@shared/dex-types'
-import type { CatchEntry, EntryGender, EntryKind } from '@shared/save-types'
+import { MAX_EV, MAX_IV, type CatchEntry, type EntryGender, type EntryKind, type StatSpread } from '@shared/save-types'
 import { rowGender, rowLocation, type GameSources } from '@renderer/domain/encounters'
 import type { Dex } from '@renderer/lib/data'
 import { isIsoDate, kindLabel, levelRange } from '@renderer/lib/format'
@@ -37,7 +37,19 @@ export interface Draft {
   nickname: string
   ot: string
   notes: string
+  /** As typed: 1 to 8 hex digits, or "". */
+  pid: string
+  /** Six boxes in the order of `STAT_LABELS`; null is an empty box. */
+  ivs: StatBoxes
+  evs: StatBoxes
 }
+
+export type StatBoxes = readonly (number | null)[]
+
+/** The six stats in the order IVs and EVs are stored in. */
+export const STAT_LABELS = ['HP', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed'] as const
+
+const NO_STATS: StatBoxes = [null, null, null, null, null, null]
 
 export interface DraftDefaults {
   trainerName: string
@@ -127,7 +139,10 @@ export function draftFromPreset(dex: Dex, preset: EntryPreset, defaults: DraftDe
     date: preset.date !== undefined && isIsoDate(preset.date) ? preset.date : defaults.today,
     nickname: preset.nickname ?? '',
     ot: preset.ot ?? defaults.trainerName,
-    notes: preset.notes ?? ''
+    notes: preset.notes ?? '',
+    pid: '',
+    ivs: NO_STATS,
+    evs: NO_STATS
   }
   return settleDraft(dex, draft)
 }
@@ -152,7 +167,10 @@ export function draftFromEntry(entry: CatchEntry): Draft {
     date: entry.date ?? '',
     nickname: entry.nickname ?? '',
     ot: entry.ot ?? '',
-    notes: entry.notes ?? ''
+    notes: entry.notes ?? '',
+    pid: entry.pid ?? '',
+    ivs: entry.ivs ?? NO_STATS,
+    evs: entry.evs ?? NO_STATS
   }
 }
 
@@ -174,7 +192,10 @@ export function draftForAnotherGame(dex: Dex, draft: Draft, defaults: DraftDefau
     date: defaults.today,
     nickname: '',
     ot: defaults.trainerName,
-    notes: ''
+    notes: '',
+    pid: '',
+    ivs: NO_STATS,
+    evs: NO_STATS
   })
 }
 
@@ -185,6 +206,31 @@ export function sameDraft(a: Draft, b: Draft): boolean {
 const text = (value: string): string | undefined => {
   const trimmed = value.trim()
   return trimmed === '' ? undefined : trimmed
+}
+
+/**
+ * A typed PID as it is stored: 8 hex digits, upper case, padded with zeros on the left.
+ * `undefined` for an empty box, null for anything that is not 1 to 8 hex digits.
+ */
+export function parsePid(typed: string): string | undefined | null {
+  const trimmed = typeof typed === 'string' ? typed.trim() : ''
+  if (trimmed === '') return undefined
+  return /^[0-9a-fA-F]{1,8}$/.test(trimmed) ? trimmed.toUpperCase().padStart(8, '0') : null
+}
+
+/**
+ * Six boxes as a stored spread: `undefined` when all are empty (or there are no six boxes), null
+ * when only some are filled or a value is not a whole number from 0 to `max`.
+ */
+export function parseSpread(boxes: StatBoxes, max: number): StatSpread | undefined | null {
+  if (!Array.isArray(boxes) || boxes.length !== 6) return undefined
+  if (boxes.every((v) => v === null)) return undefined
+  return boxes.every((v) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= max) ? (boxes.slice() as StatSpread) : null
+}
+
+/** The draft has a PID, an IV or an EV typed in. */
+export function hasValues(draft: Pick<Draft, 'pid' | 'ivs' | 'evs'>): boolean {
+  return draft.pid.trim() !== '' || draft.ivs.some((v) => v !== null) || draft.evs.some((v) => v !== null)
 }
 
 /** The draft as a new entry: unset fields are left out. */
@@ -215,7 +261,10 @@ export function draftToPatch(draft: Draft): EntryPatch & Pick<EntryInput, 'speci
     date: text(draft.date),
     nickname: text(draft.nickname),
     ot: text(draft.ot),
-    notes: text(draft.notes)
+    notes: text(draft.notes),
+    pid: parsePid(draft.pid) ?? undefined,
+    ivs: parseSpread(draft.ivs, MAX_IV) ?? undefined,
+    evs: parseSpread(draft.evs, MAX_EV) ?? undefined
   }
 }
 
@@ -232,6 +281,9 @@ export interface DraftErrors {
   game?: string
   level?: string
   date?: string
+  pid?: string
+  ivs?: string
+  evs?: string
 }
 
 export interface ValidateOptions {
@@ -240,7 +292,12 @@ export interface ValidateOptions {
   original?: Pick<CatchEntry, 'species' | 'form' | 'game'>
 }
 
-/** Species, form and game are required; a level or date that is filled in has to make sense. */
+const spreadError = (boxes: StatBoxes, max: number, name: string): string | undefined => {
+  if (parseSpread(boxes, max) !== null) return undefined
+  return boxes.some((v) => v === null) ? `Fill in all six ${name}, or leave all six empty.` : `Use whole numbers from 0 to ${max} for the ${name}.`
+}
+
+/** Species, form and game are required; a level, date, PID, IV or EV that is filled in has to make sense. */
 export function validateDraft(dex: Dex, draft: Draft, options: ValidateOptions): DraftErrors {
   const errors: DraftErrors = {}
   const { original } = options
@@ -255,6 +312,11 @@ export function validateDraft(dex: Dex, draft: Draft, options: ValidateOptions):
     if (!isIsoDate(draft.date)) errors.date = 'Enter a real date.'
     else if (draft.date > options.today) errors.date = 'The date cannot be in the future.'
   }
+  if (parsePid(draft.pid) === null) errors.pid = 'Use 1 to 8 hex digits (0–9, A–F).'
+  const ivs = spreadError(draft.ivs, MAX_IV, 'IVs')
+  if (ivs !== undefined) errors.ivs = ivs
+  const evs = spreadError(draft.evs, MAX_EV, 'EVs')
+  if (evs !== undefined) errors.evs = evs
   return errors
 }
 

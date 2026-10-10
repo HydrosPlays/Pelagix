@@ -344,6 +344,30 @@ describe('entries', () => {
     expect(get().duplicateEntry(a.id)).not.toHaveProperty('fingerprint')
   })
 
+  it('keeps PID, IVs and EVs through an edit and a merge, but not on a duplicate', async () => {
+    const { get } = await ready()
+    get().mergeEntries([{ ...pikachu, id: 'gs-2', pid: '0000CAFE', ivs: [31, 30, 29, 28, 27, 26], evs: [0, 252, 0, 0, 6, 252], createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }])
+    const edited = get().updateEntry('gs-2', { nickname: 'Volt' })
+    expect(edited).toMatchObject({ pid: '0000CAFE', ivs: [31, 30, 29, 28, 27, 26], evs: [0, 252, 0, 0, 6, 252] })
+    expect(get().updateEntry('gs-2', { pid: undefined })).not.toHaveProperty('pid')
+    const copy = get().duplicateEntry('gs-2')!
+    for (const key of ['pid', 'ivs', 'evs']) expect(copy).not.toHaveProperty(key)
+  })
+
+  it('patchEntries changes several entries in one step and skips what it cannot change', async () => {
+    const { get } = await ready()
+    const a = get().addEntry(pikachu)
+    const b = get().addEntry({ ...pikachu, ot: 'Blue' })
+    const changed = get().patchEntries([
+      { id: a.id, patch: { pid: '0000CAFE' } },
+      { id: 'nope', patch: { pid: '0000CAFE' } },
+      { id: b.id, patch: { ivs: [1, 2, 3, 4, 5, 6] } }
+    ])
+    expect(changed).toBe(2)
+    expect(get().save.entries.map((e) => [e.id, e.pid, e.ivs, e.ot])).toEqual([[a.id, '0000CAFE', undefined, a.ot], [b.id, undefined, [1, 2, 3, 4, 5, 6], 'Blue']])
+    expect(get().patchEntries([])).toBe(0)
+  })
+
   it('mergeEntries skips duplicate ids and invalid entries', async () => {
     const { get } = await ready()
     const a = get().addEntry(pikachu)

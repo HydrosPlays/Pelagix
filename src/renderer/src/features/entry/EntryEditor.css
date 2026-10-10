@@ -45,6 +45,40 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* A group that folds away: the heading carries its own button. */
+.ee-group__title--fold {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-bottom: 2px;
+}
+
+.ee-group__title--fold + .ee-grid {
+  margin-top: 0;
+}
+
+.ee-stats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+.ee-stats .ui-field__label {
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+}
+
+.ee-stats .ui-input__control {
+  min-width: 0;
+  text-align: center;
+}
+
+.ee-pid .ui-input__control {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
 .ee-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

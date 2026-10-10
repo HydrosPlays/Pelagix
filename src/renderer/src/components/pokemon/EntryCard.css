@@ -385,6 +385,52 @@
   white-space: nowrap;
 }
 
+/* PID, IVs and EVs: one short line each, only on entries that have them. */
+.pk-entry__values {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.pk-entry__values > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.pk-entry__values dt {
+  flex: none;
+  width: 28px;
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+}
+
+.pk-entry__values dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-entry__tip {
+  display: grid;
+  gap: 2px;
+}
+
+.pk-entry__tip-value {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
 .pk-entry__notes {
   display: -webkit-box;
   overflow: hidden;

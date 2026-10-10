@@ -18,6 +18,7 @@ const boxed = {
     kind: 'raid', type: 'raid', species: 290, form: 0, version: { id: 45, name: 'SH' },
     location: { id: 162, name: 'Pokémon Den' }, levelMin: 15, levelMax: 30
   },
+  pid: '5B63395C', ivs: [31, 0, 17, 31, 9, 30], evs: [252, 0, 4, 0, 0, 252],
   fingerprint: '45:217bf47d:5b63395c'
 }
 const inParty = { ...boxed, place: 'party', box: null, boxName: null, slot: 0, species: 869, formArgument: 3, nickname: 'Cream', encounter: null }
@@ -160,5 +161,35 @@ describe('readGameSave', () => {
   const built = readerPath({ packaged: false, resourcesPath: '', appPath: join(__dirname, '..', '..') })
   it.skipIf(!existsSync(built))('runs the built reader, which turns down a file that is no save', async () => {
     expect(await readGameSave(built, __filename, runReader)).toEqual({ ok: false, reason: 'not-a-save' })
+  })
+})
+
+describe('PID, IVs and EVs in the reader output', () => {
+  const read = (record: object) => parseReaderOutput(output([record]), 'a.sav')
+
+  it('passes them on as they are', () => {
+    expect(read(boxed)?.pokemon[0]).toMatchObject({ pid: '5B63395C', ivs: [31, 0, 17, 31, 9, 30], evs: [252, 0, 4, 0, 0, 252] })
+  })
+
+  it('keeps null where the game has no such value', () => {
+    expect(read({ ...boxed, pid: null, ivs: [15, 15, 15, 15, 15, 15], evs: null })?.pokemon[0]).toMatchObject({ pid: null, ivs: [15, 15, 15, 15, 15, 15], evs: null })
+  })
+
+  it.each([
+    ['a missing PID', { pid: undefined }, 'pid'],
+    ['a lower-case PID', { pid: '5b63395c' }, 'pid'],
+    ['a short PID', { pid: '5B6' }, 'pid'],
+    ['a PID that is a number', { pid: 1533229404 }, 'pid'],
+    ['five IVs', { ivs: [31, 31, 31, 31, 31] }, 'ivs'],
+    ['an IV above 31', { ivs: [31, 31, 32, 31, 31, 31] }, 'ivs'],
+    ['a negative IV', { ivs: [31, -1, 31, 31, 31, 31] }, 'ivs'],
+    ['IVs as text', { ivs: '31/31/31/31/31/31' }, 'ivs'],
+    ['an EV above 255', { evs: [0, 0, 0, 0, 0, 256] }, 'evs'],
+    ['a fractional EV', { evs: [0, 0, 0.5, 0, 0, 0] }, 'evs'],
+    ['seven EVs', { evs: [0, 0, 0, 0, 0, 0, 0] }, 'evs']
+  ] as const)('turns %s into null without dropping the Pokémon', (_what, broken, key) => {
+    const contents = read({ ...boxed, ...broken })
+    expect(contents?.dropped).toBe(0)
+    expect(contents?.pokemon[0]).toEqual({ ...boxed, [key]: null })
   })
 })

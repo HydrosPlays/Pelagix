@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <sub>Windows 10 and 11 · version 0.3.0 · GPL-3.0 · an unofficial fan project</sub>
+  <sub>Windows 10 and 11 · version 0.4.0 · GPL-3.0 · an unofficial fan project</sub>
 </p>
 
 > The screenshots on this page come from version 0.1.0 running a generated demo collection
@@ -92,7 +92,8 @@ Sword, Scarlet and Legends: Z-A mean a Pikachu from those games is already logge
 
 Press **Log** on the row you actually used. The entry editor opens with the game, the method and
 the location filled in, and with the ball, gender or level preset when the source fixes them. Add
-the rest: ball, gender, level, date, shiny, nickname, Original Trainer and notes. A preview of the
+the rest: ball, gender, level, date, shiny, nickname, Original Trainer and notes, and, if you
+want them, the PID, IVs and EVs. A preview of the
 finished entry card is shown beside the form.
 
 ![The Log a catch dialog for a Pikachu from Route 4 in Pokémon Shield: game, method and location are filled in, a Dream Ball is chosen from the balls available in Shield, gender is Female and level is 15, with a preview card on the right](docs/screenshots/06-log-entry.png)
@@ -246,7 +247,8 @@ a form whose own slot is switched off counts toward the species' base slot inste
 | Gender forms | Meowstic, Indeedee, Basculegion and Oinkologne ♂ / ♀ | On |
 | Gender differences | ♂ and ♀ of species whose genders look different | On |
 | Cosmetic forms | Unown letters, Vivillon patterns, Alcremie creams and other permanent looks | On |
-| Changeable forms | Rotom appliances, Arceus plates, Deoxys, Oricorio and other forms you can switch | On |
+| Changeable forms | Rotom appliances, Deoxys, Shaymin, Oricorio and other forms you can switch freely | On |
+| Held-item forms | Forms kept only while holding an item: Arceus plates, Silvally memories, Genesect drives, Ogerpon masks, and Origin Forme Dialga, Palkia and Giratina (44 slots) | On |
 | Fusions | Kyurem, Necrozma and Calyrex fusions | Off |
 | Event forms | Distribution-only forms such as cap Pikachu or Poké Ball Vivillon | Off |
 | Partner forms | Let's Go partner Pikachu and Eevee | Off |
@@ -260,7 +262,7 @@ Three presets set them together. With the current data they give:
 | Preset | Slots | What counts |
 | --- | --- | --- |
 | Species only | 1,025 | One slot per species. Any form fills it. |
-| Forms (default) | 1,365 | Every form you can keep in a box: regional, gender, cosmetic and changeable. |
+| Forms (default) | 1,365 | Every form you can keep in a box: regional, gender, cosmetic, changeable and held-item. |
 | Completionist | 1,627 | Everything, including Mega Evolutions, battle forms, Gigantamax and all 63 Alcremie. |
 
 Any other mix is shown as *Custom*. Changing the rules never deletes an entry; it only changes
@@ -333,7 +335,9 @@ the first catch.
   undone straight afterwards. **Import from a game save** reads a save file of a Pokémon game
   and offers the Pokémon in it as entries: you get a preview that marks each one as new, already
   imported, an egg (skipped) or not importable, and only the ones you tick are added. The save
-  file is only read, never changed, and the import can be undone straight afterwards.
+  file is only read, never changed, and the import can be undone straight afterwards. Imported
+  entries also get their PID, IVs and EVs where the game has them, and importing a save again
+  adds those to entries imported before 0.4.0.
 - **Sprite cache**: how much is stored, and a button to clear it.
 - **Updates**: your version, when it was last checked, **Check for updates**, and the switch for
   the automatic check. See [Updates](#updates).
@@ -580,7 +584,7 @@ npm install
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Starts the app in Electron with hot reload. The first run downloads the Electron binary. |
-| `npm test` | Runs the unit tests (1,587 tests in 44 files). |
+| `npm test` | Runs the unit tests (1,641 tests in 44 files). |
 | `npm run dist` | Builds the save reader, type-checks, builds, and packages the installer, the portable executable and the updater's files into `dist/`. Needs the .NET 10 SDK and the `PKHeX/` tree. Nothing is uploaded. |
 
 The datasets and the game icons are part of the repository, so nothing else has to be generated

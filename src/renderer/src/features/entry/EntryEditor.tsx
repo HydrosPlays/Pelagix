@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'wouter'
 import { GAME_BY_ID, GAMES, GENERATION_NAMES } from '@shared/games'
-import type { CatchEntry, EntryGender, EntryKind } from '@shared/save-types'
+import { MAX_EV, MAX_IV, type CatchEntry, type EntryGender, type EntryKind } from '@shared/save-types'
 import { GameIcon, GenderIcon, ShinyMark, Sprite } from '@renderer/components/pokemon'
 import { Button, Combobox, cx, DateField, Dialog, Icon, Kbd, NumberField, SegmentedControl, Select, Switch, TextArea, TextField, type SelectOption } from '@renderer/components/ui'
 import { describeEntry } from '@renderer/domain/entries'
@@ -35,6 +35,7 @@ import {
   draftToPreview,
   genderChoices,
   hasErrors,
+  hasValues,
   levelHint,
   levelOutside,
   locationOptions,
@@ -43,11 +44,13 @@ import {
   pickForm,
   sameDraft,
   settleDraft,
+  STAT_LABELS,
   TEXT_LIMITS,
   validateDraft,
   visibleForms,
   type Draft,
-  type DraftDefaults
+  type DraftDefaults,
+  type StatBoxes
 } from './draft'
 import './EntryEditor.css'
 
@@ -83,6 +86,42 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
+const STAT_SHORT = ['HP', 'Atk', 'Def', 'SpA', 'SpD', 'Spe'] as const
+
+/** Six small number boxes for one value per stat, with one message under the row. */
+function StatRow({ name, max, value, onChange, error }: { name: string; max: number; value: StatBoxes; onChange: (value: StatBoxes) => void; error?: string }) {
+  return (
+    <div className="ui-field ee-span" role="group" aria-label={name}>
+      <span className="ui-field__label">
+        {name}
+        <span className="ui-field__optional">0–{max}</span>
+      </span>
+      <div className="ee-stats">
+        {STAT_SHORT.map((short, i) => (
+          <NumberField
+            key={short}
+            size="sm"
+            steppers={false}
+            label={short}
+            aria-label={`${name}: ${STAT_LABELS[i]!}`}
+            value={value[i] ?? null}
+            onChange={(v) => onChange(STAT_SHORT.map((_, j) => (j === i ? v : (value[j] ?? null))))}
+            min={0}
+            max={max}
+            placeholder="–"
+            className={cx(error !== undefined && value[i] == null && 'is-invalid')}
+          />
+        ))}
+      </div>
+      {error !== undefined && (
+        <div className="ui-field__hint is-error" role="alert">
+          {error}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /**
  * The entry editor: logs a new catch (from a source of the Pokémon page, from a Living Dex slot,
  * or by hand) or edits a saved one, with a live preview of the entry card.
@@ -101,6 +140,8 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
   // Until the user says how they got it, a manual entry follows what the chosen game usually offers.
   const [autoKind, setAutoKind] = useState(() => request.mode === 'create' && request.preset.kind === undefined)
   const [showErrors, setShowErrors] = useState(false)
+  // PID, IVs and EVs stay folded away until asked for, unless the entry has some.
+  const [valuesOpen, setValuesOpen] = useState(() => hasValues(baseline))
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
@@ -119,7 +160,7 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
   // Set the moment a save starts, so a second press cannot log the same catch twice.
   const saving = useRef(false)
 
-  const ids = { species: `${uid}-species`, game: `${uid}-game`, method: `${uid}-method`, location: `${uid}-location`, nickname: `${uid}-nickname`, level: `${uid}-level` }
+  const ids = { species: `${uid}-species`, game: `${uid}-game`, method: `${uid}-method`, location: `${uid}-location`, nickname: `${uid}-nickname`, level: `${uid}-level`, pid: `${uid}-pid`, values: `${uid}-values` }
 
   // ---------------------------------------------------------------- what the draft refers to
 
@@ -207,7 +248,8 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
     if (hasErrors(errors)) {
       setShowErrors(true)
       shake(formRef.current)
-      const firstInvalid = errors.species ? ids.species : errors.game ? ids.game : errors.level ? ids.level : undefined
+      if (errors.pid ?? errors.ivs ?? errors.evs) setValuesOpen(true)
+      const firstInvalid = errors.species ? ids.species : errors.game ? ids.game : errors.level ? ids.level : errors.pid ? ids.pid : undefined
       if (firstInvalid) document.getElementById(firstInvalid)?.focus()
       return
     }
@@ -645,6 +687,22 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
               <TextField label="Original Trainer" optional value={draft.ot} onChange={(ot) => patch({ ot })} maxLength={TEXT_LIMITS.ot} icon="user" placeholder="OT name" />
               <TextArea label="Notes" optional value={draft.notes} onChange={(notes) => patch({ notes })} maxLength={TEXT_LIMITS.notes} counter={draft.notes.length > TEXT_LIMITS.notes - 400} rows={3} placeholder="Anything worth remembering about this catch" wrapperClassName="ee-span" />
             </Group>
+
+            <fieldset className="ee-group">
+              <legend className="ee-group__title ee-group__title--fold u-eyebrow">
+                <span>PID, IVs and EVs</span>
+                <Button size="sm" variant="ghost" icon={valuesOpen ? 'chevron-up' : 'chevron-down'} aria-expanded={valuesOpen} aria-controls={ids.values} onClick={() => setValuesOpen(!valuesOpen)}>
+                  {valuesOpen ? 'Hide' : hasValues(draft) ? 'Show' : 'Add'}
+                </Button>
+              </legend>
+              {valuesOpen && (
+                <div className="ee-grid" id={ids.values}>
+                  <TextField id={ids.pid} label="PID" optional value={draft.pid} onChange={(pid) => patch({ pid })} maxLength={8} placeholder="8 hex digits" className="ee-pid" error={errors.pid} hint="The personality value, as PKHeX shows it." wrapperClassName="ee-span" />
+                  <StatRow name="IVs" max={MAX_IV} value={draft.ivs} onChange={(ivs) => patch({ ivs })} error={shownErrors.ivs} />
+                  <StatRow name="EVs" max={MAX_EV} value={draft.evs} onChange={(evs) => patch({ evs })} error={shownErrors.evs} />
+                </div>
+              )}
+            </fieldset>
           </div>
 
           <aside className="ee-side" aria-label="Preview of the entry">
@@ -658,7 +716,7 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
             {showErrors && hasErrors(errors) && (
               <p className="ee-warning" role="alert">
                 <Icon name="warning" size={16} />
-                <span>{errors.species ?? errors.form ?? errors.game ?? errors.level ?? errors.date}</span>
+                <span>{errors.species ?? errors.form ?? errors.game ?? errors.level ?? errors.date ?? errors.pid ?? errors.ivs ?? errors.evs}</span>
               </p>
             )}
           </aside>

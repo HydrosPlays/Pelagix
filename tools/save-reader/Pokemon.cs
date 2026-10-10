@@ -55,6 +55,7 @@ public static class Pokemon
             w.WriteNull("nickname");
         w.WriteString("ot", pk.OriginalTrainerName);
         w.WriteBoolean("fateful", pk.FatefulEncounter);
+        WriteValues(w, pk);
 
         IEncounterable? match = null;
         var legal = false;
@@ -72,6 +73,46 @@ public static class Pokemon
         WriteEncounter(w, pk, match);
         w.WriteString("fingerprint", Fingerprint(pk));
         w.WriteEndObject();
+    }
+
+    /// <summary>
+    /// PID, IVs and EVs, each null where the format has no such value. IVs and EVs are in the order HP, Attack,
+    /// Defense, Sp. Atk, Sp. Def, Speed, read through the named properties: PKHeX's own arrays put Speed fourth.
+    ///
+    /// Generation 1 and 2 formats have no PID, and their IVs are the DVs (0 to 15, Special for both Sp. Atk and
+    /// Sp. Def, HP derived from the other four). No EVs where the game trains stats on another scale: Game Boy
+    /// stat experience (0 to 65535), Let's Go awakening values, Legends: Arceus effort levels. Legends: Z-A keeps
+    /// ordinary EVs.
+    /// </summary>
+    private static void WriteValues(Utf8JsonWriter w, PKM pk)
+    {
+        if (pk is GBPKM)
+            w.WriteNull("pid");
+        else
+            w.WriteString("pid", pk.PID.ToString("X8", CultureInfo.InvariantCulture));
+
+        w.WriteStartArray("ivs");
+        w.WriteNumberValue(pk.IV_HP);
+        w.WriteNumberValue(pk.IV_ATK);
+        w.WriteNumberValue(pk.IV_DEF);
+        w.WriteNumberValue(pk.IV_SPA);
+        w.WriteNumberValue(pk.IV_SPD);
+        w.WriteNumberValue(pk.IV_SPE);
+        w.WriteEndArray();
+
+        if (pk is GBPKM or IAwakened or IGanbaru)
+        {
+            w.WriteNull("evs");
+            return;
+        }
+        w.WriteStartArray("evs");
+        w.WriteNumberValue(pk.EV_HP);
+        w.WriteNumberValue(pk.EV_ATK);
+        w.WriteNumberValue(pk.EV_DEF);
+        w.WriteNumberValue(pk.EV_SPA);
+        w.WriteNumberValue(pk.EV_SPD);
+        w.WriteNumberValue(pk.EV_SPE);
+        w.WriteEndArray();
     }
 
     public static void WriteVersion(Utf8JsonWriter w, string property, GameVersion version)

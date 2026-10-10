@@ -156,7 +156,7 @@ is loaded or imported, and reports what it had to drop or repair.
 npm test
 ```
 
-Vitest, in a Node environment: 1,587 tests in 44 files at the time of writing. They cover the
+Vitest, in a Node environment: 1,641 tests in 44 files at the time of writing. They cover the
 logic: slot rules, progress, encounter handling, achievements (including that every one of them
 can be earned on the real datasets), search, the entry editor's draft handling, the page models,
 the save store and the sprite protocol's request parsing.

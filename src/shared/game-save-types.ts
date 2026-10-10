@@ -8,7 +8,7 @@
  */
 
 import type { EncounterKind } from './dex-types'
-import type { EntryGender } from './save-types'
+import type { EntryGender, StatSpread } from './save-types'
 
 /** A PKHeX `GameVersion`: its number and its enum name ("SW", "HG", "RBY" ...). */
 export interface PkhexVersion {
@@ -92,6 +92,15 @@ export interface GameSavePokemon {
   legal: boolean
   /** Null when PKHeX could not match an encounter. */
   encounter: GameSaveEncounter | null
+  /** Personality value, 8 uppercase hex digits; null when the format has none (Generation 1 and 2). */
+  pid: string | null
+  /** 0 to 31 each; in the Game Boy formats the DVs (0 to 15, Special for both Sp. Atk and Sp. Def). Null when unreadable. */
+  ivs: StatSpread | null
+  /**
+   * 0 to 255 each; null where the game trains stats on another scale (Game Boy stat experience,
+   * Let's Go awakening values, Legends: Arceus effort levels).
+   */
+  evs: StatSpread | null
   /**
    * The same for the same Pokémon wherever it turns up: in this save again, or later in another
    * game it was moved to. Opaque; only ever compare it. tools/save-reader/Pokemon.cs says what

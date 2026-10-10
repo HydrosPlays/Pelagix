@@ -92,7 +92,11 @@ export const RULE_INFO: Readonly<Record<keyof DexRules, { label: string; descrip
   genderForms: { label: 'Gender forms', description: 'Meowstic, Indeedee, Basculegion and Oinkologne ♂ / ♀ are separate slots.' },
   genderDiffs: { label: 'Gender differences', description: 'Separate ♂ and ♀ slots for species whose genders look different.' },
   cosmetic: { label: 'Cosmetic forms', description: 'Unown letters, Vivillon patterns, Alcremie creams and other permanent looks.' },
-  changeable: { label: 'Changeable forms', description: 'Forms you can switch freely: Rotom appliances, Arceus plates, Deoxys, Oricorio and more.' },
+  changeable: { label: 'Changeable forms', description: 'Forms you can switch freely: Rotom appliances, Deoxys, Shaymin, Oricorio and more.' },
+  heldItem: {
+    label: 'Held-item forms',
+    description: 'Forms kept only while holding an item: Arceus plates, Silvally memories, Genesect drives, Ogerpon masks and Origin Forme Dialga, Palkia and Giratina.'
+  },
   fusion: { label: 'Fusions', description: 'Kyurem, Necrozma and Calyrex fusions.' },
   event: { label: 'Event forms', description: 'Distribution-only forms such as cap Pikachu or Poké Ball Vivillon.' },
   partner: { label: 'Partner forms', description: "Let's Go partner Pikachu and Eevee, which never leave their game." },
@@ -157,6 +161,21 @@ const CATEGORY_RULE: Readonly<Record<FormCategory, keyof DexRules | boolean>> = 
   hidden: false
 }
 
+/**
+ * Species whose changeable forms last only while the Pokémon holds an item: Dialga, Palkia and
+ * Giratina (Origin Forme), Arceus (plates), Genesect (drives), Silvally (memories) and Ogerpon
+ * (masks). Those forms answer to the rule `heldItem` instead of `changeable`. A hand-kept list:
+ * the datasets file them under 'changeable' with every other switchable form and do not say what
+ * the switch takes. Every changeable form of these species is a held-item form.
+ */
+export const HELD_ITEM_FORM_SPECIES: ReadonlySet<number> = new Set([483, 484, 487, 493, 649, 773, 1017])
+
+/** The rule that decides whether a non-base form has slots of its own; `true` = always, `false` = never. */
+function formRule(species: SpeciesSummary, form: FormSummary): keyof DexRules | boolean {
+  if (form.cat === 'changeable' && HELD_ITEM_FORM_SPECIES.has(species.id)) return 'heldItem'
+  return CATEGORY_RULE[form.cat]
+}
+
 // ---------------------------------------------------------------- slot layout
 
 const isBase = (species: SpeciesSummary, form: FormSummary): boolean => species.forms[0] === form
@@ -165,7 +184,7 @@ const isBase = (species: SpeciesSummary, form: FormSummary): boolean => species.
 export function isFormSlotted(species: SpeciesSummary, form: FormSummary, rules: DexRules): boolean {
   if (isBase(species, form)) return true
   if (form.present.length === 0) return false
-  const rule = CATEGORY_RULE[form.cat]
+  const rule = formRule(species, form)
   return typeof rule === 'boolean' ? rule : rules[rule]
 }
 

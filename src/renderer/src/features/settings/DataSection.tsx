@@ -353,12 +353,17 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
     }
   }
 
-  const gameSaveImported = (previous: SaveFile, added: number, fileName: string): void => {
+  const gameSaveImported = (previous: SaveFile, added: number, fileName: string, completed: number): void => {
+    const filled = `${plural(completed, 'earlier entry', 'earlier entries')} got the PID, IVs and EVs ${completed === 1 ? 'it' : 'they'} lacked.`
+    if (added === 0 && completed > 0) {
+      undoToast(`${plural(completed, 'entry', 'entries')} completed`, `From ${fileName}: ${filled}`, previous, onReplaced)
+      return
+    }
     if (added === 0) {
       toast({ kind: 'info', title: 'Nothing new to add', body: 'Every Pokémon you chose is already in your save.' })
       return
     }
-    undoToast(`${plural(added, 'entry', 'entries')} added`, `Imported from ${fileName}. You can edit them like any other entry.`, previous, onReplaced)
+    undoToast(`${plural(added, 'entry', 'entries')} added`, `Imported from ${fileName}. You can edit them like any other entry.${completed > 0 ? ` ${filled}` : ''}`, previous, onReplaced)
   }
 
   return (

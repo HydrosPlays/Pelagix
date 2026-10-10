@@ -8,7 +8,7 @@ import { errorMessage, formatCount, plural, todayIso } from '@renderer/lib/forma
 import { newId } from '@renderer/lib/id'
 import { useEntries, useRules, useSaveStore } from '@renderer/store/save'
 import { toast } from '@renderer/store/ui'
-import { buildPreview, countChosen, entriesToImport, saveGameName, selectAllNew, selectFilling, STATUS_LABELS, type Preview, type PreviewRow } from './model'
+import { buildPreview, countChosen, entriesToComplete, entriesToImport, saveGameName, selectAllNew, selectFilling, STATUS_LABELS, type Preview, type PreviewRow } from './model'
 import './GameSaveDialog.css'
 
 const ROW_HEIGHT = 56
@@ -17,8 +17,11 @@ export interface GameSaveDialogProps {
   /** What the reader found in the picked file; null keeps the window closed. */
   contents: GameSaveContents | null
   onClose: () => void
-  /** The chosen Pokémon were added as entries. `previous` is the save as it was just before. */
-  onImported: (previous: SaveFile, added: number, fileName: string) => void
+  /**
+   * The chosen Pokémon were added as entries, and `completed` earlier entries got the PID, IVs or
+   * EVs they lacked. `previous` is the save as it was just before.
+   */
+  onImported: (previous: SaveFile, added: number, fileName: string, completed: number) => void
 }
 
 /** What the user chose in the window, for one picked file. */
@@ -44,8 +47,8 @@ function StatusChip({ row }: { row: PreviewRow }) {
   }
   if (row.status === 'imported') {
     return (
-      <Chip size="sm" variant="outline" icon="check">
-        {STATUS_LABELS.imported}
+      <Chip size="sm" variant="outline" icon={row.completes === true ? 'plus' : 'check'}>
+        {row.completes === true ? 'Adds PID, IVs, EVs' : STATUS_LABELS.imported}
       </Chip>
     )
   }
@@ -134,10 +137,10 @@ export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialog
     try {
       preview = buildPreview(dex, contents, entries, rules, { today: todayIso(), game: mine.game })
     } catch {
-      preview = { rows: [], counts: { new: 0, imported: 0, egg: 0, unsupported: 0, fills: 0 }, askGames: [] }
+      preview = { rows: [], counts: { new: 0, imported: 0, egg: 0, unsupported: 0, fills: 0, completes: 0 }, askGames: [] }
     }
     const selected = mine.selected ?? selectAllNew(preview.rows)
-    return { contents, preview, selected, game: mine.game, chosen: countChosen(preview.rows, selected) }
+    return { contents, preview, selected, game: mine.game, chosen: countChosen(preview.rows, selected), completes: preview.counts.completes }
   }, [contents, choice, dex, entries, rules])
   // Frozen while the dialog plays its exit, so the list neither empties nor changes under the fade.
   const last = useRef(fresh)
@@ -165,10 +168,12 @@ export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialog
     const previous = store.save
     try {
       const adding = entriesToImport(fresh.preview.rows, fresh.selected, previous.entries, new Date().toISOString(), newId)
+      const completing = entriesToComplete(fresh.preview.rows, previous.entries)
       done.current = fresh.contents
+      const completed = completing.length > 0 ? store.patchEntries(completing) : 0
       const added = adding.length > 0 ? store.mergeEntries(adding).added : 0
       onClose()
-      onImported(previous, added, fresh.contents.fileName)
+      onImported(previous, added, fresh.contents.fileName, completed)
     } catch (err) {
       done.current = null
       toast({ kind: 'error', title: 'The Pokémon could not be added', body: errorMessage(err) })
@@ -196,8 +201,8 @@ export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialog
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" icon="plus" disabled={!view || view.chosen === 0} onClick={confirm} data-autofocus>
-            {view && view.chosen > 0 ? `Add ${plural(view.chosen, 'entry', 'entries')}` : 'Nothing to add'}
+          <Button variant="primary" icon={view && view.chosen === 0 && view.completes > 0 ? 'check' : 'plus'} disabled={!view || (view.chosen === 0 && view.completes === 0)} onClick={confirm} data-autofocus>
+            {view && view.chosen > 0 ? `Add ${plural(view.chosen, 'entry', 'entries')}` : view && view.completes > 0 ? `Complete ${plural(view.completes, 'earlier entry', 'earlier entries')}` : 'Nothing to add'}
           </Button>
         </>
       }
@@ -210,6 +215,11 @@ export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialog
               {formatCount(counts.fills)} {counts.fills === 1 ? 'fills' : 'fill'} an empty Living Dex slot
             </Chip>
             {counts.imported > 0 && <Chip variant="outline">{formatCount(counts.imported)} already imported</Chip>}
+            {counts.completes > 0 && (
+              <Chip tone="accent" variant="outline">
+                {plural(counts.completes, 'earlier entry gets', 'earlier entries get')} PID, IVs and EVs added
+              </Chip>
+            )}
             {counts.egg > 0 && <Chip variant="outline">{plural(counts.egg, 'egg')} skipped</Chip>}
             {counts.unsupported > 0 && <Chip tone="warning">{formatCount(counts.unsupported)} cannot be imported</Chip>}
           </div>

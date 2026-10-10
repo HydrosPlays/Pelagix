@@ -41,7 +41,7 @@ describe('presets', () => {
 })
 
 describe('countSlots', () => {
-  it('agrees with buildSlots for every one of the 4,096 rule sets (fixture)', () => {
+  it('agrees with buildSlots for every one of the 8,192 rule sets (fixture)', () => {
     const species = fixtureDex.speciesList
     for (const mask of ALL_MASKS) {
       const rules = rulesOf(mask)
@@ -57,7 +57,7 @@ describe('countSlots', () => {
   it.skipIf(!realIndex)('agrees with buildSlots on the real dataset', () => {
     const dex = new Dex(validateDexIndex(realIndex))
     // The three presets, every single-rule set, and a spread of mixed ones.
-    const masks = [0, 4095, ...RULE_KEYS.map((_, i) => 1 << i), ...RULE_KEYS.map((_, i) => 4095 ^ (1 << i)), ...Array.from({ length: 16 }, (_, i) => (i * 2654435761) % 4096)]
+    const masks = [0, 8191, ...RULE_KEYS.map((_, i) => 1 << i), ...RULE_KEYS.map((_, i) => 8191 ^ (1 << i)), ...Array.from({ length: 16 }, (_, i) => (i * 2654435761) % 8192)]
     const ruleSets = [{ ...DEFAULT_RULES }, ...masks.map(rulesOf)]
     for (const rules of ruleSets) expect(countSlots(dex.speciesList, rules)).toBe(buildSlots(dex, rules).length)
   })

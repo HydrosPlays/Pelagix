@@ -46,7 +46,7 @@ describe.skipIf(!raw)('real dataset', () => {
 
   it('yields unique slot keys, valid render paths and consistent entry mapping under any rules', () => {
     // Both extremes, the default, and a spread of mixed rule sets.
-    const masks = [0, 4095, ...Array.from({ length: 24 }, (_, i) => (i * 2654435761) % 4096)]
+    const masks = [0, 8191, ...Array.from({ length: 24 }, (_, i) => (i * 2654435761) % 8192)]
     const ruleSets: DexRules[] = [
       RULE_PRESETS.forms.rules,
       ...masks.map((mask) => Object.fromEntries(RULE_KEYS.map((k, i) => [k, (mask & (1 << i)) !== 0])) as unknown as DexRules)
