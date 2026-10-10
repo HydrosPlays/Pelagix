@@ -1,0 +1,164 @@
+/* The preview of "Import from a game save" (GameSaveDialog). */
+
+.gamesave {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.gamesave__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.gamesave__note {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--warning-text);
+}
+
+.gamesave__empty {
+  padding: var(--sp-6) 0;
+  color: var(--text-2);
+  text-align: center;
+}
+
+.gamesave__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.gamesave__picked {
+  margin-right: auto;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.gamesave__list {
+  height: min(46vh, 448px);
+  min-height: 168px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.gamesave__list .ui-vgrid__cell {
+  border-radius: 0;
+  outline-offset: -2px;
+  cursor: default;
+}
+
+.gamesave-row {
+  display: grid;
+  grid-template-columns: 20px 40px minmax(0, 1.5fr) 132px minmax(0, 1.2fr) 52px 28px 168px;
+  align-items: center;
+  gap: var(--sp-3);
+  height: 100%;
+  padding: 0 var(--sp-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.gamesave-row:not(.gamesave-row--off) {
+  cursor: pointer;
+}
+
+.gamesave-row:not(.gamesave-row--off):hover {
+  background: var(--surface-hover);
+}
+
+.gamesave-row.is-checked {
+  background: var(--accent-soft);
+}
+
+.gamesave-row--off > :not(.gamesave-row__status) {
+  opacity: 0.55;
+}
+
+.gamesave-row__check {
+  pointer-events: none;
+}
+
+.gamesave-row__sprite {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--text-3);
+}
+
+.gamesave-row__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.gamesave-row__title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+}
+
+.gamesave-row__detail {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.gamesave-row__game,
+.gamesave-row__where {
+  display: flex;
+  min-width: 0;
+  color: var(--text-2);
+}
+
+/* Why a row cannot be imported, in place of the columns it has nothing for. */
+.gamesave-row__reason {
+  grid-column: 4 / 8;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.gamesave-row__level {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gamesave-row__ball {
+  display: flex;
+  justify-content: center;
+}
+
+.gamesave-row__status {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.gamesave-row__blank {
+  color: var(--text-disabled);
+}
+
+@media (max-width: 900px) {
+  .gamesave-row {
+    grid-template-columns: 20px 40px minmax(0, 1fr) 132px 168px;
+  }
+
+  .gamesave-row__reason {
+    grid-column: 4 / 5;
+  }
+
+  .gamesave-row__where,
+  .gamesave-row__level,
+  .gamesave-row__ball {
+    display: none;
+  }
+}

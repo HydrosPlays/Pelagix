@@ -26,6 +26,7 @@ const MAX_LEVEL = 100
 const TEXT_LIMITS = { method: 120, location: 160, nickname: 40, ot: 40, notes: 4000 } as const
 const TRAINER_NAME_LIMIT = 40
 const ID_LIMIT = 80
+const FINGERPRINT_LIMIT = 160
 const GAME_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
 
 const ENTRY_KIND_SET: ReadonlySet<string> = new Set<EntryKind>([
@@ -131,6 +132,8 @@ export function checkEntry(raw: unknown, now: string): EntryCheck {
   const nickname = text('nickname')
   const ot = text('ot')
   const notes = text('notes')
+  // Compared, never shown: kept exactly as written or not at all.
+  const fingerprint = optional('fingerprint', (v) => (typeof v === 'string' && v !== '' && v.length <= FINGERPRINT_LIMIT ? v : undefined))
 
   // Keys in the order of the interface so saved files diff cleanly; absent fields are omitted, not undefined.
   const entry: CatchEntry = {
@@ -153,6 +156,7 @@ export function checkEntry(raw: unknown, now: string): EntryCheck {
     ...(nickname !== undefined && { nickname }),
     ...(ot !== undefined && { ot }),
     ...(notes !== undefined && { notes }),
+    ...(fingerprint !== undefined && { fingerprint }),
     createdAt,
     updatedAt
   }

@@ -3,6 +3,7 @@ out/
 dist/
 dist-web/
 tools/extractor/.artifacts/
+tools/save-reader/.artifacts/
 data/pkhex/
 *.tsbuildinfo
 .vite/

@@ -223,7 +223,9 @@ export function createSaveStore(options: SaveStoreOptions = {}) {
           const old = save.entries.find((e) => e.id === id)
           if (!old) return null
           const stamp = now()
-          const copy: CatchEntry = { ...old, id: newId(), createdAt: stamp, updatedAt: stamp }
+          // The copy is another Pokémon: it does not stand for the one that was read from a game save.
+          const { fingerprint: _fingerprint, ...rest } = old
+          const copy: CatchEntry = { ...rest, id: newId(), createdAt: stamp, updatedAt: stamp }
           commit({ ...save, entries: [...save.entries, copy] }, stamp)
           return copy
         },

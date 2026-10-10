@@ -4,13 +4,18 @@ directories:
   buildResources: build
   output: dist
 # The datasets live in src/renderer/public/data and ship inside out/renderer, so the asar holds
-# everything the app needs and there are no extraResources.
+# everything the app needs except the game-save reader (extraResources below).
 # The development fixture (public/data-fixture) is already removed by the build (vite.shared.ts);
 # the exclusion below keeps it out even if out/ was produced some other way.
 files:
   - out/**
   - "!out/renderer/data-fixture/**"
   - package.json
+# The game-save reader is a program of its own (tools/save-reader, built by npm run reader:build), so it
+# has to sit outside the asar: resources/save-reader/pelagix-save-reader.exe (src/main/game-save.ts).
+extraResources:
+  - from: tools/save-reader/.artifacts/publish/pelagix-save-reader.exe
+    to: save-reader/pelagix-save-reader.exe
 win:
   icon: build/icon.ico
   target:

@@ -4,6 +4,7 @@ import { app, dialog, ipcMain, shell, type BrowserWindow, type IpcMainInvokeEven
 import { join } from 'node:path'
 import type { PelagixChannel, PelagixEventChannel, PelagixEvents, PelagixIpc } from '@shared/api'
 import type { SaveFile, ThemeId } from '@shared/save-types'
+import { readGameSave, readerPath } from './game-save'
 import { exportFileName, isPlainObject, readImportFile, writeExportFile, type SaveStore } from './save'
 import { clearSpriteCache, spriteCacheInfo } from './sprites'
 import type { UpdateService } from './update-service'
@@ -14,6 +15,8 @@ const JSON_FILTERS = [
   { name: 'Pelagix save', extensions: ['json'] },
   { name: 'All files', extensions: ['*'] }
 ]
+// Saves of the Switch games are called "main", without an extension, so no filter by extension is offered.
+const GAME_SAVE_FILTERS = [{ name: 'All files', extensions: ['*'] }]
 const MAX_URL_LENGTH = 2048
 
 type Result<K extends PelagixChannel> = PelagixIpc[K]['result']
@@ -143,6 +146,19 @@ export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveSt
     const path = filePaths[0]
     if (canceled || path === undefined) return null
     return readImportFile(path)
+  })
+
+  handle('pelagix:game-save-read', async (args, win) => {
+    expectNoArgs('readGameSave', args)
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: 'Import from a game save',
+      properties: ['openFile'],
+      filters: GAME_SAVE_FILTERS
+    })
+    const path = filePaths[0]
+    if (canceled || path === undefined) return null
+    const reader = readerPath({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath() })
+    return readGameSave(reader, path)
   })
 
   handle('pelagix:sprite-cache-info', (args) => {

@@ -36,7 +36,8 @@ and `npm run preview` fetch it on first use; `npx install-electron` does it by h
 | `npm run dev:web` | Serves only the interface at http://127.0.0.1:5199 for a normal browser. Set `PELAGIX_WEB_PORT` to use another port. |
 | `npm run build` | Type-checks, then builds main, preload and renderer into `out/`. |
 | `npm run preview` | Builds and runs the production build in Electron. |
-| `npm run dist` | Builds, then packages a Windows installer and a portable executable into `dist/`. |
+| `npm run reader:build` | Builds the game-save reader (`tools/save-reader`) into its `.artifacts` folder. Needs the .NET SDK and `PKHeX/`. |
+| `npm run dist` | Builds the reader and the app, then packages a Windows installer and a portable executable into `dist/`. |
 | `npm run typecheck` | Type-checks the app: main, preload, renderer and shared. |
 | `npm run typecheck:tools` | Type-checks the tooling in `tools/`. |
 | `npm test` | Runs the unit tests with Vitest. |
@@ -155,7 +156,7 @@ is loaded or imported, and reports what it had to drop or repair.
 npm test
 ```
 
-Vitest, in a Node environment: 1,522 tests in 42 files at the time of writing. They cover the
+Vitest, in a Node environment: 1,587 tests in 44 files at the time of writing. They cover the
 logic: slot rules, progress, encounter handling, achievements (including that every one of them
 can be earned on the real datasets), search, the entry editor's draft handling, the page models,
 the save store and the sprite protocol's request parsing.
@@ -188,6 +189,25 @@ runs `npm run build` and then `electron-builder --win --publish never` with
 - The executables are **not code-signed**.
 - Nothing is uploaded: `--publish never` is part of the script.
 - The version comes from `package.json`.
+
+## Importing from a game save
+
+`tools/save-reader` is a small .NET 10 console program on PKHeX.Core. Given the path of a save
+file it prints one JSON document: the save, and every Pokémon in the party and the boxes with
+PKHeX's legality match for how it was first obtained. It only reads the file.
+
+- It is published as a trimmed, self-contained single file (about 16 MB) and shipped outside the
+  asar as `resources/save-reader/pelagix-save-reader.exe`. In development the app looks for it
+  in `tools/save-reader/.artifacts/publish`; without `npm run reader:build` the import reports
+  that the reader is missing.
+- `src/main/game-save.ts` runs it (no shell, a timeout, an output cap) and checks every field of
+  what comes back. The main process opens the file dialog itself, so the page never passes a
+  path.
+- `src/renderer/src/features/gamesave` turns the result into preview rows and entries, through
+  the same functions the entry editor uses. Each imported entry keeps the reader's
+  `fingerprint`, which is how a second import recognises it.
+- The encounter kinds in `tools/save-reader/Pokemon.cs` repeat the rules of `tools/extractor` by
+  hand. Change them together.
 
 ## Updates
 

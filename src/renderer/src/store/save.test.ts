@@ -336,6 +336,14 @@ describe('entries', () => {
     expect(get().duplicateEntry('nope')).toBeNull()
   })
 
+  it('keeps the game-save fingerprint through an edit and a merge, but not on a duplicate', async () => {
+    const { get } = await ready()
+    const [a] = [get().mergeEntries([{ ...pikachu, id: 'gs-1', fingerprint: '44:0000beef:0000cafe', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }])].map(() => get().save.entries[0]!)
+    expect(a.fingerprint).toBe('44:0000beef:0000cafe')
+    expect(get().updateEntry(a.id, { nickname: 'Volt' })?.fingerprint).toBe(a.fingerprint)
+    expect(get().duplicateEntry(a.id)).not.toHaveProperty('fingerprint')
+  })
+
   it('mergeEntries skips duplicate ids and invalid entries', async () => {
     const { get } = await ready()
     const a = get().addEntry(pikachu)

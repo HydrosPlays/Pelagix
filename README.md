@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <sub>Windows 10 and 11 · version 0.2.0 · GPL-3.0 · an unofficial fan project</sub>
+  <sub>Windows 10 and 11 · version 0.3.0 · GPL-3.0 · an unofficial fan project</sub>
 </p>
 
 > The screenshots on this page come from version 0.1.0 running a generated demo collection
@@ -326,10 +326,14 @@ the first catch.
 - **Living Dex rules**: see [Forms and the Living Dex rules](#forms-and-the-living-dex-rules).
 - **Appearance**: dark or light theme, reduce motion, and Pokédex tile density. Pelagix also
   follows your system's reduced-motion setting.
-- **Your data**: where the save is, **Export save**, **Import save** and **Reset**. Importing
+- **Your data**: where the save is, **Export save**, **Import save**, **Import from a game save**
+  and **Reset**. Importing
   shows a summary first and lets you either merge the file's entries into your collection or
   replace everything. Reset asks you to type `RESET`. A merge, a replace and a reset can each be
-  undone straight afterwards.
+  undone straight afterwards. **Import from a game save** reads a save file of a Pokémon game
+  and offers the Pokémon in it as entries: you get a preview that marks each one as new, already
+  imported, an egg (skipped) or not importable, and only the ones you tick are added. The save
+  file is only read, never changed, and the import can be undone straight afterwards.
 - **Sprite cache**: how much is stored, and a button to clear it.
 - **Updates**: your version, when it was last checked, **Check for updates**, and the switch for
   the automatic check. See [Updates](#updates).
@@ -446,7 +450,10 @@ the figures behind them.
 
 The app:
 
-- **You log by hand.** Pelagix does not import from save files, Pokémon HOME or Pokémon GO.
+- **Importing needs a save file.** Pelagix can read a game's save file (Settings → Your data),
+  which in practice means emulator saves and saves taken off a modded console. It does not
+  connect to Pokémon HOME or Pokémon GO. Game Boy saves hold no met data, and for an evolved
+  Pokémon the way it was first obtained is a best guess.
 - **Windows only.** The only build that is set up and tested is 64-bit Windows.
 - **English only**, for the interface and for the game data.
 - **No sync.** To move a collection to another computer, export and import the save.
@@ -508,8 +515,8 @@ files:
 
 | File | What it is |
 | --- | --- |
-| `Pelagix-<version>-setup.exe` | The installer. It lets you choose the install folder, and from 0.2.0 on it updates itself from inside the app. About 109 MB. |
-| `Pelagix-<version>-portable.exe` | A single file that runs without installing. It tells you when a new version is out, and you download that yourself. About 109 MB. |
+| `Pelagix-<version>-setup.exe` | The installer. It lets you choose the install folder, and from 0.2.0 on it updates itself from inside the app. About 119 MB. |
+| `Pelagix-<version>-portable.exe` | A single file that runs without installing. It tells you when a new version is out, and you download that yourself. About 119 MB. |
 
 A release also carries `latest.yml` and a `.blockmap` file. The updater reads those; you do not
 need them. If you are on 0.1.0, which has no updater, download the newer file and run it: your
@@ -573,8 +580,8 @@ npm install
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Starts the app in Electron with hot reload. The first run downloads the Electron binary. |
-| `npm test` | Runs the unit tests (1,522 tests in 42 files). |
-| `npm run dist` | Type-checks, builds, and packages the installer, the portable executable and the updater's files into `dist/`. Nothing is uploaded. |
+| `npm test` | Runs the unit tests (1,587 tests in 44 files). |
+| `npm run dist` | Builds the save reader, type-checks, builds, and packages the installer, the portable executable and the updater's files into `dist/`. Needs the .NET 10 SDK and the `PKHeX/` tree. Nothing is uploaded. |
 
 The datasets and the game icons are part of the repository, so nothing else has to be generated
 before the app runs. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) lists every script and explains
@@ -645,6 +652,7 @@ src/
     src/shell/         The app frame: navigation rail, title bar, routing
 tools/
   extractor/         .NET program that reads PKHeX
+  save-reader/       .NET program, shipped with the app, that reads a game save file
   build-data/        Builds and validates the datasets
   screenshots/       Takes the pictures on this page
 data/sources/        Pinned PokeAPI tables and the list of HOME renders
@@ -666,6 +674,7 @@ dist/                Packaged executables (git-ignored)
 | Routing and lists | wouter and TanStack Virtual |
 | Tests | [Vitest](https://vitest.dev/) |
 | Data tooling | Node.js running TypeScript directly, and a .NET 10 extractor built on PKHeX.Core |
+| Save import | A .NET 10 reader built on PKHeX.Core, shipped beside the app and run on a save file you pick |
 
 ## Credits and licence
 

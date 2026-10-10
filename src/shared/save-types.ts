@@ -44,6 +44,11 @@ export interface CatchEntry {
   /** Original Trainer name. */
   ot?: string
   notes?: string
+  /**
+   * Set on entries made by "Import from a game save": the reader's fingerprint of that Pokémon
+   * (`GameSavePokemon.fingerprint`), so the same Pokémon is not imported twice. Never shown.
+   */
+  fingerprint?: string
   createdAt: string
   updatedAt: string
 }

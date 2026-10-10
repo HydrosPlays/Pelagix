@@ -1,6 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
+import type { GameSaveContents } from '@shared/game-save-types'
 import type { SaveFile } from '@shared/save-types'
 import { Button, Checkbox, Dialog, Icon, TextField } from '@renderer/components/ui'
+import { GameSaveDialog } from '@renderer/features/gamesave/GameSaveDialog'
+import { failureText } from '@renderer/features/gamesave/model'
 import { shake } from '@renderer/lib/anim'
 import { errorMessage, formatCount, formatDateTime, plural } from '@renderer/lib/format'
 import { exportSaveToFile, importSaveFromFile, type SaveParseReport } from '@renderer/lib/storage'
@@ -309,8 +312,9 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
   const achievementCount = useSaveStore((s) => Object.keys(s.save.achievements).length)
   const updatedAt = useSaveStore((s) => s.save.updatedAt)
   const createdAt = useSaveStore((s) => s.save.createdAt)
-  const [busy, setBusy] = useState<'export' | 'import' | null>(null)
+  const [busy, setBusy] = useState<'export' | 'import' | 'game' | null>(null)
   const [report, setReport] = useState<SaveParseReport | null>(null)
+  const [gameSave, setGameSave] = useState<GameSaveContents | null>(null)
   const [resetOpen, setResetOpen] = useState(false)
 
   const exportSave = async (): Promise<void> => {
@@ -329,6 +333,32 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
     } finally {
       setBusy(null)
     }
+  }
+
+  /** Lets the user pick a save file of a Pokémon game and shows what is in it. The file is only read. */
+  const importGameSave = async (): Promise<void> => {
+    if (!window.api) return
+    setBusy('game')
+    try {
+      const result = await window.api.readGameSave()
+      if (result === null) return
+      // The main process has checked the reader's answer; this only keeps a malformed one away from the preview.
+      const contents = result.ok === true ? result.contents : null
+      if (contents && Array.isArray(contents.pokemon) && typeof contents.fileName === 'string' && typeof contents.save?.trainer === 'string' && typeof contents.save.version?.name === 'string') setGameSave(contents)
+      else toast({ kind: 'error', title: 'That file could not be imported', body: failureText(result.ok === false ? result.reason : undefined) })
+    } catch (err) {
+      toast({ kind: 'error', title: 'That file could not be imported', body: errorMessage(err, failureText(undefined)) })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const gameSaveImported = (previous: SaveFile, added: number, fileName: string): void => {
+    if (added === 0) {
+      toast({ kind: 'info', title: 'Nothing new to add', body: 'Every Pokémon you chose is already in your save.' })
+      return
+    }
+    undoToast(`${plural(added, 'entry', 'entries')} added`, `Imported from ${fileName}. You can edit them like any other entry.`, previous, onReplaced)
   }
 
   return (
@@ -378,6 +408,17 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
             Import save
           </Button>
         </div>
+        {app.desktop && (
+          <div className="settings-action">
+            <div className="settings-row__text">
+              <span className="settings-row__label">Import from a game save</span>
+              <span className="settings-row__desc">Open a save file of a Pokémon game and add the Pokémon in it as entries. You choose which ones first. The save file is only read, never changed.</span>
+            </div>
+            <Button icon="gamepad" loading={busy === 'game'} disabled={busy !== null && busy !== 'game'} onClick={() => void importGameSave()}>
+              {busy === 'game' ? 'Reading…' : 'Import from a game save'}
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="settings-danger">
@@ -394,6 +435,7 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
       </div>
 
       <ImportDialog report={report} onClose={() => setReport(null)} onReplaced={onReplaced} />
+      <GameSaveDialog contents={gameSave} onClose={() => setGameSave(null)} onImported={gameSaveImported} />
       <ResetDialog open={resetOpen} onClose={() => setResetOpen(false)} onReplaced={onReplaced} />
     </SettingsSection>
   )

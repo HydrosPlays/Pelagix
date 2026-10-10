@@ -290,6 +290,19 @@ describe('parseSave: entries', () => {
     expect(Object.keys(entry)).toEqual(['id', 'species', 'form', 'shiny', 'game', 'kind', 'createdAt', 'updatedAt'])
   })
 
+  it('keeps the fingerprint of an entry imported from a game save, exactly as written', () => {
+    const fingerprint = 'gb:80f7:121c:235: Red '
+    const kept = parseEntries([{ ...minimalEntry, fingerprint }])
+    expect(kept.save.entries[0]?.fingerprint).toBe(fingerprint)
+    expect(Object.keys(kept.save.entries[0]!).at(-3)).toBe('fingerprint')
+    expect(kept.repaired).toBe(0)
+    for (const bad of ['', 'x'.repeat(161), 7, {}]) {
+      const report = parseEntries([{ ...minimalEntry, fingerprint: bad }])
+      expect(report.save.entries[0]).toEqual(minimalEntry)
+      expect(report.repaired).toBe(1)
+    }
+  })
+
   it('repairs entry timestamps from the save', () => {
     const entry = parseEntries([{ ...minimalEntry, createdAt: 'soon', updatedAt: null }]).save.entries[0]!
     expect(entry.createdAt).toBe(T1) // the save's createdAt

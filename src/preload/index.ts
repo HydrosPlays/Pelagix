@@ -22,6 +22,7 @@ const api: PelagixApi = {
   writeSave: (save) => invoke('pelagix:save-write', save),
   exportSave: (save) => invoke('pelagix:save-export', save),
   importSave: () => invoke('pelagix:save-import'),
+  readGameSave: () => invoke('pelagix:game-save-read'),
   spriteCacheInfo: () => invoke('pelagix:sprite-cache-info'),
   clearSpriteCache: () => invoke('pelagix:sprite-cache-clear'),
   appInfo: () => invoke('pelagix:app-info'),

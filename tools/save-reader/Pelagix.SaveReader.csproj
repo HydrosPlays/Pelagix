@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Ships with the app: reads a game save with PKHeX.Core and prints the Pokémon in it as JSON (see Program.cs).
+    Always publish through run.mjs (Release, with an artifacts path) so that nothing is written into the PKHeX tree.
+    Debug builds of PKHeX.Core return different location strings, so Debug is rejected at startup.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Pelagix.SaveReader</RootNamespace>
+    <AssemblyName>pelagix-save-reader</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!--
+    One self-contained file, so the installed app needs no .NET runtime. Native libraries are not bundled for
+    self-extraction: that would unpack them into the temp folder on every first run.
+  -->
+  <PropertyGroup>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <!-- Only the framework is trimmed. PKHeX.Core finds its resources by name, so it is left whole. -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <!-- PKHeX.Core is not annotated for trimming; its warnings are about parts that are kept whole anyway. -->
+    <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\PKHeX\PKHeX.Core\PKHeX.Core.csproj" />
+  </ItemGroup>
+
+</Project>
