@@ -1,15 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Router } from 'wouter'
-import { ErrorBoundary } from '@renderer/components/ui'
+import { ErrorBoundary, Toaster } from '@renderer/components/ui'
+import { UpdateNotice } from '@renderer/features/updates/UpdateNotice'
+import UpdateWatcher from '@renderer/features/updates/UpdateWatcher'
+import UpdateWindows from '@renderer/features/updates/UpdateWindows'
 import { initMotion } from '@renderer/lib/anim'
 import { useDexStore } from '@renderer/lib/data'
+import { isElectron } from '@renderer/lib/env'
 import { errorMessage } from '@renderer/lib/format'
 import { AppShell } from '@renderer/shell/AppShell'
 import { BootError, BootScreen, type BootStep } from '@renderer/shell/BootScreen'
 import { useHashLocation } from '@renderer/shell/router'
 import { applyTheme } from '@renderer/shell/theme'
 import { useSaveStore } from '@renderer/store/save'
-import { toast } from '@renderer/store/ui'
+import { toast, useUiStore } from '@renderer/store/ui'
 
 function startLoading(): void {
   void useSaveStore.getState().hydrate()
@@ -26,9 +30,24 @@ let loadReportShown = false
 const stepState = (status: 'idle' | 'loading' | 'ready' | 'error'): BootStep['state'] => (status === 'ready' ? 'done' : status === 'error' ? 'error' : status === 'loading' ? 'active' : 'pending')
 
 /**
+ * The shell has crashed, and whatever it had open went with it. The flags that say "the entry
+ * editor is open" and "the palette is open" must not outlive it: an update window would wait
+ * for them for ever, and "Restart and update" would refuse because of a draft that is gone.
+ */
+function forgetWhatWasOpen(): void {
+  const ui = useUiStore.getState()
+  ui.closeEditor()
+  ui.setCommandPalette(false)
+}
+
+/**
  * Boot sequence: load the save and the Pokédex index side by side, apply the theme, then mount the
  * shell. Until both are ready the branded loading screen shows; a failure gets a full-window
  * explanation with a retry.
+ *
+ * The toasts and, in the desktop app, the update watcher with its windows are mounted here and
+ * not by the shell: a version whose shell cannot start, or has crashed, must still be able to
+ * offer the version that fixes it.
  */
 export default function App() {
   const saveStatus = useSaveStore((s) => s.status)
@@ -65,8 +84,15 @@ export default function App() {
     setTimeout(() => setRetrying(false), 300)
   }
 
+  const failed = dexStatus === 'error' || saveStatus === 'error'
+  const loading = !failed && (saveStatus !== 'ready' || dexStatus !== 'ready')
+  // The screens without a navigation rail show the update marker themselves. Desktop app only:
+  // a browser has nothing to check or install.
+  const updateNotice = isElectron ? <UpdateNotice /> : undefined
+
+  let screen: ReactNode
   if (dexStatus === 'error') {
-    return (
+    screen = (
       <BootError
         title="The Pokédex datasets are missing"
         hint={
@@ -77,14 +103,22 @@ export default function App() {
         detail={errorMessage(dexError, 'The dataset could not be loaded.')}
         onRetry={retry}
         retrying={retrying}
+        notice={updateNotice}
       />
     )
-  }
-  if (saveStatus === 'error') {
-    return <BootError title="Your save could not be loaded" hint="Nothing has been overwritten. Make sure the save file is readable, then try again." detail={saveError ?? undefined} onRetry={retry} retrying={retrying} />
-  }
-  if (saveStatus !== 'ready' || dexStatus !== 'ready') {
-    return (
+  } else if (saveStatus === 'error') {
+    screen = (
+      <BootError
+        title="Your save could not be loaded"
+        hint="Nothing has been overwritten. Make sure the save file is readable, then try again."
+        detail={saveError ?? undefined}
+        onRetry={retry}
+        retrying={retrying}
+        notice={updateNotice}
+      />
+    )
+  } else if (loading) {
+    screen = (
       <BootScreen
         steps={[
           { label: 'Loading your save', state: stepState(saveStatus) },
@@ -92,12 +126,33 @@ export default function App() {
         ]}
       />
     )
+  } else {
+    screen = (
+      <ErrorBoundary title="Pelagix ran into a problem" extra={updateNotice} onError={forgetWhatWasOpen}>
+        <Router hook={useHashLocation}>
+          <AppShell />
+        </Router>
+      </ErrorBoundary>
+    )
   }
+
   return (
-    <ErrorBoundary title="Pelagix ran into a problem">
-      <Router hook={useHashLocation}>
-        <AppShell />
-      </Router>
-    </ErrorBoundary>
+    <>
+      {screen}
+      {isElectron && (
+        <ErrorBoundary fallback={() => null}>
+          {/* Nothing comes up over the loading screen; once that is over, with or without a shell, it may. */}
+          <UpdateWatcher hold={loading} />
+        </ErrorBoundary>
+      )}
+      {isElectron && (
+        <ErrorBoundary fallback={() => null}>
+          <UpdateWindows />
+        </ErrorBoundary>
+      )}
+      <ErrorBoundary fallback={() => null}>
+        <Toaster />
+      </ErrorBoundary>
+    </>
   )
 }

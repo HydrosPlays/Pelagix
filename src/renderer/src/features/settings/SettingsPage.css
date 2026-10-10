@@ -880,6 +880,132 @@
   gap: var(--sp-2);
 }
 
+/* ================================================================ updates */
+
+.settings-update {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface-inset);
+}
+
+.settings-update--news {
+  background:
+    linear-gradient(160deg, var(--accent-soft), transparent 60%),
+    var(--surface-inset);
+}
+
+.settings-update__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+
+.settings-update__icon--ok {
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+
+.settings-update__icon--news,
+.settings-update__icon--busy {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.settings-update__icon--warn {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+
+.settings-update__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-update__title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+}
+
+.settings-update__detail {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.settings-update__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+
+.settings-update__progress {
+  grid-column: 1 / -1;
+}
+
+/* The answer to "Check for updates". The row is always there, so the answer has a place to be
+   announced from; it only takes up room once there is one. */
+.settings-update__outcome {
+  grid-column: 2 / -1;
+}
+
+.settings-update__outcome:empty {
+  display: none;
+}
+
+.settings-update__result {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.settings-update__result svg {
+  margin-top: 1px;
+}
+
+.settings-update__result--ok svg {
+  color: var(--success-text);
+}
+
+.settings-update__result--news svg {
+  color: var(--accent);
+}
+
+.settings-update__result--error {
+  color: var(--danger-text);
+}
+
+@container settings (max-width: 760px) {
+  .settings-update {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .settings-update__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .settings-update__outcome {
+    grid-column: 1 / -1;
+  }
+}
+
 /* ================================================================ about */
 
 .settings-about {

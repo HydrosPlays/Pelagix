@@ -2,10 +2,12 @@
 
 import { app, dialog, ipcMain, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { join } from 'node:path'
-import type { PelagixChannel, PelagixIpc } from '@shared/api'
+import type { PelagixChannel, PelagixEventChannel, PelagixEvents, PelagixIpc } from '@shared/api'
 import type { SaveFile, ThemeId } from '@shared/save-types'
 import { exportFileName, isPlainObject, readImportFile, writeExportFile, type SaveStore } from './save'
 import { clearSpriteCache, spriteCacheInfo } from './sprites'
+import type { UpdateService } from './update-service'
+import { plainVersion } from './update-version'
 import { applyTheme, isAppUrl } from './window'
 
 const JSON_FILTERS = [
@@ -64,7 +66,37 @@ function expectTheme(args: unknown[]): ThemeId {
   return theme
 }
 
-export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveStore): void {
+function expectBoolean(method: string, args: unknown[]): boolean {
+  const value = args[0]
+  if (args.length !== 1 || typeof value !== 'boolean') invalid(method, 'expected one boolean')
+  return value
+}
+
+/** A version such as "0.2.0". Returned without a leading "v", the way the update state writes it. */
+function expectVersion(method: string, args: unknown[]): string {
+  const version = args.length === 1 ? plainVersion(args[0]) : null
+  if (version === null) invalid(method, 'expected one version string')
+  return version
+}
+
+/**
+ * Sends a message to the app's own page in the main window, and to nothing else. The window is
+ * looked up on every call because it can be closed and opened again. A message for a page that
+ * is not there yet is simply lost, which is why the page asks for the current state first.
+ */
+export function pushToPage<K extends PelagixEventChannel>(getWindow: () => BrowserWindow | null, channel: K, ...args: PelagixEvents[K]): void {
+  const win = getWindow()
+  if (!win || win.isDestroyed()) return
+  const contents = win.webContents
+  try {
+    if (contents.isDestroyed() || !isAppUrl(contents.mainFrame.url)) return
+    contents.send(channel, ...args)
+  } catch {
+    // The page went away between the check and the send.
+  }
+}
+
+export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveStore, updates: UpdateService): void {
   /** Only the app's own page in the main window may talk to these handlers. */
   function requireWindow(event: IpcMainInvokeEvent): BrowserWindow {
     const win = getWindow()
@@ -136,4 +168,38 @@ export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveSt
   handle('pelagix:open-external', (args) => shell.openExternal(expectHttpsUrl(args)))
 
   handle('pelagix:set-theme', (args, win) => applyTheme(win, expectTheme(args)))
+
+  handle('pelagix:update-state', (args) => {
+    expectNoArgs('updateState', args)
+    return updates.state()
+  })
+
+  handle('pelagix:update-check', (args) => {
+    expectNoArgs('checkForUpdates', args)
+    return updates.check()
+  })
+
+  handle('pelagix:update-download', (args) => {
+    expectNoArgs('downloadUpdate', args)
+    return updates.download()
+  })
+
+  handle('pelagix:update-cancel', (args) => {
+    expectNoArgs('cancelUpdateDownload', args)
+    return updates.cancelDownload()
+  })
+
+  handle('pelagix:update-install', (args) => {
+    expectNoArgs('installUpdate', args)
+    return updates.install()
+  })
+
+  handle('pelagix:update-set-auto-check', (args) => updates.setAutoCheck(expectBoolean('setUpdateAutoCheck', args)))
+
+  handle('pelagix:update-announced', (args) => updates.markAnnounced(expectVersion('markUpdateAnnounced', args)))
+
+  handle('pelagix:update-whats-new-seen', (args) => {
+    expectNoArgs('dismissWhatsNew', args)
+    return updates.dismissWhatsNew()
+  })
 }

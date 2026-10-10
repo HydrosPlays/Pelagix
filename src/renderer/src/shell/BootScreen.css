@@ -177,3 +177,12 @@
   gap: var(--sp-2);
   margin-top: var(--sp-6);
 }
+
+.boot__error-notice {
+  align-self: stretch;
+  margin-top: var(--sp-6);
+}
+
+.boot__error-notice:empty {
+  display: none;
+}

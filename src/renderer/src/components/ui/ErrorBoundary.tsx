@@ -13,6 +13,8 @@ export interface ErrorBoundaryProps {
   onError?: (error: Error, info: ErrorInfo) => void
   /** Heading of the default fallback. */
   title?: string
+  /** Shown under the default fallback: a way on that does not depend on what failed. */
+  extra?: ReactNode
 }
 
 interface State {
@@ -68,6 +70,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
             </>
           }
         />
+        {this.props.extra !== undefined && <div className="ui-error__extra">{this.props.extra}</div>}
       </div>
     )
   }

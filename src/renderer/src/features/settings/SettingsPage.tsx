@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, Icon, Spinner, cx, useScrollParent } from '@renderer/components/ui'
 import { motionOK } from '@renderer/lib/anim'
+import { isElectron } from '@renderer/lib/env'
 import { errorMessage, formatDateTime } from '@renderer/lib/format'
 import { exportSaveToFile } from '@renderer/lib/storage'
 import { useSaveStore } from '@renderer/store/save'
@@ -10,6 +11,7 @@ import { AppearanceSection, SpriteCacheSection, TrainerSection } from './BasicSe
 import { DataSection } from './DataSection'
 import { SECTIONS, sectionDomId, useAppInfo, useSaveState, type SectionId } from './parts'
 import { RulesSection } from './RulesSection'
+import { UpdatesSection } from './UpdatesSection'
 import './SettingsPage.css'
 
 /** A section counts as "current" once its top has passed this far below the top of the scrolling region. */
@@ -172,6 +174,7 @@ export default function SettingsPage() {
           <AppearanceSection />
           <DataSection app={app} onReplaced={onReplaced} />
           <SpriteCacheSection />
+          {isElectron && <UpdatesSection />}
           <AboutSection app={app} />
         </div>
       </div>

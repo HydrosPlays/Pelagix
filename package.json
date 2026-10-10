@@ -1,7 +1,7 @@
 {
   "name": "pelagix",
   "productName": "Pelagix",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Living Dex tracker for Pokemon games",
   "author": "HydrosPlays",
@@ -21,14 +21,13 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json --composite false && tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck:tools": "tsc --noEmit -p tsconfig.tools.json",
     "test": "vitest run",
-    "dist": "npm run build && electron-builder --win",
+    "dist": "npm run build && electron-builder --win --publish never",
     "data:extract": "node tools/extractor/run.mjs",
     "data:build": "node tools/build-data/index.ts",
     "data:validate": "node tools/build-data/validate.ts",
     "data": "npm run data:extract && npm run data:build && npm run data:validate",
     "screenshots": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/screenshots/run.mjs"
   },
-  "dependencies": {},
   "devDependencies": {
     "@fontsource-variable/outfit": "5.3.0",
     "@tanstack/react-virtual": "3.14.13",
@@ -39,6 +38,7 @@
     "animejs": "4.5.0",
     "electron": "44.7.0",
     "electron-builder": "26.15.3",
+    "electron-updater": "6.8.9",
     "electron-vite": "5.0.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",

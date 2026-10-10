@@ -1,8 +1,8 @@
-import { useId, useRef, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { useId, useRef, type CSSProperties, type ReactNode } from 'react'
 import { cx } from './cx'
 import { IconButton } from './IconButton'
 import { Portal } from './Portal'
-import { useEscapeLayer, useFocusTrap, useModalRoot, usePresence } from './layers'
+import { useEscapeLayer, useFocusTrap, useModalRoot, usePresence, type InitialFocus } from './layers'
 import './Dialog.css'
 
 const EXIT_MS = 170
@@ -12,7 +12,8 @@ interface ModalShellProps {
   onClose: () => void
   /** Scrim click and Escape close it. Default true. */
   dismissable?: boolean
-  initialFocus?: RefObject<HTMLElement | null>
+  /** What gets the focus on opening, instead of the `data-autofocus` element: an element, or `'panel'` for the panel itself. */
+  initialFocus?: InitialFocus
   labelledBy?: string
   describedBy?: string
   ariaLabel?: string

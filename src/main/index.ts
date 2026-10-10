@@ -1,8 +1,10 @@
 import { app, Menu, protocol, session, type BrowserWindow } from 'electron'
-import { registerIpc } from './ipc'
+import { pushToPage, registerIpc } from './ipc'
 import { createSaveStore } from './save'
 import { SPRITE_SCHEME } from './sprite-request'
 import { registerSpriteProtocol } from './sprites'
+import type { UpdateService } from './update-service'
+import { createUpdates } from './updates'
 import { createMainWindow } from './window'
 
 /** The page needs nothing beyond copying text; every other permission request is refused. */
@@ -14,6 +16,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 let mainWindow: BrowserWindow | null = null
+let updates: UpdateService | null = null
 
 function openMainWindow(): void {
   const win = createMainWindow()
@@ -21,6 +24,8 @@ function openMainWindow(): void {
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
   })
+  // Update checks wait for the page, so they never compete with start-up.
+  win.webContents.once('did-finish-load', () => updates?.start())
 
   // The one test hook: lets a script confirm the built app boots, then exits on its own.
   if (process.env['PELAGIX_SMOKE'] === '1') {
@@ -50,8 +55,12 @@ function start(): void {
 
   const store = createSaveStore(app.getPath('userData'))
   registerSpriteProtocol()
-  registerIpc(() => mainWindow, store)
   openMainWindow()
+  // After the window, so that nothing here holds it up, and before the page can run: it has not
+  // asked for anything yet, and it has not written a first save, which is how the update service
+  // tells a fresh install from an upgrade.
+  updates = createUpdates(store, (state) => pushToPage(() => mainWindow, 'pelagix:update-changed', state))
+  registerIpc(() => mainWindow, store, updates)
 
   app.on('activate', () => {
     if (!mainWindow) openMainWindow()
@@ -59,11 +68,13 @@ function start(): void {
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
   })
-  // Let a save that is still being written reach the disk before the process goes away.
+  // Let a save that is still being written reach the disk before the process goes away. The same
+  // goes for what the updater keeps: the last lines of its log are the ones about an install, and
+  // they are written a moment before the quit that the install itself asks for.
   app.on('before-quit', (event) => {
-    if (!store.busy) return
+    if (!store.busy && !updates?.busy) return
     event.preventDefault()
-    void store.idle().then(() => app.quit())
+    void Promise.all([store.idle(), updates?.idle()]).then(() => app.quit())
   })
 }
 

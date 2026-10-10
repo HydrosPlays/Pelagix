@@ -1,0 +1,690 @@
+/* Updates: the changelog and "What's new" windows, the release notes inside them, and the marker
+   in the navigation rail. Prefix: upd-. */
+
+/* ================================================================ windows */
+
+.upd-dialog__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.upd-dialog .ui-modal__header {
+  padding-bottom: var(--sp-4);
+}
+
+/* The notes scroll under the header: a hairline shows where. */
+.upd-dialog .ui-modal__body {
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--line);
+}
+
+.upd-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-weight: var(--fw-medium);
+}
+
+.upd-link svg {
+  align-self: center;
+}
+
+/* ---- the foot: what went wrong, one line of explanation, the buttons ---- */
+
+.upd-foot {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.upd-foot__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-3) var(--sp-5);
+  min-width: 0;
+}
+
+.upd-foot__note {
+  flex: 1 1 240px;
+  min-width: 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.upd-foot__actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+
+.upd-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-radius: var(--r-md);
+  background: var(--danger-soft);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.upd-alert > svg {
+  margin-top: 1px;
+  color: var(--danger-text);
+}
+
+.upd-alert--warning {
+  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+  background: var(--warning-soft);
+}
+
+.upd-alert--warning > svg {
+  color: var(--warning-text);
+}
+
+.upd-alert__text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- downloading ---- */
+
+.upd-progress {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.upd-progress__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--sp-4);
+}
+
+.upd-progress__label {
+  color: var(--text-2);
+  font-size: var(--fs-md);
+}
+
+.upd-progress__label b {
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+}
+
+.upd-progress__detail {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+/* Inside a column the note's flex-basis would be a height. */
+.upd-progress .upd-foot__note,
+.upd-restarting .upd-foot__note {
+  flex: none;
+}
+
+.upd-progress .upd-foot__note {
+  color: var(--text-3);
+}
+
+/* ---- restarting ---- */
+
+.upd-restarting {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: var(--sp-4);
+  color: var(--accent);
+}
+
+.upd-restarting__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.upd-restarting__title {
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+}
+
+/* ================================================================ releases */
+
+.upd-notes {
+  display: flex;
+  flex-direction: column;
+}
+
+.upd-release + .upd-release {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--line);
+}
+
+.upd-release__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.upd-release__version {
+  flex: none;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+}
+
+.upd-release__name {
+  min-width: 0;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  overflow-wrap: anywhere;
+}
+
+.upd-release__date {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+.upd-release__more {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.upd-md + .upd-release__more {
+  margin-top: var(--sp-4);
+}
+
+.upd-nonotes {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-inset);
+  color: var(--text-2);
+}
+
+.upd-nonotes__icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+
+/* ================================================================ Markdown
+   Everything the release notes can contain. The elements come from render.ts and from nowhere
+   else, so these selectors are the complete list. */
+
+.upd-md {
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  /* A word longer than the window breaks instead of pushing the window wider. */
+  overflow-wrap: break-word;
+}
+
+/* The browser's own margins go (:where keeps this weaker than the rhythm set right below). */
+.upd-md :where(p, ul, ol, blockquote, pre, hr, h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+}
+
+.upd-md > * + * {
+  margin-top: var(--sp-3);
+}
+
+.upd-md blockquote > * + *,
+.upd-md li > * + * {
+  margin-top: var(--sp-2);
+}
+
+.upd-md strong {
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+}
+
+.upd-md del {
+  color: var(--text-3);
+}
+
+/* ---- headings: "#" to "######" keep their rank, whatever element they became ---- */
+
+.upd-md .upd-md-h {
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  letter-spacing: 0;
+}
+
+.upd-md > .upd-md-h:not(:first-child) {
+  margin-top: var(--sp-6);
+}
+
+/* A heading sits closer to what it introduces than to what came before. */
+.upd-md .upd-md-h + * {
+  margin-top: var(--sp-2);
+}
+
+.upd-md .upd-md-h1 {
+  font-size: var(--fs-xl);
+}
+
+.upd-md .upd-md-h2 {
+  font-size: var(--fs-lg);
+}
+
+.upd-md .upd-md-h3 {
+  font-size: var(--fs-md);
+}
+
+.upd-md .upd-md-h4,
+.upd-md .upd-md-h5,
+.upd-md .upd-md-h6 {
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+/* ---- links ---- */
+
+.upd-md .upd-md-link {
+  color: var(--accent);
+  font-weight: var(--fw-medium);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  text-underline-offset: 2px;
+}
+
+.upd-md .upd-md-link:hover {
+  color: var(--accent-strong);
+  text-decoration-color: currentColor;
+}
+
+.upd-md .upd-md-link:focus-visible {
+  border-radius: var(--r-xs);
+}
+
+/* ---- lists (the reset in base.css removes the markers) ---- */
+
+.upd-md ul,
+.upd-md ol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 1.35em;
+}
+
+.upd-md ul {
+  list-style: disc;
+}
+
+.upd-md ul ul {
+  list-style: circle;
+}
+
+.upd-md ol {
+  list-style: decimal;
+}
+
+.upd-md li::marker {
+  color: var(--text-3);
+}
+
+.upd-md li > ul,
+.upd-md li > ol {
+  margin-top: 6px;
+}
+
+.upd-md li.upd-md-task {
+  position: relative;
+  list-style: none;
+}
+
+/* A task item's box: the kit's checkbox in small, and never clickable. */
+.upd-md .upd-md-task > input {
+  position: absolute;
+  top: 0.28em;
+  left: -1.4em;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background: var(--surface-inset);
+  appearance: none;
+}
+
+.upd-md .upd-md-task > input:checked {
+  border-color: transparent;
+  background: var(--accent-grad);
+}
+
+.upd-md .upd-md-task > input:checked::before {
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--text-on-accent);
+  border-width: 0 2px 2px 0;
+  content: '';
+  transform: rotate(45deg);
+}
+
+/* ---- code ---- */
+
+.upd-md .upd-md-code,
+.upd-md .upd-md-pre {
+  border: 1px solid var(--line);
+  background: var(--surface-inset);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.upd-md .upd-md-code {
+  padding: 1px 5px;
+  border-radius: var(--r-xs);
+  /* A long path or command wraps where it must, and each piece keeps its own frame. */
+  white-space: pre-wrap;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.upd-md .upd-md-pre {
+  padding: var(--sp-3) var(--sp-4);
+  overflow-x: auto;
+  border-radius: var(--r-md);
+  line-height: 1.5;
+  overflow-wrap: normal;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.upd-md .upd-md-pre code {
+  font: inherit;
+}
+
+/* ---- tables ---- */
+
+.upd-md .upd-md-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+.upd-md table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.upd-md th,
+.upd-md td {
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  vertical-align: top;
+}
+
+.upd-md th {
+  background: var(--surface-inset);
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+.upd-md tbody tr {
+  border-top: 1px solid var(--line);
+}
+
+.upd-md th + th,
+.upd-md td + td {
+  border-left: 1px solid var(--line);
+}
+
+.upd-md .upd-md-left {
+  text-align: left;
+}
+
+.upd-md .upd-md-center {
+  text-align: center;
+}
+
+.upd-md .upd-md-right {
+  text-align: right;
+}
+
+/* ---- quotes, GitHub's alert boxes, rules ---- */
+
+.upd-md .upd-md-quote,
+.upd-md .upd-md-alert {
+  --upd-quote: var(--line-strong);
+  padding: var(--sp-1) 0 var(--sp-1) var(--sp-4);
+  border-left: 3px solid var(--upd-quote);
+}
+
+.upd-md .upd-md-quote {
+  color: var(--text-3);
+}
+
+.upd-md .upd-md-alert {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: color-mix(in srgb, var(--upd-quote) 9%, transparent);
+}
+
+.upd-md .upd-md-alert::before {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--upd-label);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.upd-md .upd-md-alert-note {
+  --upd-quote: var(--accent);
+  --upd-label: var(--accent);
+}
+
+.upd-md .upd-md-alert-note::before {
+  content: 'Note';
+}
+
+.upd-md .upd-md-alert-tip {
+  --upd-quote: var(--success);
+  --upd-label: var(--success-text);
+}
+
+.upd-md .upd-md-alert-tip::before {
+  content: 'Tip';
+}
+
+.upd-md .upd-md-alert-important {
+  --upd-quote: var(--gold);
+  --upd-label: var(--gold-text);
+}
+
+.upd-md .upd-md-alert-important::before {
+  content: 'Important';
+}
+
+.upd-md .upd-md-alert-warning {
+  --upd-quote: var(--warning);
+  --upd-label: var(--warning-text);
+}
+
+.upd-md .upd-md-alert-warning::before {
+  content: 'Warning';
+}
+
+.upd-md .upd-md-alert-caution {
+  --upd-quote: var(--danger);
+  --upd-label: var(--danger-text);
+}
+
+.upd-md .upd-md-alert-caution::before {
+  content: 'Caution';
+}
+
+.upd-md hr {
+  height: 1px;
+  border: 0;
+  background: var(--line-strong);
+}
+
+.upd-md > hr {
+  margin-block: var(--sp-5);
+}
+
+/* ================================================================ marker in the navigation rail */
+
+.upd-indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--sp-3);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--accent-softer);
+  color: var(--accent-strong);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  text-align: left;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+  -webkit-app-region: no-drag;
+}
+
+.upd-indicator:hover {
+  border-color: var(--line-accent);
+  background: var(--accent-soft);
+}
+
+.upd-indicator.is-ready {
+  border-color: var(--line-accent);
+  background: var(--accent-soft);
+}
+
+.upd-indicator__icon {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+/* A dot on the icon: the part that still says "something new" when the rail shows icons only. */
+.upd-indicator__dot {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--bg-1);
+  border-radius: 50%;
+  background: var(--accent);
+  box-sizing: content-box;
+}
+
+.upd-indicator__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upd-indicator__bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--surface-inset);
+}
+
+.upd-indicator__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-grad);
+  transform-origin: left center;
+  transition: transform var(--dur-4) var(--ease-out);
+}
+
+.upd-indicator.is-collapsed {
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.upd-indicator.is-collapsed .upd-indicator__label {
+  display: none;
+}
+
+/* ================================================================ notice on the screens without a rail */
+
+.upd-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+  border: 1px solid var(--line-accent);
+  border-radius: var(--r-md);
+  background: var(--accent-softer);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  text-align: left;
+  -webkit-app-region: no-drag;
+}
+
+.upd-notice__icon {
+  display: flex;
+  flex: none;
+  color: var(--accent-strong);
+}
+
+.upd-notice__text {
+  flex: 1;
+  min-width: 0;
+  font-weight: var(--fw-semibold);
+}

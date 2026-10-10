@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <sub>Windows 10 and 11 · version 0.1.0 · GPL-3.0 · an unofficial fan project</sub>
+  <sub>Windows 10 and 11 · version 0.2.0 · GPL-3.0 · an unofficial fan project</sub>
 </p>
 
 > The screenshots on this page come from version 0.1.0 running a generated demo collection
@@ -42,6 +42,7 @@
   - [Home dashboard](#home-dashboard)
   - [Settings](#settings)
   - [Search and keyboard shortcuts](#search-and-keyboard-shortcuts)
+  - [Updates](#updates)
 - [Supported games](#supported-games)
 - [The data](#the-data)
 - [Getting Pelagix](#getting-pelagix)
@@ -330,6 +331,8 @@ the first catch.
   replace everything. Reset asks you to type `RESET`. A merge, a replace and a reset can each be
   undone straight afterwards.
 - **Sprite cache**: how much is stored, and a button to clear it.
+- **Updates**: your version, when it was last checked, **Check for updates**, and the switch for
+  the automatic check. See [Updates](#updates).
 - **About**: version, dataset details, keyboard shortcuts and credits.
 
 ![Eevee's page in the light theme: the render, Pokédex text, and the branching evolution family with all eight evolutions and how each is reached](docs/screenshots/15-light-theme.png)
@@ -354,6 +357,33 @@ on or off, switch theme, or turn reduced motion on or off.
 | `Ctrl+Enter` | Entry editor | Save the entry |
 | `F6` | Anywhere | Jump to the newest notification, for example to reach its Undo, and back |
 | `Esc` | Anywhere | Close a dialog, menu or search |
+
+### Updates
+
+From version 0.2.0, Pelagix looks for new versions on its
+[Releases page](https://github.com/HydrosPlays/Pelagix/releases).
+
+- **When it checks.** A few seconds after it starts, and every six hours while it stays open.
+  Settings → Updates has a **Check for updates** button and a switch that turns the automatic
+  check off.
+- **What you see.** When a newer version exists, a window opens with the release notes of every
+  version you are missing. It opens by itself once per version; after that an **Update available**
+  marker stays at the foot of the navigation rail and reopens it.
+- **Installed version.** **Download and install** fetches the update and shows its progress.
+  **Restart and update** then closes Pelagix, installs the update into the same folder and reopens
+  the app. Your save is written to disk first, and Pelagix will not restart while you are still
+  editing an entry. A downloaded update is installed only by that button: closing Pelagix yourself
+  leaves it waiting.
+- **Portable version.** It shows the same notes, and its button opens the release page. You
+  download the new file and replace the old one yourself.
+- **After an update**, a *What's new* window shows the notes of the new version once.
+
+What is sent: a check is an ordinary HTTPS request for public files on github.com, the release
+notes come from api.github.com, and the update itself is downloaded from GitHub's release
+storage. GitHub sees what any web server sees: your IP address, and that the request comes from
+`Pelagix/<version>`. No account, identifier or cookie is sent, and nothing about your collection.
+With the automatic check switched off, Pelagix makes these requests only when you press
+**Check for updates** or start a download.
 
 ## Supported games
 
@@ -406,8 +436,8 @@ a small set of hand-curated tables for what they lack, and checked by a validato
   commit `35fdbe9`. Settings → About shows the same details for the copy you are running.
 - **Renders are not bundled.** Each Pokémon HOME render is downloaded the first time it is shown,
   from the PokeAPI/sprites repository (through the jsDelivr CDN, with GitHub as the fallback), and
-  then kept in a cache on your computer. These downloads are the only network requests the app
-  makes.
+  then kept in a cache on your computer. Apart from these downloads, the only network requests
+  the app makes are for [updates](#updates).
 
 [docs/DATA.md](docs/DATA.md) describes how the datasets are built, what "obtainable" means, and
 the figures behind them.
@@ -419,10 +449,14 @@ The app:
 - **You log by hand.** Pelagix does not import from save files, Pokémon HOME or Pokémon GO.
 - **Windows only.** The only build that is set up and tested is 64-bit Windows.
 - **English only**, for the interface and for the game data.
-- **No automatic updates and no sync.** To move a collection to another computer, export and
-  import the save.
+- **No sync.** To move a collection to another computer, export and import the save.
+- **Only the installed version updates itself.** The portable version tells you about a new
+  version, and you download it yourself. Version 0.1.0 has no updater at all.
+- **Updates are not code-signed either.** A downloaded update is checked against the checksum
+  published with the release, not against a signature. If Pelagix was installed for all users,
+  Windows may ask for permission while an update installs.
 - **Renders need the internet once.** A Pokémon whose render has never been downloaded shows a
-  placeholder while you are offline. Everything else works offline.
+  placeholder while you are offline. Everything else works offline, except checking for updates.
 - **The shiny toggle is shared.** The sparkle button in the title bar and the Shiny mode of the
   Living Dex are the same switch, so turning on shiny renders in the Pokédex also opens the Living
   Dex in Shiny mode.
@@ -469,17 +503,21 @@ the game actually does is the most useful report.
 ## Getting Pelagix
 
 Download the latest version from the repository's
-[Releases page](https://github.com/HydrosPlays/Pelagix/releases). Each release has two files, and
-you only need one of them:
+[Releases page](https://github.com/HydrosPlays/Pelagix/releases). You only need one of these two
+files:
 
 | File | What it is |
 | --- | --- |
-| `Pelagix-0.1.0-setup.exe` | The installer. It lets you choose the install folder. About 109 MB. |
-| `Pelagix-0.1.0-portable.exe` | A single file that runs without installing. About 109 MB. |
+| `Pelagix-<version>-setup.exe` | The installer. It lets you choose the install folder, and from 0.2.0 on it updates itself from inside the app. About 109 MB. |
+| `Pelagix-<version>-portable.exe` | A single file that runs without installing. It tells you when a new version is out, and you download that yourself. About 109 MB. |
+
+A release also carries `latest.yml` and a `.blockmap` file. The updater reads those; you do not
+need them. If you are on 0.1.0, which has no updater, download the newer file and run it: your
+data stays where it is.
 
 To build them yourself instead, see [Building from source](#building-from-source): `npm run dist`
-writes the same two executables to `dist/`, beside electron-builder's own working files
-(`win-unpacked/`, `latest.yml`, a `.blockmap` and `builder-debug.yml`), which you can ignore.
+writes the same files to `dist/`, beside electron-builder's own working files (`win-unpacked/`
+and `builder-debug.yml`), which you can ignore.
 
 Things to know before the first run:
 
@@ -491,12 +529,14 @@ Things to know before the first run:
   the render comes from the cache on your computer.
 - **The portable build keeps your data in the same place as the installed one**
   (`%APPDATA%\Pelagix`). It is portable in the sense that it needs no installation, not that it
-  carries your save with it.
+  carries your save with it. It does not replace itself with a new version: see
+  [Updates](#updates).
 
 ## Where your data lives
 
-Everything Pelagix writes is in its user-data folder, `%APPDATA%\Pelagix`. Settings → Your data
-shows the exact path of the save.
+Everything Pelagix writes is in its user-data folder, `%APPDATA%\Pelagix`, with one exception:
+the installed version keeps downloaded updates in `%LOCALAPPDATA%\pelagix-updater`, which
+uninstalling removes. Settings → Your data shows the exact path of the save.
 
 | Path | Contents |
 | --- | --- |
@@ -505,6 +545,8 @@ shows the exact path of the save.
 | `save.corrupt-<timestamp>.json` | A save that could not be read. It is moved aside and the newest backup is restored in its place. |
 | `sprite-cache\` | Downloaded Pokémon renders and their thumbnails. Safe to delete; it can also be cleared from Settings. |
 | `window.json` | Window size, position and theme. |
+| `updates.json` | What the updater remembers on this computer: the automatic-check switch, when it last checked, and release notes it has fetched. |
+| `updates.log` | The updater's log, for when an update goes wrong. Kept small. |
 
 - The save is written atomically, to a temporary file that is flushed and then renamed, so an
   interrupted write cannot leave a half-written file.
@@ -531,8 +573,8 @@ npm install
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Starts the app in Electron with hot reload. The first run downloads the Electron binary. |
-| `npm test` | Runs the unit tests (752 tests in 30 files). |
-| `npm run dist` | Type-checks, builds, and packages the installer and the portable executable into `dist/`. |
+| `npm test` | Runs the unit tests (1,522 tests in 42 files). |
+| `npm run dist` | Type-checks, builds, and packages the installer, the portable executable and the updater's files into `dist/`. Nothing is uploaded. |
 
 The datasets and the game icons are part of the repository, so nothing else has to be generated
 before the app runs. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) lists every script and explains
@@ -587,7 +629,7 @@ own save is never opened. Options go after `--`, for example
 
 ```
 src/
-  main/              Electron main process: window, save file, sprite cache, IPC
+  main/              Electron main process: window, save file, sprite cache, updates, IPC
   preload/           The bridge that exposes window.api to the interface
   shared/            Types and static data used by the app and by the data tools
                      (games, balls, sprites, dataset and save formats)
@@ -596,7 +638,7 @@ src/
     public/games/      Game icons as shipped
     src/components/    Shared components
     src/features/      One folder per page: home, pokedex, species, entry, living,
-                       journal, achievements, settings, search
+                       journal, achievements, settings, search, updates
     src/domain/        Living Dex slots, progress, encounters, achievements
     src/lib/           Data loading, sprites, storage, search, animation helpers
     src/store/         The save and the interface state
@@ -616,7 +658,7 @@ dist/                Packaged executables (git-ignored)
 
 | Layer | Built with |
 | --- | --- |
-| Shell | [Electron](https://www.electronjs.org/) 44, packaged with electron-builder |
+| Shell | [Electron](https://www.electronjs.org/) 44, packaged with electron-builder, updated with electron-updater |
 | Build | [electron-vite](https://electron-vite.org/) and [Vite](https://vite.dev/) 7 |
 | Interface | [React](https://react.dev/) 19 and TypeScript, plain CSS |
 | State | [zustand](https://github.com/pmndrs/zustand) |

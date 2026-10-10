@@ -47,10 +47,12 @@ export interface BootErrorProps {
   detail?: string
   onRetry: () => void
   retrying?: boolean
+  /** Shown under the buttons: something that still works although the app did not start (the update notice). */
+  notice?: ReactNode
 }
 
 /** Full-window error for a start-up failure (datasets missing, save unreadable). */
-export function BootError({ title, hint, detail, onRetry, retrying }: BootErrorProps) {
+export function BootError({ title, hint, detail, onRetry, retrying, notice }: BootErrorProps) {
   return (
     <Frame>
       <div className="boot__error" role="alert">
@@ -68,6 +70,7 @@ export function BootError({ title, hint, detail, onRetry, retrying }: BootErrorP
             Reload app
           </Button>
         </div>
+        {notice !== undefined && <div className="boot__error-notice">{notice}</div>}
       </div>
     </Frame>
   )

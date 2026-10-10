@@ -75,30 +75,9 @@ import { dexNo, plural, todayIso } from '@renderer/lib/format'
 import { BootError, BootScreen } from '@renderer/shell/BootScreen'
 import { useEntries, useSaveStore, useSettings } from '@renderer/store/save'
 import { toast, useUiStore } from '@renderer/store/ui'
+import { Row, Section } from './parts'
+import { UpdatesKit } from './UpdatesKit'
 import './KitPage.css'
-
-function Section({ id, title, note, children }: { id: string; title: string; note?: string; children: ReactNode }) {
-  return (
-    <section id={`kit-${id}`} className="section kit-section">
-      <div className="section-header">
-        <h2 className="section-title">{title}</h2>
-        {note && <span className="u-muted kit-note">{note}</span>}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function Row({ label, children, wrap = true }: { label?: string; children: ReactNode; wrap?: boolean }) {
-  return (
-    <div className="kit-row">
-      {label && <div className="u-eyebrow kit-row__label">{label}</div>}
-      <div className="kit-row__items" style={{ flexWrap: wrap ? 'wrap' : 'nowrap' }}>
-        {children}
-      </div>
-    </div>
-  )
-}
 
 const TONES: Tone[] = ['neutral', 'accent', 'gold', 'catch', 'success', 'warning', 'danger']
 const SWATCHES: Array<[string, string[]]> = [
@@ -1480,6 +1459,7 @@ const NAV: Array<[string, string]> = [
   ['motion', 'Motion'],
   ['virtual', 'VirtualGrid'],
   ['screens', 'Screens'],
+  ['updates', 'Updates'],
   ['virtual-page', 'Page grid']
 ]
 
@@ -1539,6 +1519,7 @@ export default function KitPage() {
       <Motion />
       <Virtual />
       <Screens />
+      <UpdatesKit />
       <VirtualPage />
     </div>
   )

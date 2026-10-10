@@ -1,13 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { AppInfo } from '@shared/api'
 import { Icon, Panel, cx, type IconName } from '@renderer/components/ui'
+import { isElectron } from '@renderer/lib/env'
 import { errorMessage } from '@renderer/lib/format'
 import { useSaveStore } from '@renderer/store/save'
 import { toast } from '@renderer/store/ui'
 
 // ---------------------------------------------------------------- sections
 
-export type SectionId = 'trainer' | 'rules' | 'appearance' | 'data' | 'sprites' | 'about'
+export type SectionId = 'trainer' | 'rules' | 'appearance' | 'data' | 'sprites' | 'updates' | 'about'
 
 export interface SectionDef {
   id: SectionId
@@ -15,15 +16,21 @@ export interface SectionDef {
   icon: IconName
 }
 
-/** The page's sections, in order. The index and the sections themselves are both built from this. */
-export const SECTIONS: readonly SectionDef[] = [
+const ALL_SECTIONS: readonly SectionDef[] = [
   { id: 'trainer', title: 'Trainer', icon: 'user' },
   { id: 'rules', title: 'Living Dex rules', icon: 'grid' },
   { id: 'appearance', title: 'Appearance', icon: 'sun' },
   { id: 'data', title: 'Your data', icon: 'database' },
   { id: 'sprites', title: 'Sprite cache', icon: 'image' },
+  { id: 'updates', title: 'Updates', icon: 'download' },
   { id: 'about', title: 'About', icon: 'info' }
 ]
+
+/** Sections that only exist in the desktop app. A browser has nothing to check or install, so it gets no dead entry in the index. */
+const DESKTOP_ONLY: ReadonlySet<SectionId> = new Set<SectionId>(['updates'])
+
+/** The page's sections, in order. The index and the sections themselves are both built from this. */
+export const SECTIONS: readonly SectionDef[] = isElectron ? ALL_SECTIONS : ALL_SECTIONS.filter((section) => !DESKTOP_ONLY.has(section.id))
 
 export const sectionDomId = (id: SectionId): string => `settings-${id}`
 
@@ -38,7 +45,7 @@ export interface SettingsSectionProps {
 
 /** One titled block of the page. Its heading takes focus when the index jumps to it. */
 export function SettingsSection({ id, description, aside, children }: SettingsSectionProps) {
-  const def = SECTIONS.find((s) => s.id === id)
+  const def = ALL_SECTIONS.find((s) => s.id === id)
   const domId = sectionDomId(id)
   return (
     <section id={domId} className="settings-section" aria-labelledby={`${domId}-title`}>

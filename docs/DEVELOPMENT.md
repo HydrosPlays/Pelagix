@@ -99,18 +99,20 @@ src/renderer/    The React interface
   read from `sprite-cache\`, with thumbnails made on demand.
 - `ipc.ts` holds the handlers behind `window.api`. Each one checks that the call comes from the
   app's own page and validates its arguments.
+- `updates.ts` and the `update-*.ts` files are the updater: see [Updates](#updates).
 
 **Preload** (`src/preload/index.ts`) exposes exactly the methods of `PelagixApi`
-([`src/shared/api.ts`](../src/shared/api.ts)): `loadSave`, `writeSave`, `exportSave`,
-`importSave`, `spriteCacheInfo`, `clearSpriteCache`, `appInfo`, `openExternal` and `setTheme`.
-The page runs sandboxed, with context isolation on and Node integration off, under a Content
-Security Policy that allows network requests only to the two sprite hosts.
+([`src/shared/api.ts`](../src/shared/api.ts)): the save, sprite-cache, app-info, `openExternal`
+and `setTheme` calls, and the update calls with `onUpdateState`, the one subscription the main
+process pushes to. The page runs sandboxed, with context isolation on and Node integration off,
+under a Content Security Policy that allows network requests only to the two sprite hosts. The
+main process is what talks to GitHub for updates.
 
 **Renderer** (`src/renderer/src`)
 
 | Folder | Contents |
 | --- | --- |
-| `features/` | One folder per page or app-wide feature: `home`, `pokedex`, `species`, `entry`, `living`, `journal`, `achievements`, `settings`, `search` (and `kit`, development only). |
+| `features/` | One folder per page or app-wide feature: `home`, `pokedex`, `species`, `entry`, `living`, `journal`, `achievements`, `settings`, `search`, `updates` (and `kit`, development only). |
 | `domain/` | The rules, as pure functions: Living Dex slots, progress, encounters, achievements. |
 | `components/` | Shared components (`ui/`) and Pokémon-specific ones (`pokemon/`). |
 | `lib/` | Data loading, sprites, storage, search, formatting, animation helpers. |
@@ -153,7 +155,7 @@ is loaded or imported, and reports what it had to drop or repair.
 npm test
 ```
 
-Vitest, in a Node environment: 752 tests in 30 files at the time of writing. They cover the
+Vitest, in a Node environment: 1,522 tests in 42 files at the time of writing. They cover the
 logic: slot rules, progress, encounter handling, achievements (including that every one of them
 can be earned on the real datasets), search, the entry editor's draft handling, the page models,
 the save store and the sprite protocol's request parsing.
@@ -167,22 +169,83 @@ is checked by running the app.
 npm run dist
 ```
 
-runs `npm run build` and then `electron-builder --win` with
+runs `npm run build` and then `electron-builder --win --publish never` with
 [`electron-builder.yml`](../electron-builder.yml). It writes to `dist/`:
 
-| File | Target |
+| File | What it is |
 | --- | --- |
 | `Pelagix-<version>-setup.exe` | NSIS installer, x64. Not one-click: it lets the user choose the folder. |
+| `Pelagix-<version>-setup.exe.blockmap` | Lets an installed copy download only the parts of the installer that changed. |
+| `latest.yml` | What an installed copy reads to learn the newest version: the installer's name, size and checksum. |
 | `Pelagix-<version>-portable.exe` | Portable executable, x64. |
 
-- electron-builder also leaves its working files in `dist/`: the unpacked app in `win-unpacked/`,
-  `latest.yml`, a `.blockmap` beside the installer and `builder-debug.yml`. None of them is needed
-  to run or to share the app.
+- All four belong to a release: see [Releasing](#releasing).
+- electron-builder also leaves its working files in `dist/`: the unpacked app in `win-unpacked/`
+  and `builder-debug.yml`. Those are not needed.
 - The package contains `out/` and `package.json`. The datasets are in `out/renderer/data`, so
-  there are no extra resources.
+  there are no extra resources. electron-updater is a devDependency on purpose: electron-vite
+  bundles it into `out/main`, so the package still has no `node_modules`.
 - The executables are **not code-signed**.
-- There is no auto-update code in the app.
+- Nothing is uploaded: `--publish never` is part of the script.
 - The version comes from `package.json`.
+
+## Updates
+
+An installed copy updates itself through electron-updater, reading the GitHub releases of
+`HydrosPlays/Pelagix`. The contract with the page is `UpdateState` in
+[`src/shared/api.ts`](../src/shared/api.ts): the main process owns the state and always sends the
+whole snapshot.
+
+| Mode | When | What it does |
+| --- | --- | --- |
+| `auto` | Packaged, with the NSIS uninstaller beside the exe | Checks, downloads, installs. |
+| `manual` | Packaged otherwise: the portable exe, an unpacked folder | Checks and shows the notes; the button opens the release page. Never downloads. |
+| `off` | Not packaged, `PELAGIX_SMOKE=1`, or not Windows | Nothing: no request, no timer, no file. |
+
+- **Main process** (`src/main`): `updates.ts` wires it up and decides the mode; `updater.ts` is
+  the only file that touches electron-updater; `update-service.ts` is the state machine;
+  `update-model.ts`, `update-version.ts` and `update-releases.ts` are pure logic (error kinds,
+  version comparison, reading GitHub's release list); `update-store.ts` reads and writes
+  `updates.json` and `updates.log` in the user-data folder.
+- **Renderer** (`src/renderer/src/features/updates`): the watcher that decides when a window may
+  open by itself, the changelog and What's-new windows, the rail marker, and a dependency-free
+  Markdown parser and renderer (`markdown.ts`, `render.ts`). Release notes are untrusted text:
+  they are never rendered as HTML, and links are `https` only.
+- **Timing**: the first check about 12 seconds after the page loads, then every six hours, only
+  while the automatic check is on. With it off, the app sends no update request of its own.
+- **Installing**: the page flushes the save, the main process waits for it to reach the disk, and
+  only then starts the installer silently. The installer stops a running app after about a
+  second, so nothing may still be unsaved by then.
+- **Uninstalling**: `build/installer.nsh` removes the download cache
+  (`%LOCALAPPDATA%\pelagix-updater`) on a real uninstall, and leaves it alone during an update.
+- **Seeing the windows without a release**: a development run is in mode `off`. The development
+  page `#/_kit` has previews of every update state.
+
+## Releasing
+
+Users see the release description as the changelog inside the app, so write it for them, in
+Markdown (headings, lists, tables, bold, italics, code and links are rendered; images become
+links; HTML is shown as text).
+
+1. Set the new `version` in `package.json`.
+2. Run `npm run dist` once.
+3. On GitHub, create a release with the tag `v<version>`, for example `v0.2.1`, and paste the
+   description.
+4. Upload these four files from that same run of `npm run dist`, without renaming them:
+   `Pelagix-<version>-setup.exe`, `Pelagix-<version>-setup.exe.blockmap`, `latest.yml` and
+   `Pelagix-<version>-portable.exe`.
+5. Publish it as a normal release: not a pre-release, and marked as the latest.
+6. Check that `https://github.com/HydrosPlays/Pelagix/releases/latest/download/latest.yml` opens.
+
+What goes wrong otherwise:
+
+- **A newest release without `latest.yml`** makes the update check of every installed copy fail,
+  silently, until the file is added.
+- **A `latest.yml` from a different build than the uploaded setup exe** fails the checksum, and
+  the download is rejected. Never rebuild between uploading the two.
+- **A pre-release or a draft** is not seen by the updater.
+
+Version 0.1.0 has no updater, so its users install a newer version by hand.
 
 ## Assets and screenshots
 

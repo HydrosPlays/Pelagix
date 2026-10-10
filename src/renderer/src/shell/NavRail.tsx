@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { Link, useLocation } from 'wouter'
 import { Icon, Leds, Lens, NumberTicker, ProgressRing, Tooltip, cx } from '@renderer/components/ui'
 import { useCollection } from '@renderer/domain/slots'
+import { UpdateIndicator } from '@renderer/features/updates/UpdateIndicator'
 import { isDev } from '@renderer/lib/env'
 import { formatCount, percent, ratio } from '@renderer/lib/format'
 import { paths } from './router'
@@ -81,6 +82,8 @@ export function NavRail() {
       </ul>
 
       <div className="shell-rail__foot">
+        {/* Only there while a newer version is on offer. */}
+        <UpdateIndicator collapsed={collapsed} />
         {isDev && (
           <Tooltip content="Component kit" placement="right" disabled={!collapsed}>
             <Link href={paths.kit()} className={cx('shell-rail__link', 'shell-rail__link--minor', activeNav === 'kit' && 'is-active')} aria-current={activeNav === 'kit' ? 'page' : undefined} aria-label={collapsed ? 'Component kit' : undefined}>

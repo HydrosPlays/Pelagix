@@ -38,7 +38,7 @@ Scale `--sp-1..16` (4 px), `--fs-2xs..display`, `--fw-*`, `--r-xs..xl|full`, `--
 | `Badge` | `<Badge count={3} tone />`, `<Badge dot />`, `<Badge>NEW</Badge>` |
 | `Panel` (= `Card`) | `<Panel tone="glass\|solid\|inset\|accent\|gold" padding title eyebrow actions chamfer brackets interactive>` |
 | `HudBrackets` | corner brackets inside any positioned box |
-| `Dialog` | `<Dialog open onClose title description media footer size="sm..xl" chamfer dismissable hideClose flush>`; `data-autofocus` picks first focus. Closing gives focus back to what had it; if that was removed meanwhile, place focus yourself (`features/living/focus.ts`) |
+| `Dialog` | `<Dialog open onClose title description media footer size="sm..xl" chamfer dismissable hideClose flush>`; `data-autofocus` picks first focus, `initialFocus` overrides it (a ref, or `'panel'` for the dialog itself: use that for a dialog nobody asked for, so a key on its way to the page cannot press a button). Closing gives focus back to what had it; if that was removed meanwhile, place focus yourself (`features/living/focus.ts`) |
 | `Drawer` | same props, `side="right\|left" width` |
 | `Tabs` + `TabPanel` | `<Tabs items value onChange label idBase />` `<TabPanel idBase id value>` |
 | `SegmentedControl` | `<SegmentedControl options={[{value,label,icon}]} value onChange label size fill />` |
@@ -55,10 +55,10 @@ Scale `--sp-1..16` (4 px), `--fs-2xs..display`, `--fw-*`, `--r-xs..xl|full`, `--
 | `Skeleton`, `Spinner`, `Kbd` | `<Skeleton variant width height />`, `<Kbd keys={['Ctrl','K']} />` |
 | `ScrollArea` | themed scroller, `edges` fades; provides `useScrollParent()` |
 | `VirtualGrid` | `<VirtualGrid items renderItem minColumnWidth itemHeight gap label onActivate scroll="page\|self" ref />`; the cell is the focus target, so render no buttons inside; handle: `scrollToIndex`, `focusIndex` |
-| `ErrorBoundary` | `<ErrorBoundary resetKeys fallback>`; each routed page already sits in one |
-| `Toaster` | mounted by the shell; push with `toast({kind,title,body,icon,durationMs,action})` from `store/ui`; `setToastMedalRenderer(fn)` supplies achievement art. `action: {label, onSelect}` adds one button ("Undo", "View"): it runs once, then the toast leaves, and the toast stays at least 7 s unless `durationMs` is given. F6 moves focus to the newest toast and back. While a dialog is open the toasts sit at the top centre, while a drawer is open at the bottom left, so they never cover its buttons |
+| `ErrorBoundary` | `<ErrorBoundary resetKeys fallback>`; each routed page already sits in one. `extra` adds content under the default fallback |
+| `Toaster` | mounted by `App`; push with `toast({kind,title,body,icon,durationMs,action})` from `store/ui`; `setToastMedalRenderer(fn)` supplies achievement art. `action: {label, onSelect}` adds one button ("Undo", "View"): it runs once, then the toast leaves, and the toast stays at least 7 s unless `durationMs` is given. F6 moves focus to the newest toast and back. While a dialog is open the toasts sit at the top centre, while a drawer is open at the bottom left, so they never cover its buttons |
 | `Lens`, `Leds` | Pokédex hardware ornaments |
-| `layers` hooks | `useFloating`, `useOutsidePress`, `useEscapeLayer`, `useFocusTrap`, `usePresence`, `Portal` for custom popovers |
+| `layers` hooks | `useFloating`, `useOutsidePress`, `useEscapeLayer`, `useFocusTrap`, `usePresence`, `Portal` for custom popovers. `useLayerOpen()` / `isLayerOpen()` (from `components/ui/layers`) are true while anything Escape would close is up (a dialog, a drawer, the command palette, an open menu, list or filter popover): use them for anything that must wait its turn instead of opening on top |
 
 ## `components/pokemon`
 | Component | Usage |
@@ -118,3 +118,15 @@ heading: every page renders exactly one `<h1>` of its own (`.page-title`, or the
 top bar owns the shiny-view toggle (`useUiStore().dexView.shinyView`). Theme: call `setSettings({ theme })`; the app
 applies it. `EntryEditorHost`, `CommandPalette` and `AchievementWatcher` are mounted once by `AppShell`. Achievement toasts
 wait while the entry editor is open and are announced once it has closed.
+
+Updates (`features/updates`, CSS prefix `upd-`) exist in the desktop app only. There `App` mounts `UpdateWatcher`
+(headless: follows the update state of the main process) and `UpdateWindows` (the changelog of a newer version, and
+"What's new" after an update) next to the shell, not inside it, so that they still work when the shell cannot start
+or has crashed. The foot of the rail shows `UpdateIndicator` while a newer version is on offer; the start-up error
+and the crash message, which have no rail, show `UpdateNotice` instead. The state is in `useUpdateStore`
+(`features/updates/store.ts`); the main process owns it, so nothing there is decided "once" by the page. An update
+window never opens by itself over a dialog, the entry editor, the command palette or an open dropdown, and one that
+does open by itself puts the keyboard focus on the window, not on a button (`openByItself`). Release
+notes are untrusted Markdown: show them only through `ReleaseNotes` (`markdown.ts` + `render.ts`, no HTML anywhere).
+In a browser none of this is mounted and Settings has no Updates section; the kit (`#/_kit`, "Updates") previews every
+state from made-up snapshots.

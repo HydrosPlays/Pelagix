@@ -25,4 +25,11 @@ nsis:
   artifactName: ${productName}-${version}-setup.${ext}
 portable:
   artifactName: ${productName}-${version}-portable.${ext}
+# Where the installed app looks for updates. The build writes it into resources/app-update.yml
+# and describes the setup exe in dist/latest.yml, which has to be uploaded with the release.
+# Nothing is ever uploaded from here: the dist script passes --publish never.
+publish:
+  provider: github
+  owner: HydrosPlays
+  repo: Pelagix
 npmRebuild: false

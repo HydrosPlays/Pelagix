@@ -3,7 +3,7 @@
  * (only the topmost layer reacts), modal bookkeeping and popover positioning.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { motionOK } from '@renderer/lib/anim'
 
 // ---------------------------------------------------------------- escape stack
@@ -13,6 +13,11 @@ interface Layer {
 }
 
 const stack: Layer[] = []
+const stackListeners = new Set<() => void>()
+
+function stackChanged(): void {
+  for (const listener of stackListeners) listener()
+}
 
 function onKeyDown(event: KeyboardEvent): void {
   if (event.key !== 'Escape' || event.defaultPrevented) return
@@ -27,10 +32,12 @@ function onKeyDown(event: KeyboardEvent): void {
 function pushLayer(layer: Layer): () => void {
   stack.push(layer)
   if (stack.length === 1) document.addEventListener('keydown', onKeyDown, true)
+  stackChanged()
   return () => {
     const i = stack.indexOf(layer)
     if (i >= 0) stack.splice(i, 1)
     if (stack.length === 0) document.removeEventListener('keydown', onKeyDown, true)
+    stackChanged()
   }
 }
 
@@ -42,6 +49,27 @@ export function useEscapeLayer(active: boolean, onEscape?: () => void): void {
     if (!active) return
     return pushLayer({ onEscape: () => handler.current?.() })
   }, [active])
+}
+
+/**
+ * True while anything that Escape would close is up: a dialog, a drawer, the command palette, but
+ * also an open menu, a dropdown list, a filter popover or a selection in progress. For things
+ * that must wait their turn instead of opening on top of what the user is doing.
+ */
+export function isLayerOpen(): boolean {
+  return stack.length > 0
+}
+
+function subscribeStack(onChange: () => void): () => void {
+  stackListeners.add(onChange)
+  return () => {
+    stackListeners.delete(onChange)
+  }
+}
+
+/** `isLayerOpen()` as a hook: the component renders again when the answer changes. */
+export function useLayerOpen(): boolean {
+  return useSyncExternalStore(subscribeStack, isLayerOpen, () => false)
 }
 
 // ---------------------------------------------------------------- modal bookkeeping
@@ -72,11 +100,18 @@ export function focusableWithin(container: HTMLElement): HTMLElement[] {
 const trapped: HTMLElement[] = []
 
 /**
+ * Where the focus goes when a modal panel opens: a given element, or `'panel'` for the panel
+ * itself. The panel is the place for something that opens without being asked for: a key that
+ * was on its way to the page then lands on nothing, instead of pressing a button.
+ */
+export type InitialFocus = RefObject<HTMLElement | null> | 'panel'
+
+/**
  * Focus trap for a modal panel: focuses into it when it opens, keeps Tab inside, and gives focus
  * back to whatever had it before on close. Should focus fall out of the panel altogether (the
  * focused control was removed, say a deleted entry), the next Tab brings it back in.
  */
-export function useFocusTrap(active: boolean, panelRef: RefObject<HTMLElement | null>, initialFocus?: RefObject<HTMLElement | null>): void {
+export function useFocusTrap(active: boolean, panelRef: RefObject<HTMLElement | null>, initialFocus?: InitialFocus): void {
   useEffect(() => {
     if (!active) return
     const panel = panelRef.current
@@ -84,7 +119,8 @@ export function useFocusTrap(active: boolean, panelRef: RefObject<HTMLElement | 
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
     trapped.push(panel)
 
-    const target = initialFocus?.current ?? panel.querySelector<HTMLElement>('[data-autofocus]') ?? focusableWithin(panel)[0] ?? panel
+    const chosen = initialFocus === 'panel' ? panel : initialFocus?.current
+    const target = chosen ?? panel.querySelector<HTMLElement>('[data-autofocus]') ?? focusableWithin(panel)[0] ?? panel
     target.focus({ preventScroll: true })
 
     const onKey = (event: KeyboardEvent): void => {

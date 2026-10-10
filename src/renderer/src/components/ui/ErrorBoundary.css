@@ -1,8 +1,14 @@
 .ui-error {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--sp-4);
   width: 100%;
   min-height: 280px;
   padding: var(--sp-6);
+}
+
+.ui-error__extra:empty {
+  display: none;
 }

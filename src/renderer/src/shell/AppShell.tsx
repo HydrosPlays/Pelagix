@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useLayoutEffect, useRef } from 'react'
 import { Route, Switch, useLocation, useSearch } from 'wouter'
-import { Button, EmptyState, ErrorBoundary, ScrollArea, Spinner, Toaster } from '@renderer/components/ui'
+import { Button, EmptyState, ErrorBoundary, ScrollArea, Spinner } from '@renderer/components/ui'
 import AchievementWatcher from '@renderer/features/achievements/AchievementWatcher'
 import EntryEditorHost from '@renderer/features/entry/EntryEditorHost'
 import CommandPalette from '@renderer/features/search/CommandPalette'
@@ -36,7 +36,9 @@ const scrollMemory = new Map<string, number>()
 
 /**
  * The application frame: navigation rail, title bar, the scrolling main region with the routed
- * page, and the app-wide hosts (toasts, entry editor, achievement watcher, command palette).
+ * page, and the app-wide hosts (entry editor, achievement watcher, command palette). The toasts
+ * and the update windows are mounted one level up, by `App`: they also have to work when this
+ * frame cannot be shown.
  */
 export function AppShell() {
   const [path] = useLocation()
@@ -132,7 +134,6 @@ export function AppShell() {
       <ErrorBoundary fallback={() => null}>
         <AchievementWatcher />
       </ErrorBoundary>
-      <Toaster />
     </div>
   )
 }
