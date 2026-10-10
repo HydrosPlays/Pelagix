@@ -1,0 +1,206 @@
+import type { Messages } from '../types'
+
+/** English text of the "pokedex" namespace. Full key: "pokedex.<key>". See ../README.md. */
+const messages = {
+  // ---- Names of the regional Pokédexes, by the id used in src/shared/pokedexes.ts: a section heading.
+  'dex.kanto': 'Kanto Pokédex',
+  'dex.original-johto': 'Johto Pokédex',
+  'dex.updated-johto': 'Johto Pokédex',
+  'dex.hoenn': 'Hoenn Pokédex',
+  'dex.updated-hoenn': 'Hoenn Pokédex',
+  'dex.original-sinnoh': 'Sinnoh Pokédex',
+  'dex.extended-sinnoh': 'Sinnoh Pokédex',
+  'dex.original-unova': 'Unova Pokédex',
+  'dex.updated-unova': 'Unova Pokédex',
+  'dex.kalos-central': 'Central Kalos Pokédex',
+  'dex.kalos-coastal': 'Coastal Kalos Pokédex',
+  'dex.kalos-mountain': 'Mountain Kalos Pokédex',
+  'dex.original-alola': 'Alola Pokédex',
+  'dex.updated-alola': 'Alola Pokédex',
+  'dex.letsgo-kanto': 'Kanto Pokédex',
+  'dex.galar': 'Galar Pokédex',
+  'dex.isle-of-armor': 'Isle of Armor Pokédex',
+  'dex.crown-tundra': 'Crown Tundra Pokédex',
+  'dex.hisui': 'Hisui Pokédex',
+  'dex.paldea': 'Paldea Pokédex',
+  'dex.kitakami': 'Kitakami Pokédex',
+  'dex.blueberry': 'Blueberry Pokédex',
+  'dex.lumiose-city': 'Lumiose Pokédex',
+  'dex.hyperspace': 'Hyperspace Pokédex',
+  // The same without the word "Pokédex": the label of a small tab.
+  'dexShort.kanto': 'Kanto',
+  'dexShort.original-johto': 'Johto',
+  'dexShort.updated-johto': 'Johto',
+  'dexShort.hoenn': 'Hoenn',
+  'dexShort.updated-hoenn': 'Hoenn',
+  'dexShort.original-sinnoh': 'Sinnoh',
+  'dexShort.extended-sinnoh': 'Sinnoh',
+  'dexShort.original-unova': 'Unova',
+  'dexShort.updated-unova': 'Unova',
+  'dexShort.kalos-central': 'Central Kalos',
+  'dexShort.kalos-coastal': 'Coastal Kalos',
+  'dexShort.kalos-mountain': 'Mountain Kalos',
+  'dexShort.original-alola': 'Alola',
+  'dexShort.updated-alola': 'Alola',
+  'dexShort.letsgo-kanto': 'Kanto',
+  'dexShort.galar': 'Galar',
+  'dexShort.isle-of-armor': 'Isle of Armor',
+  'dexShort.crown-tundra': 'Crown Tundra',
+  'dexShort.hisui': 'Hisui',
+  'dexShort.paldea': 'Paldea',
+  'dexShort.kitakami': 'Kitakami',
+  'dexShort.blueberry': 'Blueberry',
+  'dexShort.lumiose-city': 'Lumiose',
+  'dexShort.hyperspace': 'Hyperspace',
+  // Tab of the section for what a game has outside its Pokédexes.
+  'dexShort.other': 'Other',
+
+  // Home region of each generation (the generation filter).
+  'region.1': 'Kanto',
+  'region.2': 'Johto',
+  'region.3': 'Hoenn',
+  'region.4': 'Sinnoh',
+  'region.5': 'Unova',
+  'region.6': 'Kalos',
+  'region.7': 'Alola',
+  'region.8': 'Galar',
+  'region.9': 'Paldea',
+
+  // ---- The game picker and the "Obtainable in" bar, shared by the Pokédex, the Living Dex and the HOME Dex.
+  'game.label': 'Game',
+  'game.placeholder': 'Choose a game',
+  'game.empty': 'No game with that name',
+  // Group of the picker for Pokémon GO and Pokémon HOME.
+  'game.services': 'Services',
+  'game.obtainableIn': 'Obtainable in',
+  'game.hint.none': 'Choose a game to see only what it has, in its own Pokédex order.',
+  'game.hint.chosen': 'Only Pokémon obtained in this game count here.',
+  'game.showAll': 'Show every game',
+
+  // ---- The caught pill on a tile.
+  'caught.entries': { one: '{count} entry', other: '{count} entries' },
+  'caught.label': { one: 'Caught, {count} entry', other: 'Caught, {count} entries' },
+
+  // ---- A tile, as a screen reader reads it: these sentences follow one another, separated by a space.
+  // {number} is the National Pokédex number.
+  'tile.name': '{name}, number {number}.',
+  // {types} is one type or a list ("Grass and Poison").
+  'tile.types': '{types} type.',
+  'tile.missing': 'Not caught yet.',
+  'tile.caught': { one: 'Caught, {count} entry.', other: 'Caught, {count} entries.' },
+  'tile.caughtShiny': { one: 'Caught, {count} entry, shiny logged.', other: 'Caught, {count} entries, shiny logged.' },
+  // {count} is the number of forms of the species; {caught} how many of them are caught.
+  'tile.forms': { one: '{caught} of {count} forms caught.', other: '{caught} of {count} forms caught.' },
+  // The same as a tooltip.
+  'tile.formsTitle': { one: '{caught} of {count} forms caught', other: '{caught} of {count} forms caught' },
+
+  // ---- Page header.
+  'title': 'Pokédex',
+  'loading': 'Loading…',
+  // <total/> is the number of tiles ({count} chooses the plural form); <shown/> the number left after filtering.
+  'header.count.species': { one: '<total/> Pokémon', other: '<total/> Pokémon' },
+  'header.count.forms': { one: '<total/> forms', other: '<total/> forms' },
+  'header.narrowed.species': { one: '<shown/> of <total/> Pokémon', other: '<shown/> of <total/> Pokémon' },
+  'header.narrowed.forms': { one: '<shown/> of <total/> forms', other: '<shown/> of <total/> forms' },
+  'view.show': 'Show',
+  'view.species': 'Species',
+  'view.forms': 'Forms',
+  'view.tileSize': 'Tile size',
+  'view.largeTiles': 'Large tiles',
+  'view.smallTiles': 'Small tiles',
+  'view.sortBy': 'Sort by',
+  'sort.number': 'Dex number',
+  'sort.name': 'Name',
+  'sort.recent': 'Recently logged',
+  'sort.entries': 'Most entries',
+  // Accessible name of the grid.
+  'grid.label': 'Pokédex',
+  'grid.labelForms': 'Pokédex, every form',
+  // Count beside a section heading.
+  'section.count.species': { one: '{count} Pokémon', other: '{count} Pokémon' },
+  'section.count.forms': { one: '{count} forms', other: '{count} forms' },
+
+  // ---- Toolbar and filters.
+  'toolbar.label': 'Find Pokémon',
+  'toolbar.search.placeholder': 'Name or number',
+  'toolbar.search.label': 'Search by name or number',
+  'filter.generation': 'Generation',
+  'filter.generations': 'Generations',
+  // One generation button, for a screen reader: "Generation I, Kanto, 151 Pokémon".
+  'filter.generationOption': { one: '{generation}, {region}, {count} Pokémon', other: '{generation}, {region}, {count} Pokémon' },
+  'filter.type': 'Type',
+  'filter.types': 'Types',
+  'filter.typeMatch.label': 'Must have',
+  'filter.typeMatch.description': 'With several types chosen, a Pokémon must have',
+  'filter.typeMatch.any': 'Any type',
+  'filter.typeMatch.all': 'Every type',
+  'filter.status': 'Status',
+  'filter.category': 'Category',
+  'filter.categories': 'Categories',
+  'filter.gameMissing.label': 'Only what I still need',
+  'filter.gameMissing.description': 'Leaves out Pokémon and forms already in your Living Dex.',
+  'filter.gameEvents.label': 'Include event-only Pokémon',
+  'filter.gameEvents.description': 'Distributions and other time-limited sources.',
+  'filter.altForms': 'Alternate forms',
+  'filter.altForms.hint': 'Only Pokémon with more than one form to collect under your Living Dex rules',
+  'status.all.label': 'Any status',
+  'status.all.description': 'Caught or not.',
+  'status.caught.label': 'Caught',
+  'status.caught.description': 'At least one logged.',
+  'status.missing.label': 'Missing',
+  'status.missing.description': 'Nothing logged yet.',
+  'status.shiny.label': 'Shiny caught',
+  'status.shiny.description': 'A shiny one is logged.',
+  'status.shiny-missing.label': 'Shiny missing',
+  'status.shiny-missing.description': 'No shiny logged yet.',
+  'status.multi-game.label': 'In 2+ games',
+  'status.multi-game.description': 'Logged from more than one game.',
+  // Categories of species (also shown on the species page).
+  'tag.legendary': 'Legendary',
+  'tag.mythical': 'Mythical',
+  'tag.baby': 'Baby',
+  'tag.starter': 'Starter',
+  'tag.fossil': 'Fossil',
+  'tag.pseudo-legendary': 'Pseudo-legendary',
+  'tag.ultra-beast': 'Ultra Beast',
+  'tag.paradox': 'Paradox',
+
+  // ---- The row of active filters.
+  'active.label': 'Active filters',
+  'active.filters': 'Filters',
+  'active.search': 'Search',
+  // Read out instead of the two labels above. {count} is the total, {shown} what is left after filtering.
+  'active.filtersShown.species': { one: 'Filters: {shown} of {count} Pokémon shown', other: 'Filters: {shown} of {count} Pokémon shown' },
+  'active.filtersShown.forms': { one: 'Filters: {shown} of {count} forms shown', other: 'Filters: {shown} of {count} forms shown' },
+  'active.searchShown.species': { one: 'Search: {shown} of {count} Pokémon shown', other: 'Search: {shown} of {count} Pokémon shown' },
+  'active.searchShown.forms': { one: 'Search: {shown} of {count} forms shown', other: 'Search: {shown} of {count} forms shown' },
+  // {filter} is the text of the chip.
+  'active.remove': 'Remove filter: {filter}',
+  'active.clearAll': 'Clear all',
+  // Chips. {query} is what the user typed; {game} a short game name ("Scarlet").
+  'chip.text': '“{query}”',
+  'chip.typeMatch': 'Has every type',
+  'chip.game': 'In {game}',
+  'chip.gameUnknown': 'In an unknown game',
+  'chip.gameMissing': 'Not yet caught',
+  'chip.gameEvents': 'Events included',
+
+  // ---- Empty states. {game} is a game name.
+  'empty.gameDone.title': 'Nothing left to catch in {game}',
+  'empty.gameDone.description': 'Everything you can get in {game} without an event is already in your Living Dex.',
+  'empty.gameDone.descriptionEvents': 'Everything you can get in {game} is already in your Living Dex.',
+  'empty.gameDone.showAll': 'Show everything in {game}',
+  'empty.clearFilters': 'Clear filters',
+  'empty.noEntries.title': 'No catches logged yet',
+  'empty.noEntries.description': 'Open any Pokémon and log a catch. It will show up here once it is in your Living Dex.',
+  'empty.noEntries.showAll': 'Show all Pokémon',
+  'empty.noMatch.title': 'No Pokémon match',
+  'empty.noMatch.titleQuery': 'Nothing matches “{query}”',
+  'empty.noMatch.spelling': 'Check the spelling, or try a dex number such as 25.',
+  'empty.noMatch.queryAndFilters': 'Try a different name or number, or remove a filter.',
+  'empty.noMatch.filters': 'These filters leave nothing to show. Remove one to widen the search.',
+  'empty.clearSearch': 'Clear search',
+  'empty.clearSearchAndFilters': 'Clear search and filters'
+} satisfies Messages
+
+export default messages

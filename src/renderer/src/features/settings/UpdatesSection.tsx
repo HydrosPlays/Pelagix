@@ -5,6 +5,7 @@ import { Button, Chip, Icon, ProgressBar, Spinner, Switch, cx, type IconName } f
 import { isLayerOpen } from '@renderer/components/ui/layers'
 import { autoAction, checkOutcome, errorWording, offerButton, offerView, percentText, progressFraction, statusLine, type CheckOutcome, type StatusLine } from '@renderer/features/updates/model'
 import { useUpdateStore } from '@renderer/features/updates/store'
+import { rich, t, useT } from '@renderer/i18n'
 import { toast, useUiStore } from '@renderer/store/ui'
 import { ExternalLink, SettingsSection } from './parts'
 
@@ -29,12 +30,9 @@ export interface UpdatesBlockProps {
 
 /** The body of the Updates section, without the store: also what the kit previews. */
 export function UpdatesBlock({ state, checking, asked, now, onCheck, onAutoCheck, onShowOffer }: UpdatesBlockProps) {
+  const t = useT()
   const status = statusLine(state, now)
-  const releases = (
-    <p className="settings-footnote">
-      Every version, with its notes and downloads: <ExternalLink href={RELEASES_URL}>all releases on GitHub</ExternalLink>
-    </p>
-  )
+  const releases = <p className="settings-footnote">{rich('settings.updates.releases', { link: (c) => <ExternalLink href={RELEASES_URL}>{c}</ExternalLink> })}</p>
 
   const statusText = (
     <>
@@ -81,10 +79,10 @@ export function UpdatesBlock({ state, checking, asked, now, onCheck, onAutoCheck
             </Button>
           )}
           <Button icon="refresh" loading={busy} disabled={cannotCheck} onClick={onCheck}>
-            Check for updates
+            {t('settings.updates.check')}
           </Button>
         </div>
-        {view === 'downloading' && <ProgressBar className="settings-update__progress" value={progressFraction(state.progress)} label={`Downloading version ${state.offer?.version ?? ''}`} valueText={percentText(state.progress)} />}
+        {view === 'downloading' && <ProgressBar className="settings-update__progress" value={progressFraction(state.progress)} label={t('settings.updates.downloading', { version: state.offer?.version ?? '' })} valueText={percentText(state.progress)} />}
         <div className={cx('settings-update__outcome', repeats && 'u-sr-only')} role="status" aria-live="polite">
           {answer !== null && (
             <span className={cx('settings-update__result', `settings-update__result--${answer.tone}`)}>
@@ -101,12 +99,12 @@ export function UpdatesBlock({ state, checking, asked, now, onCheck, onAutoCheck
           className="settings-switch-row"
           checked={state.autoCheck}
           onChange={onAutoCheck}
-          label="Check for updates automatically"
-          description="A few seconds after Pelagix starts, and every six hours while it stays open, it asks GitHub whether a newer version exists. Nothing about you or your collection is sent."
+          label={t('settings.updates.auto.label')}
+          description={t('settings.updates.auto.description')}
         />
       </div>
 
-      {state.mode === 'manual' && <p className="settings-text">This is a portable copy of Pelagix. It tells you when a new version is out and shows what changed; you download the new version from GitHub yourself and use it in place of this one.</p>}
+      {state.mode === 'manual' && <p className="settings-text">{t('settings.updates.portable')}</p>}
       {releases}
     </>
   )
@@ -128,6 +126,7 @@ export function UpdatesSection() {
   const checking = useUpdateStore((s) => s.checking)
   const [asked, setAsked] = useState<AskedCheck>(null)
   const now = useNow(30_000)
+  useT()
   const mounted = useRef(true)
   useEffect(() => {
     mounted.current = true
@@ -159,20 +158,20 @@ export function UpdatesSection() {
     // The main process switches first and writes second, so the switch on screen may well show
     // the new choice: what failed is keeping it.
     if (useUpdateStore.getState().state?.autoCheck === enabled) {
-      toast({ kind: 'error', title: 'That setting could not be saved', body: 'It holds until you close Pelagix, and is then forgotten. Try the switch again in a moment.' })
+      toast({ kind: 'error', title: t('settings.updates.notSaved.title'), body: t('settings.updates.notSaved.body') })
     } else {
-      toast({ kind: 'error', title: 'That setting could not be changed', body: 'Try again in a moment.' })
+      toast({ kind: 'error', title: t('settings.updates.notChanged.title'), body: t('settings.updates.notChanged.body') })
     }
   }
 
   return (
     <SettingsSection
       id="updates"
-      description="New versions of Pelagix, from its releases on GitHub."
+      description={t('settings.updates.description')}
       aside={
         state ? (
           <Chip size="sm" tone="accent">
-            {`Version ${state.currentVersion}`}
+            {t('settings.updates.version', { version: state.currentVersion })}
           </Chip>
         ) : undefined
       }
@@ -180,7 +179,7 @@ export function UpdatesSection() {
       {state ? (
         <UpdatesBlock state={state} checking={checking} asked={asked} now={now} onCheck={() => void check()} onAutoCheck={(enabled) => void setAutoCheck(enabled)} onShowOffer={useUpdateStore.getState().openOffer} />
       ) : (
-        <p className="settings-text">Update information is not available yet.</p>
+        <p className="settings-text">{t('settings.updates.unavailable')}</p>
       )}
     </SettingsSection>
   )

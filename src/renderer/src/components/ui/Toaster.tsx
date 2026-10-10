@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useT } from '@renderer/i18n'
 import { burst } from '@renderer/lib/anim'
 import { useUiStore, type Toast, type ToastKind } from '@renderer/store/ui'
 import { cx } from './cx'
@@ -50,6 +51,7 @@ function returnFocus(): void {
 }
 
 function ToastCard({ toast }: { toast: Toast }) {
+  const t = useT()
   const dismiss = useUiStore((s) => s.dismiss)
   const runToastAction = useUiStore((s) => s.runToastAction)
   const ref = useRef<HTMLDivElement>(null)
@@ -115,7 +117,7 @@ function ToastCard({ toast }: { toast: Toast }) {
     >
       <ToastGlyph toast={toast} />
       <div className="ui-toast__text">
-        {toast.kind === 'achievement' && <div className="ui-toast__eyebrow">Achievement unlocked</div>}
+        {toast.kind === 'achievement' && <div className="ui-toast__eyebrow">{t('components.toast.achievement')}</div>}
         <div className="ui-toast__title">{toast.title}</div>
         {toast.body !== undefined && toast.body !== '' && <div className="ui-toast__body">{toast.body}</div>}
       </div>
@@ -124,7 +126,7 @@ function ToastCard({ toast }: { toast: Toast }) {
           {toast.action.label}
         </button>
       )}
-      <button type="button" className="ui-toast__close" aria-label="Dismiss notification" onClick={leave}>
+      <button type="button" className="ui-toast__close" aria-label={t('components.toast.dismiss')} onClick={leave}>
         <Icon name="close" size={14} />
       </button>
     </div>
@@ -139,6 +141,7 @@ function ToastCard({ toast }: { toast: Toast }) {
  * F6 again goes back; a toast's timer is paused while it has focus or the pointer.
  */
 export function Toaster() {
+  const t = useT()
   const toasts = useUiStore((s) => s.toasts)
   const regionRef = useRef<HTMLDivElement>(null)
 
@@ -171,7 +174,7 @@ export function Toaster() {
         ref={regionRef}
         className="ui-toaster"
         role="region"
-        aria-label="Notifications"
+        aria-label={t('components.toast.region')}
         aria-keyshortcuts="F6"
         onBlur={(event) => {
           // Focus left the toasts some other way (Tab, a click): forget where F6 came from.

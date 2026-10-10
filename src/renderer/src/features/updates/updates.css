@@ -522,7 +522,7 @@
 }
 
 .upd-md .upd-md-alert-note::before {
-  content: 'Note';
+  content: var(--upd-alert-note, 'Note');
 }
 
 .upd-md .upd-md-alert-tip {
@@ -531,7 +531,7 @@
 }
 
 .upd-md .upd-md-alert-tip::before {
-  content: 'Tip';
+  content: var(--upd-alert-tip, 'Tip');
 }
 
 .upd-md .upd-md-alert-important {
@@ -540,7 +540,7 @@
 }
 
 .upd-md .upd-md-alert-important::before {
-  content: 'Important';
+  content: var(--upd-alert-important, 'Important');
 }
 
 .upd-md .upd-md-alert-warning {
@@ -549,7 +549,7 @@
 }
 
 .upd-md .upd-md-alert-warning::before {
-  content: 'Warning';
+  content: var(--upd-alert-warning, 'Warning');
 }
 
 .upd-md .upd-md-alert-caution {
@@ -558,7 +558,7 @@
 }
 
 .upd-md .upd-md-alert-caution::before {
-  content: 'Caution';
+  content: var(--upd-alert-caution, 'Caution');
 }
 
 .upd-md hr {

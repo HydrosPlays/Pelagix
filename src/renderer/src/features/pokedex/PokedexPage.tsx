@@ -10,6 +10,8 @@ import { TYPE_IDS } from '@renderer/components/pokemon'
 import { Button, EmptyState, NumberTicker, SegmentedControl, Select, Skeleton, Tooltip, type SelectOption } from '@renderer/components/ui'
 import { arrange, planSections, usePokedexes } from '@renderer/domain/gamedex'
 import { useCollection } from '@renderer/domain/slots'
+import { rich, useT } from '@renderer/i18n'
+import { gameName, gameShortName } from '@renderer/i18n/terms'
 import { useDexStore, type Dex } from '@renderer/lib/data'
 import { formatCount } from '@renderer/lib/format'
 import { navigate, paths } from '@renderer/shell/router'
@@ -22,12 +24,6 @@ import { dexMemory, useDexBrowser } from './dex-store'
 import { buildTiles, DEX_SORTS, filterTiles, hasActiveFilters, parseDexLink, SORT_LABELS, sortTiles, viewKeyOf, type DexDisplay, type DexFilters, type DexSort, type DexTile } from './dex-query'
 import './PokedexPage.css'
 
-const DISPLAY_OPTIONS: ReadonlyArray<{ value: DexDisplay; label: string }> = [
-  { value: 'species', label: 'Species' },
-  { value: 'forms', label: 'Forms' }
-]
-
-const SORT_OPTIONS: ReadonlyArray<SelectOption<DexSort>> = DEX_SORTS.map((value) => ({ value, label: SORT_LABELS[value] }))
 
 /** Tile-size glyphs: four large cells, nine small ones. */
 function DensityIcon({ cells }: { cells: 2 | 3 }) {
@@ -44,16 +40,13 @@ function DensityIcon({ cells }: { cells: 2 | 3 }) {
   )
 }
 
-const DENSITY_OPTIONS: ReadonlyArray<{ value: DexDensity; icon: ReactElement; ariaLabel: string }> = [
-  { value: 'comfortable', icon: <DensityIcon cells={2} />, ariaLabel: 'Large tiles' },
-  { value: 'compact', icon: <DensityIcon cells={3} />, ariaLabel: 'Small tiles' }
-]
 
 const isTyping = (target: EventTarget | null): boolean => target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
 
 // ---------------------------------------------------------------- empty state
 
 function DexEmpty({ dex, text, filters, hasEntries, onClear }: { dex: Dex; text: string; filters: DexFilters; hasEntries: boolean; onClear: () => void }) {
+  const t = useT()
   const setFilters = useDexBrowser((s) => s.setFilters)
   const query = text.trim()
   const filtered = hasActiveFilters(filters)
@@ -66,15 +59,15 @@ function DexEmpty({ dex, text, filters, hasEntries, onClear }: { dex: Dex; text:
       <EmptyState
         tone="gold"
         icon="trophy"
-        title={`Nothing left to catch in ${game.short}`}
-        description={filters.gameEvents ? `Everything you can get in ${game.name} is already in your Living Dex.` : `Everything you can get in ${game.name} without an event is already in your Living Dex.`}
+        title={t('pokedex.empty.gameDone.title', { game: gameShortName(game.id) })}
+        description={t(filters.gameEvents ? 'pokedex.empty.gameDone.descriptionEvents' : 'pokedex.empty.gameDone.description', { game: gameName(game.id) })}
         action={
           <>
             <Button variant="primary" onClick={() => setFilters({ gameMissing: false })}>
-              Show everything in {game.short}
+              {t('pokedex.empty.gameDone.showAll', { game: gameShortName(game.id) })}
             </Button>
             <Button variant="ghost" onClick={onClear}>
-              Clear filters
+              {t('pokedex.empty.clearFilters')}
             </Button>
           </>
         }
@@ -85,11 +78,11 @@ function DexEmpty({ dex, text, filters, hasEntries, onClear }: { dex: Dex; text:
     return (
       <EmptyState
         icon="pokeball"
-        title="No catches logged yet"
-        description="Open any Pokémon and log a catch. It will show up here once it is in your Living Dex."
+        title={t('pokedex.empty.noEntries.title')}
+        description={t('pokedex.empty.noEntries.description')}
         action={
           <Button variant="primary" onClick={onClear}>
-            Show all Pokémon
+            {t('pokedex.empty.noEntries.showAll')}
           </Button>
         }
       />
@@ -99,11 +92,11 @@ function DexEmpty({ dex, text, filters, hasEntries, onClear }: { dex: Dex; text:
     <EmptyState
       tone="neutral"
       icon="search"
-      title={query !== '' && !filtered ? `Nothing matches “${query}”` : 'No Pokémon match'}
-      description={query !== '' && !filtered ? 'Check the spelling, or try a dex number such as 25.' : query !== '' ? 'Try a different name or number, or remove a filter.' : 'These filters leave nothing to show. Remove one to widen the search.'}
+      title={query !== '' && !filtered ? t('pokedex.empty.noMatch.titleQuery', { query }) : t('pokedex.empty.noMatch.title')}
+      description={query !== '' && !filtered ? t('pokedex.empty.noMatch.spelling') : query !== '' ? t('pokedex.empty.noMatch.queryAndFilters') : t('pokedex.empty.noMatch.filters')}
       action={
         <Button variant="primary" icon="close" onClick={onClear}>
-          {filtered ? 'Clear search and filters' : 'Clear search'}
+          {filtered ? t('pokedex.empty.clearSearchAndFilters') : t('pokedex.empty.clearSearch')}
         </Button>
       }
     />
@@ -113,6 +106,7 @@ function DexEmpty({ dex, text, filters, hasEntries, onClear }: { dex: Dex; text:
 // ---------------------------------------------------------------- page
 
 function PokedexBrowser({ dex }: { dex: Dex }) {
+  const t = useT()
   const collection = useCollection()
   const hasEntries = useEntries().length > 0
   const text = useDexBrowser((s) => s.text)
@@ -178,46 +172,60 @@ function PokedexBrowser({ dex }: { dex: Dex }) {
   // Stable while nothing it shows changes, so the memoised grid can skip the renders typing causes.
   const empty = useMemo(() => <DexEmpty dex={dex} text={deferredText} filters={filters} hasEntries={hasEntries} onClear={clearAll} />, [dex, deferredText, filters, hasEntries, clearAll])
 
-  const noun = display === 'forms' ? 'forms' : 'Pokémon'
   const narrowed = tiles.length !== universe.length
+  const forms = display === 'forms'
+  const displayOptions = useMemo<ReadonlyArray<{ value: DexDisplay; label: string }>>(
+    () => [
+      { value: 'species', label: t('pokedex.view.species') },
+      { value: 'forms', label: t('pokedex.view.forms') }
+    ],
+    [t]
+  )
+  const densityOptions = useMemo<ReadonlyArray<{ value: DexDensity; icon: ReactElement; ariaLabel: string }>>(
+    () => [
+      { value: 'comfortable', icon: <DensityIcon cells={2} />, ariaLabel: t('pokedex.view.largeTiles') },
+      { value: 'compact', icon: <DensityIcon cells={3} />, ariaLabel: t('pokedex.view.smallTiles') }
+    ],
+    [t]
+  )
+  const sortOptions = useMemo<ReadonlyArray<SelectOption<DexSort>>>(() => DEX_SORTS.map((value) => ({ value, label: SORT_LABELS[value] })), [])
 
   return (
     <div className="page page--fill dex">
       <header className="page-header dex-header">
         <div className="dex-heading">
-          <h1 className="page-title">Pokédex</h1>
+          <h1 className="page-title">{t('pokedex.title')}</h1>
           <p className="dex-count" role="status">
-            {narrowed && (
-              <>
-                <NumberTicker value={tiles.length} animateOnMount={false} duration={260} className="dex-count__shown" />
-                <span> of </span>
-              </>
+            {rich(
+              narrowed ? (forms ? 'pokedex.header.narrowed.forms' : 'pokedex.header.narrowed.species') : forms ? 'pokedex.header.count.forms' : 'pokedex.header.count.species',
+              {
+                shown: () => <NumberTicker value={tiles.length} animateOnMount={false} duration={260} className="dex-count__shown" />,
+                total: () => <span className={narrowed ? undefined : 'dex-count__shown'}>{formatCount(universe.length)}</span>
+              },
+              { count: universe.length }
             )}
-            <span className={narrowed ? undefined : 'dex-count__shown'}>{formatCount(universe.length)}</span>
-            <span> {noun}</span>
           </p>
         </div>
         <div className="dex-view">
-          <SegmentedControl label="Show" value={display} onChange={setDisplay} options={DISPLAY_OPTIONS} />
-          <Tooltip content="Tile size" placement="bottom">
-            <SegmentedControl label="Tile size" value={density} onChange={(next) => setDexView({ density: next })} options={DENSITY_OPTIONS} />
+          <SegmentedControl label={t('pokedex.view.show')} value={display} onChange={setDisplay} options={displayOptions} />
+          <Tooltip content={t('pokedex.view.tileSize')} placement="bottom">
+            <SegmentedControl label={t('pokedex.view.tileSize')} value={density} onChange={(next) => setDexView({ density: next })} options={densityOptions} />
           </Tooltip>
-          <Select ariaLabel="Sort by" icon="sort" options={SORT_OPTIONS} value={sort} onChange={setSort} wrapperClassName="dex-sort" />
+          <Select ariaLabel={t('pokedex.view.sortBy')} icon="sort" options={sortOptions} value={sort} onChange={setSort} wrapperClassName="dex-sort" />
         </div>
       </header>
 
       <DexToolbar dex={dex} searchRef={searchRef} onEnterGrid={onEnterGrid} />
-      <DexActiveFilters shown={tiles.length} total={universe.length} noun={noun} />
+      <DexActiveFilters shown={tiles.length} total={universe.length} display={display} />
 
       <DexGrid
         tiles={tiles}
         sections={sectioned?.sections}
-        noun={noun}
         viewKey={viewKey}
         display={display}
         density={density}
         shinyView={shinyView}
-        label={display === 'forms' ? 'Pokédex, every form' : 'Pokédex'}
+        label={forms ? t('pokedex.grid.labelForms') : t('pokedex.grid.label')}
         handleRef={gridRef}
         onOpen={onOpen}
         empty={empty}
@@ -228,14 +236,15 @@ function PokedexBrowser({ dex }: { dex: Dex }) {
 
 /** The page frame with placeholder tiles, shown until the Pokédex data is there. */
 export function PokedexSkeleton() {
+  const t = useT()
   const density = useUiStore((s) => s.dexView.density)
   const metrics = TILE_METRICS[density]
   return (
     <div className="page page--fill dex" aria-busy="true">
       <header className="page-header dex-header">
         <div className="dex-heading">
-          <h1 className="page-title">Pokédex</h1>
-          <p className="dex-count">Loading…</p>
+          <h1 className="page-title">{t('pokedex.title')}</h1>
+          <p className="dex-count">{t('pokedex.loading')}</p>
         </div>
       </header>
       <div className="dex-toolbar">

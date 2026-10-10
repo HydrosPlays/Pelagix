@@ -4,12 +4,15 @@
  */
 
 import { BALL_BY_ID, BALLS } from '@shared/balls'
-import { GAMES, GENERATION_NAMES, SYSTEMS, type GameDef, type SystemId } from '@shared/games'
+import { GAMES, SYSTEMS, type GameDef, type SystemId } from '@shared/games'
 import type { CatchEntry, EntryKind } from '@shared/save-types'
 import { describeEntry } from '@renderer/domain/entries'
+import { generationName } from '@renderer/domain/generation'
 import { entryDay } from '@renderer/domain/progress'
+import { t, type MessageKey } from '@renderer/i18n/runtime'
+import { ballName, formFullName, gameName, locationName, speciesName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
-import { ENTRY_KINDS, formatDate, formatMonth, isIsoDate, kindLabel, plural, toIsoDate } from '@renderer/lib/format'
+import { ENTRY_KINDS, formatDate, formatMonth, isIsoDate, kindLabel, labelTable, shownMethod, toIsoDate } from '@renderer/lib/format'
 import { normalizeText } from '@renderer/lib/search'
 
 // ---------------------------------------------------------------- index
@@ -49,7 +52,12 @@ export function indexEntries(dex: Dex, entries: readonly CatchEntry[]): JournalI
   return entries.map((entry) => {
     const view = describeEntry(dex, entry)
     const game = view.game
-    const text = [view.name, view.species?.name, entry.nickname, entry.location, entry.method, entry.notes, entry.ot, game?.name, view.ball?.name, kindLabel(entry.kind), String(entry.species)]
+    // Names are searchable in the active language and in English (what the datasets and the save carry).
+    const text = [
+      view.name, view.species?.name, view.form?.full, view.species && speciesName(view.species), view.species && view.form && formFullName(view.species, view.form),
+      entry.nickname, entry.location, entry.location !== undefined ? locationName(entry.location) : undefined, entry.method, entry.method !== undefined ? shownMethod(entry.method) : undefined,
+      entry.notes, entry.ot, game?.name, game && gameName(game.id), view.ball?.name, ballName(entry.ball), kindLabel(entry.kind), String(entry.species)
+    ]
     return {
       entry,
       name: view.name,
@@ -138,7 +146,7 @@ export interface JournalFacets {
 
 /** "Generation IV", or the services' own label for generation 0. */
 export function gameGenLabel(gen: number): string {
-  return gen === 0 ? 'Pokémon GO & HOME' : (GENERATION_NAMES[gen] ?? `Generation ${gen}`)
+  return gen === 0 ? t('journal.gen.services') : generationName(gen)
 }
 
 function tally<K>(keys: Iterable<K | undefined>): Map<K, number> {
@@ -154,12 +162,12 @@ export function computeFacets(items: readonly JournalItem[]): JournalFacets {
   const systems = tally(items.map((i) => i.system))
   const balls = tally(items.map((i) => i.entry.ball))
   const kinds = tally(items.map((i) => i.entry.kind))
-  const knownBalls = BALLS.filter((b) => balls.has(b.id)).map((b) => ({ value: b.id, label: b.name, count: balls.get(b.id) ?? 0 }))
-  const otherBalls = [...balls.keys()].filter((id) => !BALL_BY_ID.has(id)).map((id) => ({ value: id, label: 'Unknown ball', count: balls.get(id) ?? 0 }))
+  const knownBalls = BALLS.filter((b) => balls.has(b.id)).map((b) => ({ value: b.id, label: ballName(b.id) ?? b.name, count: balls.get(b.id) ?? 0 }))
+  const otherBalls = [...balls.keys()].filter((id) => !BALL_BY_ID.has(id)).map((id) => ({ value: id, label: t('components.ball.unknown'), count: balls.get(id) ?? 0 }))
   return {
     games: [
-      ...GAMES.filter((g) => games.has(g.id)).map((g) => ({ value: g.id, label: g.name, count: games.get(g.id) ?? 0, game: g })),
-      ...(games.has(UNKNOWN_GAME) ? [{ value: UNKNOWN_GAME, label: 'Unknown game', count: games.get(UNKNOWN_GAME) ?? 0, game: undefined }] : [])
+      ...GAMES.filter((g) => games.has(g.id)).map((g) => ({ value: g.id, label: gameName(g.id), count: games.get(g.id) ?? 0, game: g })),
+      ...(games.has(UNKNOWN_GAME) ? [{ value: UNKNOWN_GAME, label: t('components.game.unknown'), count: games.get(UNKNOWN_GAME) ?? 0, game: undefined }] : [])
     ],
     gens: [...gens.keys()].sort((a, b) => (a === 0 ? 99 : a) - (b === 0 ? 99 : b)).map((gen) => ({ value: gen, label: gameGenLabel(gen), count: gens.get(gen) ?? 0 })),
     systems: SYSTEMS.filter((s) => systems.has(s.id)).map((s) => ({ value: s.id, label: s.name, count: systems.get(s.id) ?? 0 })),
@@ -213,8 +221,8 @@ export function countsLine(items: readonly JournalItem[]): string {
     if (item.entry.shiny) shiny++
     if (item.gameKey !== UNKNOWN_GAME) games.add(item.gameKey)
   }
-  const head = `${plural(items.length, 'entry', 'entries')} · ${shiny.toLocaleString('en-US')} shiny`
-  return games.size > 0 ? `${head} · ${plural(games.size, 'game')}` : head
+  const parts = { entries: t('journal.counts.entries', { count: items.length }), shiny: t('journal.counts.shiny', { count: shiny }) }
+  return games.size > 0 ? t('journal.counts.lineGames', { ...parts, games: t('journal.counts.games', { count: games.size }) }) : t('journal.counts.line', parts)
 }
 
 // ---------------------------------------------------------------- sorting and grouping
@@ -222,8 +230,9 @@ export function countsLine(items: readonly JournalItem[]): string {
 export type JournalSort = 'caught' | 'logged' | 'dex' | 'game'
 export type SortDirection = 'asc' | 'desc'
 
-export const SORT_LABELS: Readonly<Record<JournalSort, string>> = { caught: 'Date caught', logged: 'Date logged', dex: 'Pokédex number', game: 'Game' }
-export const JOURNAL_SORTS = Object.keys(SORT_LABELS) as readonly JournalSort[]
+export const JOURNAL_SORTS: readonly JournalSort[] = ['caught', 'logged', 'dex', 'game']
+/** Name of each sort, read in the active language whenever it is asked for. */
+export const SORT_LABELS: Readonly<Record<JournalSort, string>> = labelTable(JOURNAL_SORTS, (sort) => t(`journal.sort.${sort}` as MessageKey))
 /** The direction each sort starts in: newest first for dates, ascending for the rest. */
 export const DEFAULT_DIRECTION: Readonly<Record<JournalSort, SortDirection>> = { caught: 'desc', logged: 'desc', dex: 'asc', game: 'asc' }
 
@@ -264,12 +273,12 @@ function groupOf(item: JournalItem, sort: JournalSort): { key: string; label: st
     case 'caught':
     case 'logged': {
       const month = (sort === 'caught' ? item.day : item.loggedDay).slice(0, 7)
-      return { key: month, label: formatMonth(month, true) || 'Undated' }
+      return { key: month, label: formatMonth(month, true) || t('journal.group.undated') }
     }
     case 'dex':
-      return { key: `gen-${item.speciesGen}`, label: item.speciesGen > 0 ? (GENERATION_NAMES[item.speciesGen] ?? `Generation ${item.speciesGen}`) : 'Unknown Pokémon' }
+      return { key: `gen-${item.speciesGen}`, label: item.speciesGen > 0 ? generationName(item.speciesGen) : t('journal.group.unknownPokemon') }
     case 'game':
-      return { key: `game-${item.gameKey}`, label: item.game?.name ?? 'Unknown game', gameKey: item.gameKey }
+      return { key: `game-${item.gameKey}`, label: item.game ? gameName(item.game.id) : t('components.game.unknown'), gameKey: item.gameKey }
   }
 }
 
@@ -309,9 +318,9 @@ export function rangeLabel(from: string, to: string): string {
   if (a === '' && b === '') return ''
   if (a !== '' && b !== '') {
     const [low, high] = a > b ? [b, a] : [a, b]
-    return low === high ? formatDate(low) : `${formatDate(low)} – ${formatDate(high)}`
+    return low === high ? formatDate(low) : t('journal.range.between', { from: formatDate(low), to: formatDate(high) })
   }
-  return a !== '' ? `From ${formatDate(a)}` : `Until ${formatDate(b)}`
+  return a !== '' ? t('journal.range.from', { date: formatDate(a) }) : t('journal.range.until', { date: formatDate(b) })
 }
 
 /** The ids between two entries of a listing, both included, in list order (a shift-click range). */

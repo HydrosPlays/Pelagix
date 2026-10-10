@@ -3,8 +3,8 @@ import { Button, EmptyState, SegmentedControl, Select, useScrollParent } from '@
 import {
   ACHIEVEMENT_BY_ID, CATEGORY_BY_ID, useAchievementEvaluation, useAchievementSummary, useCategoryStats, type AchievementCategoryId
 } from '@renderer/domain/achievements'
+import { useT } from '@renderer/i18n'
 import { animate, burst, enterStagger, motionOK, pulse, stagger, useAnimeScope } from '@renderer/lib/anim'
-import { plural } from '@renderer/lib/format'
 import { navigate, paths } from '@renderer/shell/router'
 import { useAchievements } from '@renderer/store/save'
 import { AchievementCard } from './AchievementCard'
@@ -29,13 +29,12 @@ const remembered: { category: CategoryChoice; filter: AchievementFilter; sort: A
   expanded: new Set()
 }
 
-const SORT_SELECT_OPTIONS = SORT_OPTIONS.map((option) => ({ value: option.value, label: option.label }))
-
 export default function AchievementsPage() {
   const evaluation = useAchievementEvaluation()
   const unlocked = useAchievements()
   const summary = useAchievementSummary(5, 4)
   const stats = useCategoryStats()
+  const t = useT()
 
   const [category, setCategory] = useState<CategoryChoice>(remembered.category)
   const [filter, setFilter] = useState<AchievementFilter>(remembered.filter)
@@ -129,15 +128,15 @@ export default function AchievementsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const heading = activeCategory === 'all' ? { name: 'All achievements', description: 'Every medal there is to earn.' } : CATEGORY_BY_ID.get(activeCategory as AchievementCategoryId)
+  const heading = activeCategory === 'all' ? { name: t('achievements.page.all.name'), description: t('achievements.page.all.description') } : CATEGORY_BY_ID.get(activeCategory as AchievementCategoryId)
   const unlockedShown = shown.filter((row) => row.unlockedAt !== null).length
 
   return (
     <div className="page ach-page">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Achievements</h1>
-          <p className="page-subtitle">Medals for the milestones of your Living Dex.</p>
+          <h1 className="page-title">{t('achievements.page.title')}</h1>
+          <p className="page-subtitle">{t('achievements.page.subtitle')}</p>
         </div>
       </header>
 
@@ -153,27 +152,27 @@ export default function AchievementsPage() {
               <p className="ach-toolbar__desc">{heading?.description}</p>
             </div>
             <div className="ach-toolbar__controls">
-              <SegmentedControl label="Show" size="sm" options={FILTER_OPTIONS} value={filter} onChange={setFilter} />
-              <Select size="sm" ariaLabel="Sort achievements" icon="sort" options={SORT_SELECT_OPTIONS} value={sort} onChange={setSort} className="ach-toolbar__sort" />
+              <SegmentedControl label={t('achievements.filter.label')} size="sm" options={FILTER_OPTIONS} value={filter} onChange={setFilter} />
+              <Select size="sm" ariaLabel={t('achievements.sort.label')} icon="sort" options={SORT_OPTIONS} value={sort} onChange={setSort} className="ach-toolbar__sort" />
             </div>
           </div>
 
           <p className="u-sr-only" role="status">
-            {plural(shown.length, 'achievement')} shown, {unlockedShown} unlocked.
+            {t('achievements.page.shown', { count: shown.length, unlocked: unlockedShown })}
           </p>
 
           {shown.length === 0 ? (
             filter === 'locked' ? (
-              <EmptyState tone="gold" icon="trophy" title="All done here" description="You have unlocked every achievement in this list." />
+              <EmptyState tone="gold" icon="trophy" title={t('achievements.empty.done.title')} description={t('achievements.empty.done.description')} />
             ) : (
               <EmptyState
                 tone="gold"
                 icon="medal"
-                title="Nothing unlocked here yet"
-                description="Keep logging catches and the medals will follow."
+                title={t('achievements.empty.none.title')}
+                description={t('achievements.empty.none.description')}
                 action={
                   <Button variant="primary" icon="dex" onClick={() => navigate(paths.dex())}>
-                    Open the Pokédex
+                    {t('achievements.empty.none.action')}
                   </Button>
                 }
               />

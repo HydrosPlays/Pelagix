@@ -5,9 +5,15 @@
  * "hooh" finds Ho-Oh). Results are ranked: exact dex number, exact name, name prefix, word prefix
  * (every query word starts a word of the name, in any order), substring, and - only when nothing
  * else matched - a light typo-tolerant match.
+ *
+ * A Pokémon is found by its name in the language the app is shown in and by its English name:
+ * "bulbizarre" and "bulbasaur" both find #1 in French. The index is rebuilt when the language
+ * changes.
  */
 
 import type { FormSummary, SpeciesSummary } from '@shared/dex-types'
+import { formFullName, speciesName } from '@renderer/i18n/terms'
+import { activeLanguage, languageVersion } from '@renderer/i18n/runtime'
 import type { Dex } from './data'
 
 export type SearchRank = 'number' | 'exact' | 'prefix' | 'word' | 'substring' | 'fuzzy'
@@ -34,6 +40,8 @@ export interface SearchOptions {
  * Lowercases, strips accents and punctuation, and collapses whitespace:
  * "Flabébé" -> "flabebe", "Farfetch’d" -> "farfetchd", "Mr. Mime" -> "mr mime", "Nidoran♀" -> "nidoran f".
  * "!" and "?" are spelled out so the two punctuation Unown stay searchable ("unown ?").
+ * Letters and digits of every script are kept, so names in kana, hangul or hanzi can be searched;
+ * the voiced-sound marks of kana stay on their letter ("ガ" is not "カ").
  */
 export function normalizeText(text: string): string {
   return text
@@ -45,7 +53,7 @@ export function normalizeText(text: string): string {
     .replace(/!/g, ' exclamation ')
     .replace(/\?/g, ' question ')
     .replace(/['’`]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/[^\p{L}\p{N}\p{M}]+/gu, ' ')
     .trim()
 }
 
@@ -118,11 +126,19 @@ export class DexSearch {
       if (!base) continue
       const own = makeTarget(s, base, false, s.name)
       this.speciesTargets.push(own)
+      // The name in the language on screen, when it is not the English one.
+      const local = makeTarget(s, base, false, speciesName(s))
+      const hasLocal = local.compact !== '' && local.compact !== own.compact
+      if (hasLocal) this.speciesTargets.push(local)
       for (const form of s.forms) {
         if (form.cat === 'hidden') continue
         const target = makeTarget(s, form, true, form.full)
         // A form called exactly like its species adds nothing the species target does not cover.
         if (target.compact !== '' && target.compact !== own.compact) this.formTargets.push(target)
+        const localForm = makeTarget(s, form, true, formFullName(s, form))
+        if (localForm.compact !== '' && localForm.compact !== target.compact && localForm.compact !== own.compact && !(hasLocal && localForm.compact === local.compact)) {
+          this.formTargets.push(localForm)
+        }
       }
     }
   }
@@ -203,16 +219,18 @@ function compare(a: Scored, b: Scored): number {
   )
 }
 
-const indexes = new WeakMap<Dex, DexSearch>()
+const indexes = new WeakMap<Dex, { index: DexSearch; language: string; version: number }>()
 
-/** The search index of a Dex, built on first use and reused afterwards. */
+/** The search index of a Dex, built on first use and reused until the language (or its terms) changes. */
 export function getDexSearch(dex: Dex): DexSearch {
-  let index = indexes.get(dex)
-  if (!index) {
-    index = new DexSearch(dex.speciesList)
-    indexes.set(dex, index)
+  const language = activeLanguage()
+  const version = languageVersion()
+  let cached = indexes.get(dex)
+  if (!cached || cached.language !== language || cached.version !== version) {
+    cached = { index: new DexSearch(dex.speciesList), language, version }
+    indexes.set(dex, cached)
   }
-  return index
+  return cached.index
 }
 
 /** Shorthand for `getDexSearch(dex).search(query, options)`. */

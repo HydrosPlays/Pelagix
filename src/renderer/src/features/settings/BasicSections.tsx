@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { SpriteCacheInfo } from '@shared/api'
-import { Button, Dialog, Icon, SegmentedControl, Skeleton, Switch, TextField } from '@renderer/components/ui'
+import { Button, Dialog, Icon, SegmentedControl, Select, Skeleton, Switch, TextField } from '@renderer/components/ui'
 import { greeting } from '@renderer/features/home/home-model'
-import { errorMessage, formatCount, plural } from '@renderer/lib/format'
+import { rich, useT } from '@renderer/i18n'
+import { errorMessage, formatCount } from '@renderer/lib/format'
 import { useSaveStore, useSettings } from '@renderer/store/save'
 import { toast, useUiStore, type DexDensity } from '@renderer/store/ui'
+import { DEFAULT_LANGUAGE, LANGUAGES, type LanguageId } from '@shared/languages'
 import type { ThemeId } from '@shared/save-types'
 import { ExternalLink, SavedMark, SettingRow, SettingsSection } from './parts'
 import { formatBytes } from './settings-model'
@@ -15,12 +17,13 @@ import { TRAINER_NAME_MAX, useTrainerName } from './useTrainerName'
 export function TrainerSection() {
   const trainer = useTrainerName()
   const name = trainer.stored
+  const t = useT()
   return (
-    <SettingsSection id="trainer" description="Who these Pokémon belong to.">
+    <SettingsSection id="trainer" description={t('settings.trainer.description')}>
       <div className="settings-trainer">
         <TextField
-          label="Trainer name"
-          placeholder="Your name in the games"
+          label={t('settings.trainer.name.label')}
+          placeholder={t('settings.trainer.name.placeholder')}
           icon="user"
           value={trainer.value}
           onChange={trainer.onChange}
@@ -33,13 +36,11 @@ export function TrainerSection() {
         <ul className="settings-trainer__uses">
           <li>
             <Icon name="home" size={15} />
-            <span>
-              Home greets you with <b>“{greeting(name)}”</b>
-            </span>
+            <span>{rich('settings.trainer.greets', { b: (c) => <b>{c}</b> }, { greeting: greeting(name) })}</span>
           </li>
           <li>
             <Icon name="edit" size={15} />
-            <span>{name === '' ? 'The Original Trainer of a new entry starts empty' : <>New entries start with <b>{name}</b> as the Original Trainer (OT), and you can change it for each catch</>}</span>
+            <span>{name === '' ? t('settings.trainer.otEmpty') : rich('settings.trainer.otNamed', { b: (c) => <b>{c}</b> }, { name })}</span>
           </li>
         </ul>
       </div>
@@ -49,15 +50,8 @@ export function TrainerSection() {
 
 // ---------------------------------------------------------------- appearance
 
-const THEME_OPTIONS = [
-  { value: 'dark', label: 'Dark', icon: 'moon' },
-  { value: 'light', label: 'Light', icon: 'sun' }
-] as const
-
-const DENSITY_OPTIONS = [
-  { value: 'comfortable', label: 'Comfortable' },
-  { value: 'compact', label: 'Compact' }
-] as const
+/** Each language under its own name, in the order of the games' language menu. Not translated. */
+const LANGUAGE_OPTIONS = LANGUAGES.map((language) => ({ value: language.id, label: language.autonym }))
 
 function useSystemReducedMotion(): boolean {
   const query = '(prefers-reduced-motion: reduce)'
@@ -78,23 +72,43 @@ export function AppearanceSection() {
   const density = useUiStore((s) => s.dexView.density)
   const setDexView = useUiStore((s) => s.setDexView)
   const systemReduced = useSystemReducedMotion()
+  const t = useT()
+  const themeOptions = [
+    { value: 'dark', label: t('settings.theme.dark'), icon: 'moon' },
+    { value: 'light', label: t('settings.theme.light'), icon: 'sun' }
+  ] as const
+  const densityOptions = [
+    { value: 'comfortable', label: t('settings.density.comfortable') },
+    { value: 'compact', label: t('settings.density.compact') }
+  ] as const
 
   return (
-    <SettingsSection id="appearance" description="How Pelagix looks and moves.">
+    <SettingsSection id="appearance" description={t('settings.appearance.description')}>
       <div className="settings-list">
-        <SettingRow label="Theme" description="Dark is easy on the eyes at night. Light works better in a bright room.">
-          <SegmentedControl<ThemeId> label="Theme" options={THEME_OPTIONS} value={settings.theme} onChange={(theme) => setSettings({ theme })} />
+        <SettingRow label={t('settings.theme.label')} description={t('settings.theme.description')}>
+          <SegmentedControl<ThemeId> label={t('settings.theme.label')} options={themeOptions} value={settings.theme} onChange={(theme) => setSettings({ theme })} />
+        </SettingRow>
+        <SettingRow label={t('settings.language.label')} description={t('settings.language.description')}>
+          <Select<LanguageId>
+            ariaLabel={t('settings.language.label')}
+            options={LANGUAGE_OPTIONS}
+            value={settings.language ?? DEFAULT_LANGUAGE}
+            onChange={(language) => useSaveStore.getState().setLanguage(language)}
+            icon="globe"
+            maxHeight={420}
+            wrapperClassName="settings-language"
+          />
         </SettingRow>
         <Switch
           reverse
           className="settings-switch-row"
           checked={settings.reduceMotion}
           onChange={(reduceMotion) => setSettings({ reduceMotion })}
-          label="Reduce motion"
-          description={systemReduced ? 'Your system already asks for reduced motion, so animations are off either way.' : 'Turns off animations and transitions. Pelagix also follows the reduced-motion setting of your system.'}
+          label={t('settings.reduceMotion.label')}
+          description={systemReduced ? t('settings.reduceMotion.system') : t('settings.reduceMotion.description')}
         />
-        <SettingRow label="Pokédex density" description="How tightly the Pokédex grid is packed. Remembered on this device.">
-          <SegmentedControl<DexDensity> label="Pokédex density" options={DENSITY_OPTIONS} value={density} onChange={(next) => setDexView({ density: next })} />
+        <SettingRow label={t('settings.density.label')} description={t('settings.density.description')}>
+          <SegmentedControl<DexDensity> label={t('settings.density.label')} options={densityOptions} value={density} onChange={(next) => setDexView({ density: next })} />
         </SettingRow>
       </div>
     </SettingsSection>
@@ -112,15 +126,17 @@ export function SpriteCacheSection() {
   const [cache, setCache] = useState<CacheState>({ status: 'loading' })
   const [confirming, setConfirming] = useState(false)
   const [clearing, setClearing] = useState(false)
+  const t = useT()
+  const spritesLink = { link: (c: ReactNode) => <ExternalLink href={SPRITES_REPOSITORY}>{c}</ExternalLink> }
 
   const load = useCallback(async (): Promise<void> => {
     if (!api) return
     try {
       setCache({ status: 'ready', info: await api.spriteCacheInfo() })
     } catch (err) {
-      setCache({ status: 'error', message: errorMessage(err, 'The cache could not be read.') })
+      setCache({ status: 'error', message: errorMessage(err, t('settings.sprites.readFailed')) })
     }
-  }, [api])
+  }, [api, t])
 
   useEffect(() => {
     void load()
@@ -128,10 +144,8 @@ export function SpriteCacheSection() {
 
   if (!api) {
     return (
-      <SettingsSection id="sprites" description="Where the Pokémon renders come from.">
-        <p className="settings-text">
-          In a browser, Pokémon HOME renders load straight from the <ExternalLink href={SPRITES_REPOSITORY}>PokeAPI sprites</ExternalLink> repository each time, so nothing is stored here and there is nothing to clear. The desktop app keeps a copy of every render it has shown, which makes them appear instantly and work offline.
-        </p>
+      <SettingsSection id="sprites" description={t('settings.sprites.browser.description')}>
+        <p className="settings-text">{rich('settings.sprites.browser.text', spritesLink)}</p>
       </SettingsSection>
     )
   }
@@ -143,18 +157,18 @@ export function SpriteCacheSection() {
     setClearing(true)
     try {
       await api.clearSpriteCache()
-      toast({ kind: 'success', title: 'Sprite cache cleared', body: info ? `${plural(info.files, 'file')} removed, ${formatBytes(info.bytes)} freed.` : undefined, icon: 'image' })
+      toast({ kind: 'success', title: t('settings.sprites.cleared.title'), body: info ? t('settings.sprites.cleared.body', { count: info.files, size: formatBytes(info.bytes) }) : undefined, icon: 'image' })
       setConfirming(false)
       await load()
     } catch (err) {
-      toast({ kind: 'error', title: 'The sprite cache could not be cleared', body: errorMessage(err) })
+      toast({ kind: 'error', title: t('settings.sprites.clearFailed'), body: errorMessage(err) })
     } finally {
       setClearing(false)
     }
   }
 
   return (
-    <SettingsSection id="sprites" description="Renders Pelagix has already downloaded, kept on this computer so they appear instantly and work offline.">
+    <SettingsSection id="sprites" description={t('settings.sprites.description')}>
       <div className="settings-cache">
         <div className="settings-cache__figures" aria-live="polite">
           {cache.status === 'loading' && <Skeleton width={220} height={44} radius={10} />}
@@ -167,41 +181,39 @@ export function SpriteCacheSection() {
             <>
               <div className="settings-cache__figure">
                 <span className="settings-cache__value">{formatBytes(info.bytes)}</span>
-                <span className="u-eyebrow">On disk</span>
+                <span className="u-eyebrow">{t('settings.sprites.onDisk')}</span>
               </div>
               <div className="settings-cache__figure">
                 <span className="settings-cache__value">{formatCount(info.files)}</span>
-                <span className="u-eyebrow">{info.files === 1 ? 'Render' : 'Renders'}</span>
+                <span className="u-eyebrow">{t('settings.sprites.renders', { count: info.files })}</span>
               </div>
             </>
           )}
         </div>
         <div className="settings-cache__actions">
           <Button variant="ghost" icon="refresh" onClick={() => void load()}>
-            Refresh
+            {t('settings.sprites.refresh')}
           </Button>
           <Button icon="trash" disabled={info === null || empty} onClick={() => setConfirming(true)}>
-            Clear cache
+            {t('settings.sprites.clear')}
           </Button>
         </div>
       </div>
-      <p className="settings-footnote">
-        Renders come from the <ExternalLink href={SPRITES_REPOSITORY}>PokeAPI sprites</ExternalLink> repository. Clearing the cache only frees space: they download again as you browse.
-      </p>
+      <p className="settings-footnote">{rich('settings.sprites.footnote', spritesLink)}</p>
 
       <Dialog
         open={confirming}
         onClose={() => !clearing && setConfirming(false)}
         size="sm"
-        title="Clear the sprite cache?"
-        description={info ? `${plural(info.files, 'render')} (${formatBytes(info.bytes)}) will be removed from this computer. They download again as you browse, so you need to be online for that.` : undefined}
+        title={t('settings.sprites.confirm.title')}
+        description={info ? t('settings.sprites.confirm.description', { count: info.files, size: formatBytes(info.bytes) }) : undefined}
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirming(false)} disabled={clearing} data-autofocus>
-              Keep it
+              {t('settings.sprites.confirm.keep')}
             </Button>
             <Button variant="danger" icon="trash" loading={clearing} onClick={() => void clear()}>
-              Clear cache
+              {t('settings.sprites.clear')}
             </Button>
           </>
         }

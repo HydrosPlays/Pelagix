@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Button, cx, Portal, useEscapeLayer, useFloating, useFocusTrap, type IconSlot } from '@renderer/components/ui'
+import { useT } from '@renderer/i18n'
 import { popIn } from '@renderer/lib/anim'
 
 export interface FilterPopoverProps {
@@ -24,6 +25,7 @@ export interface FilterPopoverProps {
  * Tab past the last control closes it, and focus goes back to the button.
  */
 export function FilterPopover({ label, icon, summary, active = false, width = 300, onClear, children }: FilterPopoverProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -84,7 +86,7 @@ export function FilterPopover({ label, icon, summary, active = false, width = 30
                     onClear()
                   }}
                 >
-                  Clear
+                  {t('common.clear')}
                 </button>
               )}
             </div>

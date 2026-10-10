@@ -3,9 +3,10 @@ import { EntryCard, FormCategoryTag, GenderIcon, ShinyMark, Sprite, SpriteStage,
 import type { CatchEntry } from '@shared/save-types'
 import { Button, Chip, Drawer, Icon, IconButton, Switch } from '@renderer/components/ui'
 import type { Collection, LivingSlot } from '@renderer/domain/slots'
+import { rich, t, useT } from '@renderer/i18n'
 import { useDex } from '@renderer/lib/data'
 import { editEntry } from '@renderer/lib/entry-actions'
-import { dexNo, plural } from '@renderer/lib/format'
+import { dexNo } from '@renderer/lib/format'
 import { BOX_COLS, boxIndexAt, boxName, buildBoxes, slotEntries, slotInfo, slotStatus, type LivingMode } from './model'
 
 export interface SlotDrawerProps {
@@ -46,7 +47,7 @@ function placeText(slots: readonly LivingSlot[], index: number): string {
   const box = boxes[boxIndexAt(boxes, index)]
   if (!box) return ''
   const local = index - box.start
-  return `${boxName(box)} · Row ${Math.floor(local / BOX_COLS) + 1}, Column ${(local % BOX_COLS) + 1}`
+  return t('living.drawer.place', { box: boxName(box), row: Math.floor(local / BOX_COLS) + 1, column: (local % BOX_COLS) + 1 })
 }
 
 /**
@@ -54,6 +55,7 @@ function placeText(slots: readonly LivingSlot[], index: number): string {
  * forward (log a catch into it, or look up where to find it). Left / Right step through slots.
  */
 export function SlotDrawer({ slot, index, collection, mode, onClose, onPrevious, onNext, onLog, onFind, onHome }: SlotDrawerProps) {
+  useT()
   const dex = useDex()
   // The panel keeps showing the last slot while it slides out.
   const last = useRef<{ slot: LivingSlot; index: number } | null>(null)
@@ -111,14 +113,14 @@ export function SlotDrawer({ slot, index, collection, mode, onClose, onPrevious,
       footer={
         <>
           <span className="living-drawer__nav">
-            <IconButton icon="chevron-left" variant="subtle" label="Previous slot" disabled={!onPrevious} onClick={onPrevious} />
-            <IconButton icon="chevron-right" variant="subtle" label="Next slot" disabled={!onNext} onClick={onNext} />
+            <IconButton icon="chevron-left" variant="subtle" label={t('living.drawer.previous')} disabled={!onPrevious} onClick={onPrevious} />
+            <IconButton icon="chevron-right" variant="subtle" label={t('living.drawer.next')} disabled={!onNext} onClick={onNext} />
           </span>
           <Button variant="subtle" icon="map-pin" onClick={() => onFind(shown)}>
-            Where to find it
+            {t('living.drawer.find')}
           </Button>
           <Button variant="catch" icon={shiny ? 'sparkle' : 'plus'} data-autofocus onClick={() => onLog(shown)}>
-            Log this Pokémon
+            {t('living.drawer.log')}
           </Button>
         </>
       }
@@ -129,11 +131,11 @@ export function SlotDrawer({ slot, index, collection, mode, onClose, onPrevious,
           <span className="living-drawer__status">
             {info.filled ? (
               <Chip tone={shiny ? 'gold' : 'success'} variant="solid" icon={shiny ? 'sparkle' : 'check'}>
-                {shiny ? 'Shiny caught' : 'Caught'}
+                {shiny ? t('living.status.shinyCaught') : t('living.status.caught')}
               </Chip>
             ) : (
               <Chip tone="neutral" variant="outline">
-                {shiny ? 'No shiny yet' : 'Not caught yet'}
+                {shiny ? t('living.status.noShiny') : t('living.status.missing')}
               </Chip>
             )}
           </span>
@@ -144,44 +146,42 @@ export function SlotDrawer({ slot, index, collection, mode, onClose, onPrevious,
           {form && shown.cat !== 'base' && <FormCategoryTag cat={shown.cat} region={form.region} />}
           {shown.gmax && (
             <Chip size="sm" tone="catch">
-              Gigantamax
+              {t('living.drawer.gmax')}
             </Chip>
           )}
           {shown.gender && (
             <span className="living-drawer__gender">
               <GenderIcon gender={shown.gender} size={14} />
-              {shown.gender === 'm' ? 'Male' : 'Female'}
+              {shown.gender === 'm' ? t('common.male') : t('common.female')}
             </span>
           )}
           {!shiny && info.hasShiny && (
             <span className="living-drawer__gender">
               <ShinyMark size={14} label="" />
-              Shiny owned
+              {t('living.drawer.shinyOwned')}
             </span>
           )}
         </div>
 
-        <section className="living-drawer__entries" aria-label="Entries in this slot">
+        <section className="living-drawer__entries" aria-label={t('living.drawer.entries')}>
           <header className="living-drawer__entries-head">
-            <h3 className="u-eyebrow">Entries in this slot</h3>
+            <h3 className="u-eyebrow">{t('living.drawer.entries')}</h3>
             <span className="living-drawer__entries-count">{slotStatus(info, mode)}</span>
           </header>
           {entries.length === 0 ? (
             <div className="living-drawer__empty">
               <Icon name="pokeball" size={22} />
-              <p>
-                {idle ? 'Nothing logged here yet.' : 'No entries in this slot.'} Caught one? <b>Log this Pokémon</b> and it lands right in this slot.
-              </p>
+              <p>{rich(idle ? 'living.drawer.emptyIdle' : 'living.drawer.empty', { b: (text) => <b>{text}</b> })}</p>
             </div>
           ) : (
             <>
-              {shiny && !info.filled && <p className="living-drawer__note">You have {plural(entries.length, 'regular entry', 'regular entries')} here. Only a shiny one fills this slot in the Shiny Living Dex.</p>}
+              {shiny && !info.filled && <p className="living-drawer__note">{t('living.drawer.regularOnly', { count: entries.length })}</p>}
               <div className="living-drawer__list">
                 {entries.map((entry) =>
                   onHome ? (
                     <div key={entry.id} className="living-drawer__entry">
                       <EntryCard entry={entry} variant="card" showSpecies={false} onOpen={(e) => void editEntry(e.id)} menu={ENTRY_MENU} />
-                      <Switch reverse className="living-drawer__home" checked={entry.inHome === true} onChange={(on) => onHome(entry, on)} label="In Pokémon HOME" />
+                      <Switch reverse className="living-drawer__home" checked={entry.inHome === true} onChange={(on) => onHome(entry, on)} label={t('living.drawer.inHome')} />
                     </div>
                   ) : (
                     <EntryCard key={entry.id} entry={entry} variant="card" showSpecies={false} onOpen={(e) => void editEntry(e.id)} menu={ENTRY_MENU} />

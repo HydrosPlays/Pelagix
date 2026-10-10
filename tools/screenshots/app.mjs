@@ -77,6 +77,9 @@ export async function launchApp({ save, clock, theme = 'dark', visible = false, 
 
   // The app restores its window from window.json; this is how it is given its size and theme.
   writeFileSync(join(USER_DATA, 'window.json'), JSON.stringify({ bounds: { x: 80, y: 60, width: WIDTH, height: HEIGHT }, maximized: false, theme }))
+  // The first start is on an empty save, but one that already has its language (the demo save's),
+  // so the "choose your language" pop-up never comes up in a capture run.
+  writeFileSync(join(USER_DATA, 'save.json'), JSON.stringify({ ...save, entries: [], achievements: {} }))
 
   const port = await freePort()
   const env = { ...process.env, PELAGIX_SHOT_WIDTH: String(WIDTH), PELAGIX_SHOT_HEIGHT: String(HEIGHT), PELAGIX_SHOT_VISIBLE: visible ? '1' : '0' }
@@ -119,7 +122,7 @@ export async function launchApp({ save, clock, theme = 'dark', visible = false, 
   try {
     page = await connect(port, { alive: () => child.exitCode === null })
 
-    // The app has started on an empty profile. Pin the clock for every later document, put the
+    // The app has started on an empty save. Pin the clock for every later document, put the
     // demo save where the app keeps its save, and load the page again: this second load is the
     // app's real first run on that save (it validates every entry and checks the achievements).
     await page.send('Page.addScriptToEvaluateOnNewDocument', { source: pinnedClockScript(clock.getTime() - Date.now()) })

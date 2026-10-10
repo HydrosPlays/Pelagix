@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, use
 import type { CatchEntry } from '@shared/save-types'
 import { ENTRY_CARD_METRICS, EntryCard, GameBadge, ShinyMark } from '@renderer/components/pokemon'
 import { Checkbox, Icon, cx } from '@renderer/components/ui'
+import { useT } from '@renderer/i18n'
 import { offsetsOf, rowAt, useRowWindow, type ScrollToRowOptions } from '@renderer/features/living/windowing'
 import { UNKNOWN_GAME, type JournalGroup, type JournalItem, type JournalListing } from './model'
 
@@ -37,6 +38,7 @@ export interface JournalListProps {
 // ---------------------------------------------------------------- rows
 
 function GroupHeader({ group }: { group: JournalGroup }) {
+  const t = useT()
   return (
     <div className="journal-group">
       {group.gameKey !== undefined && group.gameKey !== UNKNOWN_GAME ? (
@@ -48,12 +50,12 @@ function GroupHeader({ group }: { group: JournalGroup }) {
         </span>
       )}
       <span className="journal-group__count">
-        {group.count.toLocaleString('en-US')} {group.count === 1 ? 'entry' : 'entries'}
+        {t('journal.counts.entries', { count: group.count })}
       </span>
       {group.shiny > 0 && (
         <span className="journal-group__shiny">
           <ShinyMark size={12} label="" />
-          {group.shiny.toLocaleString('en-US')} shiny
+          {t('journal.counts.shiny', { count: group.shiny })}
         </span>
       )}
     </div>
@@ -72,6 +74,7 @@ interface EntryRowProps {
 }
 
 const EntryRow = memo(function EntryRow({ item, selecting, selected, highlight, onOpen, onToggle, onDuplicated, onDeleted }: EntryRowProps) {
+  const t = useT()
   const { entry } = item
   // Whether Shift was down for the click that is about to toggle the row.
   const shift = useRef(false)
@@ -85,7 +88,7 @@ const EntryRow = memo(function EntryRow({ item, selecting, selected, highlight, 
     >
       {selecting && (
         <span className="journal-entry__check">
-          <Checkbox checked={selected} ariaLabel={`Select ${item.name}`} onChange={() => onToggle(entry.id, shift.current)} />
+          <Checkbox checked={selected} ariaLabel={t('journal.select.row', { name: item.name })} onChange={() => onToggle(entry.id, shift.current)} />
         </span>
       )}
       <EntryCard
@@ -96,7 +99,7 @@ const EntryRow = memo(function EntryRow({ item, selecting, selected, highlight, 
         highlight={highlight}
         className={cx('journal-entry__card', selected && 'is-selected')}
         onOpen={selecting ? () => onToggle(entry.id, shift.current) : onOpen}
-        openLabel={selecting ? `${selected ? 'Deselect' : 'Select'} ${item.name}` : undefined}
+        openLabel={selecting ? t(selected ? 'journal.select.rowOff' : 'journal.select.row', { name: item.name }) : undefined}
       />
     </div>
   )

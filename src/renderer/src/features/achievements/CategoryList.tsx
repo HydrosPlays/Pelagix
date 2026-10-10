@@ -1,6 +1,7 @@
 import { useRef, type KeyboardEvent } from 'react'
 import { cx, Icon } from '@renderer/components/ui'
 import type { AchievementGlyph, CategoryStats } from '@renderer/domain/achievements'
+import { useT } from '@renderer/i18n'
 import { formatCount } from '@renderer/lib/format'
 import { GlyphIcon } from './glyphs'
 import type { CategoryChoice } from './model'
@@ -29,8 +30,9 @@ export const categoryTabId = (id: CategoryChoice): string => `ach-tab-${id}`
  */
 export function CategoryList({ stats, value, onChange, panelId }: CategoryListProps) {
   const listRef = useRef<HTMLDivElement>(null)
+  const t = useT()
   const items: Item[] = [
-    { id: 'all', name: 'All achievements', glyph: 'trophy', unlocked: stats.reduce((n, s) => n + s.unlocked, 0), total: stats.reduce((n, s) => n + s.total, 0) },
+    { id: 'all', name: t('achievements.page.all.name'), glyph: 'trophy', unlocked: stats.reduce((n, s) => n + s.unlocked, 0), total: stats.reduce((n, s) => n + s.total, 0) },
     ...stats.map((s) => ({ id: s.category.id, name: s.category.name, glyph: s.category.glyph, unlocked: s.unlocked, total: s.total }))
   ]
 
@@ -51,7 +53,7 @@ export function CategoryList({ stats, value, onChange, panelId }: CategoryListPr
   }
 
   return (
-    <div ref={listRef} className="ach-cats" role="tablist" aria-label="Achievement categories" aria-orientation="vertical" onKeyDown={onKeyDown}>
+    <div ref={listRef} className="ach-cats" role="tablist" aria-label={t('achievements.categories.label')} aria-orientation="vertical" onKeyDown={onKeyDown}>
       {items.map((item) => {
         const selected = item.id === value
         const complete = item.total > 0 && item.unlocked >= item.total
@@ -71,7 +73,7 @@ export function CategoryList({ stats, value, onChange, panelId }: CategoryListPr
               <GlyphIcon name={item.glyph} size={18} />
             </span>
             <span className="ach-cat__name">{item.name}</span>
-            <span className="ach-cat__count" aria-label={`${formatCount(item.unlocked)} of ${formatCount(item.total)} unlocked`}>
+            <span className="ach-cat__count" aria-label={t('achievements.categories.count', { unlocked: item.unlocked, total: item.total })}>
               {complete ? <Icon name="check" size={14} /> : null}
               {formatCount(item.unlocked)}/{formatCount(item.total)}
             </span>

@@ -1,8 +1,9 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { setToastMedalRenderer } from '@renderer/components/ui'
 import { ACHIEVEMENT_BY_ID, evaluateFor, newlyDone, TIER_ORDER, type AchievementDef, type AchievementTier } from '@renderer/domain/achievements'
+import { t } from '@renderer/i18n'
 import { useDexStore, type Dex } from '@renderer/lib/data'
-import { formatCount, listText } from '@renderer/lib/format'
+import { listText } from '@renderer/lib/format'
 import { navigate, paths } from '@renderer/shell/router'
 import { useEntries, useRules, useSaveStore } from '@renderer/store/save'
 import { toast, useUiStore, type Toast } from '@renderer/store/ui'
@@ -49,11 +50,11 @@ function announce(ids: readonly string[]): void {
   const rest = defs.length - named.length
   toast({
     kind: 'achievement',
-    title: `${formatCount(defs.length)} achievements unlocked`,
-    body: `${listText([...named, `${formatCount(rest)} more`])}.`,
+    title: t('achievements.toast.many', { count: defs.length }),
+    body: t('achievements.toast.list', { list: listText([...named, t('achievements.toast.more', { count: rest })]) }),
     icon: `${SUMMARY_ICON}${best[0]?.tier ?? 'gold'}`,
     durationMs: 12_000,
-    action: { label: 'View', onSelect: () => navigate(paths.achievements()) }
+    action: { label: t('achievements.toast.view'), onSelect: () => navigate(paths.achievements()) }
   })
 }
 

@@ -16,7 +16,7 @@ const outDir = resolve(root, process.argv[2] ?? join('data', 'pkhex'))
 
 const OUTPUTS = [
   'meta.json', 'encounters.json', 'locations.json', 'gifts.json', 'go.json', 'forms.json',
-  'presence.json', 'evolutions.json', 'eggs.json', 'balls.json', 'strings.json'
+  'presence.json', 'evolutions.json', 'eggs.json', 'balls.json', 'strings.json', 'localized.json'
 ]
 
 function fail(message) {

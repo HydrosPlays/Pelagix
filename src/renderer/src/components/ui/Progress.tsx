@@ -1,5 +1,7 @@
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { countUp, type CountUpOptions } from '@renderer/lib/anim'
+import { languageTag } from '@shared/languages'
+import { activeLanguage } from '@renderer/i18n'
 import { cx } from './cx'
 import './Progress.css'
 
@@ -104,6 +106,8 @@ export interface NumberTickerProps extends Pick<CountUpOptions, 'duration' | 'de
 }
 
 const plain = (value: number, decimals: number): string => {
+  const language = activeLanguage()
+  if (language !== 'en') return new Intl.NumberFormat(languageTag(language), { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value)
   const [whole, fraction] = value.toFixed(decimals).split('.')
   const grouped = (whole ?? '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return fraction === undefined ? grouped : `${grouped}.${fraction}`

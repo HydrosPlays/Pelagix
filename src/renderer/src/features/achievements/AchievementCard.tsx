@@ -3,8 +3,9 @@ import { Link } from 'wouter'
 import { Sprite } from '@renderer/components/pokemon'
 import { Badge, cx, Icon, IconButton, ProgressBar, Tooltip } from '@renderer/components/ui'
 import { missingItems, TIER_LABELS, type AchievementContext, type AchievementDef, type SetItem } from '@renderer/domain/achievements'
+import { rich, t, useT } from '@renderer/i18n'
 import { enterStagger } from '@renderer/lib/anim'
-import { formatCount, formatDate, formatDateTime, plural } from '@renderer/lib/format'
+import { formatDate, formatDateTime } from '@renderer/lib/format'
 import { paths } from '@renderer/shell/router'
 import { Medal } from './Medal'
 import { progressText, type AchievementRow } from './model'
@@ -14,21 +15,22 @@ const MISSING_LIMIT = 12
 
 /** What a missing item is called on its link, given how the achievement checks it. */
 function missingLabel(def: AchievementDef, item: SetItem): string {
-  return def.test === 'shiny' ? `Shiny ${item.label}` : item.label
+  return def.test === 'shiny' ? t('achievements.missing.shiny', { name: item.label }) : item.label
 }
 
 function MissingList({ def, context, id }: { def: AchievementDef; context: AchievementContext; id: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const missing = useMemo(() => missingItems(context, def, MISSING_LIMIT), [context, def])
   const more = missing.total - missing.items.length
+  const t = useT()
 
   useLayoutEffect(() => {
     enterStagger(ref.current?.querySelectorAll('.ach-missing__cell'), { step: 16, y: 6, duration: 240 })
   }, [])
 
   return (
-    <div ref={ref} id={id} className="ach-missing" role="group" aria-label={`Still missing for ${def.title}`}>
-      <div className="ach-missing__head u-eyebrow">{missing.total === 0 ? 'Nothing is missing' : `Still missing · ${formatCount(missing.total)}`}</div>
+    <div ref={ref} id={id} className="ach-missing" role="group" aria-label={t('achievements.missing.label', { title: def.title })}>
+      <div className="ach-missing__head u-eyebrow">{missing.total === 0 ? t('achievements.missing.none') : t('achievements.missing.count', { count: missing.total })}</div>
       {missing.total > 0 && (
         <ul className="ach-missing__list">
           {missing.items.map((item) => {
@@ -36,14 +38,14 @@ function MissingList({ def, context, id }: { def: AchievementDef; context: Achie
             return (
               <li key={`${item.species}-${item.form ?? 'any'}-${item.variant ?? ''}-${item.gmax ? 'g' : ''}`} className="ach-missing__cell">
                 <Tooltip content={label}>
-                  <Link href={paths.species(item.species, item.form)} className="ach-missing__item" aria-label={`${label}: open its Pokédex page`}>
+                  <Link href={paths.species(item.species, item.form)} className="ach-missing__item" aria-label={t('achievements.missing.open', { name: label })}>
                     <Sprite species={item.species} form={item.form ?? 0} variant={item.variant} gmax={item.gmax} shiny={def.test === 'shiny'} size={40} className="ach-missing__sprite" />
                   </Link>
                 </Tooltip>
               </li>
             )
           })}
-          {more > 0 && <li className="ach-missing__cell ach-missing__more">and {plural(more, 'more', 'more')}</li>}
+          {more > 0 && <li className="ach-missing__cell ach-missing__more">{t('achievements.missing.more', { count: more })}</li>}
         </ul>
       )}
     </div>
@@ -69,6 +71,7 @@ export const AchievementCard = memo(function AchievementCard({ row, context, exp
   const missingId = `ach-missing-${def.id}`
   const canExpand = !unlocked && !concealed && def.pool !== undefined && !state.done
   const open = expanded && canExpand
+  const t = useT()
   const title = concealed ? '???' : def.title
 
   return (
@@ -91,31 +94,36 @@ export const AchievementCard = memo(function AchievementCard({ row, context, exp
       <div className="ach-card__body">
         <div className="ach-card__head">
           <h3 id={titleId} className="ach-card__title">
-            {concealed ? (
+            {unlocked ? (
+              title
+            ) : (
               <>
                 <span aria-hidden="true">{title}</span>
-                <span className="u-sr-only">Secret achievement</span>
+                <span className="u-sr-only">{t('achievements.card.locked', { title: concealed ? t('achievements.card.secret') : def.title })}</span>
               </>
-            ) : (
-              title
             )}
-            {!unlocked && <span className="u-sr-only">, locked</span>}
           </h3>
-          {fresh && <Badge tone="gold">NEW</Badge>}
+          {fresh && <Badge tone="gold">{t('achievements.card.new')}</Badge>}
         </div>
-        <p className="ach-card__desc">{concealed ? (def.hint ?? 'A secret. Keep playing to find it.') : def.description}</p>
+        <p className="ach-card__desc">{concealed ? (def.hint ?? t('achievements.card.secretHint')) : def.description}</p>
 
         <div className="ach-card__meta">
           <span className="ach-card__tier">{TIER_LABELS[def.tier]}</span>
-          <span className="ach-card__points">{plural(def.points, 'point')}</span>
-          {def.secret && <span className="ach-card__secret">Secret</span>}
+          <span className="ach-card__points">{t('achievements.points', { count: def.points })}</span>
+          {def.secret && <span className="ach-card__secret">{t('achievements.card.secretTag')}</span>}
         </div>
 
         {unlockedAt !== null ? (
           <div className="ach-card__date">
             <Icon name="check" size={14} />
             <span>
-              Unlocked <time dateTime={unlockedAt} title={formatDateTime(unlockedAt)}>{formatDate(unlockedAt)}</time>
+              {rich('achievements.card.unlocked', {
+                date: () => (
+                  <time dateTime={unlockedAt} title={formatDateTime(unlockedAt)}>
+                    {formatDate(unlockedAt)}
+                  </time>
+                )
+              })}
             </span>
           </div>
         ) : (
@@ -125,15 +133,15 @@ export const AchievementCard = memo(function AchievementCard({ row, context, exp
                 size="sm"
                 tone="gold"
                 value={state.ratio}
-                label={`Progress: ${def.title}`}
-                valueText={`${formatCount(Math.min(state.current, state.target))} of ${formatCount(state.target)}`}
+                label={t('achievements.card.progress', { title: def.title })}
+                valueText={t('achievements.card.progressValue', { current: Math.min(state.current, state.target), target: state.target })}
               />
               <span className="ach-card__count">{progressText(state)}</span>
               {canExpand && (
                 <IconButton
                   icon={open ? 'chevron-up' : 'chevron-down'}
-                  label={`${open ? 'Hide' : 'Show'} what is missing for ${def.title}`}
-                  tooltip={open ? 'Hide what is missing' : 'Show what is missing'}
+                  label={open ? t('achievements.card.hideMissingFor', { title: def.title }) : t('achievements.card.showMissingFor', { title: def.title })}
+                  tooltip={open ? t('achievements.card.hideMissing') : t('achievements.card.showMissing')}
                   size="sm"
                   className="ach-card__toggle"
                   aria-expanded={open}

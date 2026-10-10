@@ -1,0 +1,56 @@
+import type { Translation } from '../en'
+
+const messages: Translation<'homedex'> = {
+  'hero.title': 'HOME Dex',
+  'hero.titleShiny': '異色 HOME Dex',
+  'hero.ring': 'HOME Dex 完成度',
+  'hero.ringShiny': '異色 HOME Dex 完成度',
+  'hero.count': { other: '{count} 格中有 {inHome} 格已在 HOME' },
+  'hero.countShiny': { other: '{count} 格中有 {inHome} 格異色已在 HOME' },
+  'hero.countGame': { other: '來自《{game}》的 {count} 格中有 {inHome} 格已在 HOME' },
+  'hero.countShinyGame': { other: '來自《{game}》的 {count} 格中有 {inHome} 格異色已在 HOME' },
+  'hero.unit': '已在 HOME',
+  'hero.unitShiny': '異色已在 HOME',
+  'hero.unitGame': '來自《{game}》，已在 HOME',
+  'hero.unitShinyGame': '來自《{game}》的異色，已在 HOME',
+  'hero.pending': { other: '<b>{count}</b> 隻尚未傳送' },
+  'hero.missing': { other: '<b>{count}</b> 隻尚未捕獲' },
+  'hero.missingGame': { other: '<b>{count}</b> 隻尚未在《{game}》捕獲' },
+  'hero.missingShiny': { other: '<b>{count}</b> 隻沒有異色' },
+  'hero.missingShinyGame': { other: '<b>{count}</b> 隻在《{game}》沒有異色' },
+  'hero.mode': 'HOME Dex 模式',
+  'hero.mode.normal': 'HOME Dex',
+
+  'filters.label': '顯示',
+  'filters.noShiny': '沒有異色',
+  'hint': '點選已捕獲的寶可夢，標記為已在 Pokémon HOME；再點一次即可取消標記。',
+
+  'saveFailed': '無法儲存',
+  'box.marked': '{box}已標記為在 HOME',
+  'box.marked.body': { other: '已標記 {count} 隻寶可夢。按「復原」可取消標記。' },
+  'box.undo': '復原',
+  'box.unmarked': '{box}已取消標記',
+  'box.unmarked.body': { other: '{count} 隻寶可夢不再標記為在 HOME。' },
+
+  'empty.noSlots.title': '沒有可顯示的寶可夢',
+  'empty.noSlots.description': '寶可夢圖鑑資料中沒有寶可夢，所以還沒有可以填的格子。',
+  'empty.game.title': '《{game}》中沒有可收集的寶可夢',
+  'empty.game.description': '你的 Living Dex 中，沒有不靠活動就能在這款遊戲獲得的寶可夢。',
+  'empty.gameNothing.title': '還沒有在《{game}》捕獲任何寶可夢',
+  'empty.gameNothing.description': '這裡只計算在《{game}》獲得的寶可夢。記錄一次該遊戲的捕獲，牠就會出現在這裡，並可標記為已傳送。',
+  'empty.noShiny.title': '還沒有異色寶可夢',
+  'empty.noShiny.description': '異色 HOME Dex 只計算異色寶可夢。將捕獲記錄為異色，牠就會出現在這裡，並可標記為已傳送。',
+  'empty.noShiny.action': '顯示一般的 HOME Dex',
+  'empty.nothing.title': '還沒有可傳送的寶可夢',
+  'empty.nothing.description': 'HOME Dex 會顯示你已將哪些寶可夢傳送到 Pokémon HOME。先記錄一次捕獲，牠就會出現在這裡，點一下即可標記為已傳送。',
+  'empty.nothing.action': '開啟寶可夢圖鑑',
+  'empty.filter.home.title': 'HOME 裡還沒有寶可夢',
+  'empty.filter.home.description': '將已捕獲的寶可夢標記為已傳送，就會列在這裡。',
+  'empty.filter.pending.title': '你捕獲的寶可夢都已在 HOME',
+  'empty.filter.pending.description': '沒有需要傳送的了。',
+  'empty.filter.missing.title': '什麼都不缺',
+  'empty.filter.missing.description': '每一格都填滿了。',
+  'empty.filter.action': '顯示所有格子'
+}
+
+export default messages

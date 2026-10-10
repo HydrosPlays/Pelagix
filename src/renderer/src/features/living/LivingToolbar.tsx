@@ -1,7 +1,8 @@
 import { useState, type KeyboardEvent, type MouseEvent, type ReactNode, type Ref } from 'react'
-import { GENERATION_NAMES } from '@shared/games'
 import { Chip, Combobox, SegmentedControl, Tooltip, cx, type SelectOption } from '@renderer/components/ui'
-import type { DexSection } from '@renderer/domain/gamedex'
+import { OTHER_SECTION, pokedexShortName, type DexSection } from '@renderer/domain/gamedex'
+import { generationName } from '@renderer/domain/generation'
+import { useT } from '@renderer/i18n'
 import { formatCount, ratio } from '@renderer/lib/format'
 import { FloatingTip, useHoverTarget } from './HoverTip'
 import { boxIndexAt, boxName, boxRange, romanNumeral, type BoxModel, type LivingMode, type LivingStats, type LivingView } from './model'
@@ -49,6 +50,7 @@ function rove(event: KeyboardEvent<HTMLElement>, selector: string): HTMLElement 
  * generation, find a Pokémon, and the box index (one cell per box, filled as far as the box is).
  */
 export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, stats, boxes, visible, currentGen, searchOptions, found, onFind, onJumpGen, onJumpBox, sections, onJumpSection, ref }: LivingToolbarProps) {
+  const t = useT()
   const tip = useHoverTarget('[data-cell]', 220)
   const [genStop, setGenStop] = useState<number | null>(null)
   const [cellStop, setCellStop] = useState<number | null>(null)
@@ -81,7 +83,7 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
         data-cell={box.index}
         tabIndex={box.index === cellTab ? 0 : -1}
         aria-current={inView ? 'true' : undefined}
-        aria-label={`${boxName(box)}, ${boxRange(box)}, ${complete ? 'complete' : `${filled} of ${size} caught`}`}
+        aria-label={complete ? t('living.toolbar.boxComplete', { box: boxName(box), range: boxRange(box) }) : t('living.toolbar.box', { box: boxName(box), range: boxRange(box), filled, count: size })}
         onFocus={() => setCellStop(box.index)}
       >
         <span className="living-map__fill" style={{ transform: `scaleY(${ratio(filled, size)})` }} />
@@ -93,26 +95,26 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
     <div ref={ref} className={cx('living-toolbar', mode === 'shiny' && 'is-shiny')}>
       <div className="living-toolbar__row">
         <SegmentedControl
-          label="View"
+          label={t('living.toolbar.view')}
           value={view}
           onChange={onView}
           options={[
-            { value: 'boxes', label: 'Boxes', icon: 'box' },
-            { value: 'list', label: 'List', icon: 'grid' }
+            { value: 'boxes', label: t('living.toolbar.view.boxes'), icon: 'box' },
+            { value: 'list', label: t('living.toolbar.view.list'), icon: 'grid' }
           ]}
         />
         <Chip icon="filter" tone={mode === 'shiny' ? 'gold' : 'accent'} selected={missingOnly} onClick={() => onMissingOnly(!missingOnly)}>
-          Missing only
+          {t('living.toolbar.missingOnly')}
           <span className="living-toolbar__missing"> {formatCount(missing)}</span>
         </Chip>
 
         {sections.length > 0 && (
-          <nav className="gdex-tabs" aria-label="Jump to a Pokédex">
+          <nav className="gdex-tabs" aria-label={t('living.toolbar.jumpDex')}>
             {sections.map((section, s) => {
               const stat = stats.sections[s]
               return (
                 <button key={section.id} type="button" className={cx('gdex-tabs__item', stat && stat.filled === stat.slots && 'is-complete')} title={section.title} onClick={() => onJumpSection(s)}>
-                  <span className="gdex-tabs__name">{section.id === 'other' ? 'Other' : section.title.replace(' Pokédex', '')}</span>
+                  <span className="gdex-tabs__name">{section.id === OTHER_SECTION ? t('pokedex.dexShort.other') : pokedexShortName(section.id)}</span>
                   {stat && (
                     <span className="gdex-tabs__count">
                       {formatCount(stat.filled)} / {formatCount(stat.slots)}
@@ -123,10 +125,10 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
             })}
           </nav>
         )}
-        <nav className="living-gens" aria-label="Jump to a generation" hidden={sections.length > 0} onKeyDown={(event) => rove(event, '.living-gens__item')}>
+        <nav className="living-gens" aria-label={t('living.toolbar.jumpGeneration')} hidden={sections.length > 0} onKeyDown={(event) => rove(event, '.living-gens__item')}>
           {gens.map((g) => {
             const complete = g.slots > 0 && g.filled === g.slots
-            const name = GENERATION_NAMES[g.gen] ?? `Generation ${g.gen}`
+            const name = generationName(g.gen)
             return (
               <Tooltip key={g.gen} content={`${name} · ${formatCount(g.filled)} / ${formatCount(g.slots)}`} placement="bottom">
                 <button
@@ -134,7 +136,7 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
                   className={cx('living-gens__item', g.gen === currentGen && 'is-current', complete && 'is-complete')}
                   tabIndex={g.gen === genTab ? 0 : -1}
                   aria-current={g.gen === currentGen ? 'true' : undefined}
-                  aria-label={`${name}, ${formatCount(g.filled)} of ${formatCount(g.slots)} caught`}
+                  aria-label={t('living.toolbar.generation', { generation: name, filled: g.filled, count: g.slots })}
                   onFocus={() => setGenStop(g.gen)}
                   onClick={() => onJumpGen(g.gen)}
                 >
@@ -150,9 +152,9 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
 
         <Combobox<string>
           wrapperClassName="living-toolbar__search"
-          ariaLabel="Find a Pokémon in your Living Dex"
-          placeholder="Find a Pokémon…"
-          emptyText="No Pokémon by that name"
+          ariaLabel={t('living.toolbar.find.label')}
+          placeholder={t('living.toolbar.find.placeholder')}
+          emptyText={t('living.toolbar.find.empty')}
           options={searchOptions}
           value={found}
           maxItems={40}
@@ -162,7 +164,7 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
 
       <nav
         className="living-map"
-        aria-label="Box index"
+        aria-label={t('living.toolbar.boxIndex')}
         onClick={onCellClick}
         onKeyDown={(event) => rove(event, '.living-map__cell')}
         onPointerOver={tip.handlers.onPointerOver}
@@ -180,7 +182,7 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
             {boxName(tipBox)} · {boxRange(tipBox)}
           </span>
           <span className={cx('living-tip__status', tipFilled === tipBox.slots.length && 'is-filled', mode === 'shiny' && 'is-shiny')}>
-            {tipFilled === tipBox.slots.length ? 'Complete' : `${tipFilled} / ${tipBox.slots.length} ${mode === 'shiny' ? 'shiny caught' : 'caught'}`}
+            {tipFilled === tipBox.slots.length ? t('living.toolbar.tip.complete') : t(mode === 'shiny' ? 'living.toolbar.tip.shinyCaught' : 'living.toolbar.tip.caught', { filled: tipFilled, count: tipBox.slots.length })}
           </span>
         </FloatingTip>
       )}

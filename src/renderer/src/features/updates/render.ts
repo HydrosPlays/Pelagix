@@ -9,6 +9,7 @@
  */
 
 import { createElement as h, type MouseEvent, type ReactNode } from 'react'
+import { t } from '@renderer/i18n/runtime'
 import { safeHref, type Align, type Block, type Inline, type MdDoc } from './markdown'
 
 export interface RenderOptions {
@@ -70,7 +71,7 @@ export function renderMarkdown(doc: MdDoc, options: RenderOptions = {}): ReactNo
           return link(node.href, key, 'upd-md-link', inlines(node.c))
         case 'image':
           // Never an <img>: a remote image is a request to a third party the reader did not choose.
-          return link(node.href, key, 'upd-md-link upd-md-image', node.alt === '' ? 'image' : node.alt)
+          return link(node.href, key, 'upd-md-link upd-md-image', node.alt === '' ? t('updates.notes.image') : node.alt)
       }
     })
   }
@@ -94,7 +95,7 @@ export function renderMarkdown(doc: MdDoc, options: RenderOptions = {}): ReactNo
             h(
               'li',
               { key: i, className: item.checked === null ? undefined : 'upd-md-task' },
-              item.checked === null ? null : h('input', { type: 'checkbox', checked: item.checked, disabled: true, readOnly: true, 'aria-label': item.checked ? 'Done' : 'Not done' }),
+              item.checked === null ? null : h('input', { type: 'checkbox', checked: item.checked, disabled: true, readOnly: true, 'aria-label': item.checked ? t('updates.notes.task.done') : t('updates.notes.task.notDone') }),
               blocks(item.c, block.tight)
             )
           )

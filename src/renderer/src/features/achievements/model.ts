@@ -4,7 +4,8 @@ import {
   ACHIEVEMENT_BY_ID, RANKS, TIER_ORDER, unlockDate, type AchievementCategoryId, type AchievementDef, type AchievementRank, type AchievementState,
   type AchievementTier
 } from '@renderer/domain/achievements'
-import { formatCount, plural } from '@renderer/lib/format'
+import { t, type MessageKey } from '@renderer/i18n/runtime'
+import { formatCount } from '@renderer/lib/format'
 
 export type AchievementFilter = 'all' | 'unlocked' | 'locked'
 export type AchievementSort = 'default' | 'nearest' | 'newest' | 'tier'
@@ -83,8 +84,8 @@ export function rankTier(index: number, ranks: number = RANKS.length): Achieveme
 
 /** "260 more points to Seasoned Collector", or the line for the top of the ladder. */
 export function nextRankText(rank: AchievementRank, points: number): string {
-  if (rank.nextAt === null || rank.nextName === null) return 'You have reached the top rank.'
-  return `${plural(Math.max(0, rank.nextAt - points), 'more point')} to ${rank.nextName}`
+  if (rank.nextAt === null || rank.nextName === null) return t('achievements.rank.top')
+  return t('achievements.rank.next', { count: Math.max(0, rank.nextAt - points), rank: rank.nextName })
 }
 
 /** "76 / 151": progress as shown on a card, never past the target. */
@@ -92,15 +93,23 @@ export function progressText(state: AchievementState): string {
   return `${formatCount(Math.min(state.current, state.target))} / ${formatCount(state.target)}`
 }
 
-export const FILTER_OPTIONS: ReadonlyArray<{ value: AchievementFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'unlocked', label: 'Unlocked' },
-  { value: 'locked', label: 'Locked' }
+/** A choice whose label is looked up in the active language each time it is read. */
+const option = <V extends string>(value: V, key: MessageKey): { value: V; readonly label: string } => ({
+  value,
+  get label() {
+    return t(key)
+  }
+})
+
+export const FILTER_OPTIONS: ReadonlyArray<{ value: AchievementFilter; readonly label: string }> = [
+  option('all', 'common.all'),
+  option('unlocked', 'achievements.filter.unlocked'),
+  option('locked', 'achievements.filter.locked')
 ]
 
-export const SORT_OPTIONS: ReadonlyArray<{ value: AchievementSort; label: string }> = [
-  { value: 'default', label: 'Default order' },
-  { value: 'nearest', label: 'Nearest to done' },
-  { value: 'newest', label: 'Newest unlocked' },
-  { value: 'tier', label: 'Highest tier' }
+export const SORT_OPTIONS: ReadonlyArray<{ value: AchievementSort; readonly label: string }> = [
+  option('default', 'achievements.sort.default'),
+  option('nearest', 'achievements.sort.nearest'),
+  option('newest', 'achievements.sort.newest'),
+  option('tier', 'achievements.sort.tier')
 ]

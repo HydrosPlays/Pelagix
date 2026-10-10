@@ -1,0 +1,56 @@
+import type { Translation } from '../en'
+
+const messages: Translation<'homedex'> = {
+  'hero.title': 'HOME図鑑',
+  'hero.titleShiny': '色違いHOME図鑑',
+  'hero.ring': 'HOME図鑑の完成度',
+  'hero.ringShiny': '色違いHOME図鑑の完成度',
+  'hero.count': { other: '{count}匹中{inHome}匹がHOMEにいます' },
+  'hero.countShiny': { other: '{count}匹中{inHome}匹の色違いがHOMEにいます' },
+  'hero.countGame': { other: '{game}の{count}匹中{inHome}匹がHOMEにいます' },
+  'hero.countShinyGame': { other: '{game}の{count}匹中{inHome}匹の色違いがHOMEにいます' },
+  'hero.unit': 'HOMEにいる',
+  'hero.unitShiny': '色違いがHOMEにいる',
+  'hero.unitGame': '{game}からHOMEにいる',
+  'hero.unitShinyGame': '{game}の色違いがHOMEにいる',
+  'hero.pending': { other: '未送信<b>{count}</b>匹' },
+  'hero.missing': { other: '未ゲット<b>{count}</b>匹' },
+  'hero.missingGame': { other: '{game}で未ゲット<b>{count}</b>匹' },
+  'hero.missingShiny': { other: '色違いなし<b>{count}</b>匹' },
+  'hero.missingShinyGame': { other: '{game}で色違いなし<b>{count}</b>匹' },
+  'hero.mode': 'HOME図鑑のモード',
+  'hero.mode.normal': 'HOME図鑑',
+
+  'filters.label': '表示',
+  'filters.noShiny': '色違いなし',
+  'hint': 'ゲット済みのポケモンをクリックすると、Pokémon HOMEにいる印が付きます。もう一度クリックすると外れます。',
+
+  'saveFailed': '保存できませんでした',
+  'box.marked': '{box}にHOMEの印を付けました',
+  'box.marked.body': { other: '{count}匹に印を付けました。「元に戻す」で印を外せます。' },
+  'box.undo': '元に戻す',
+  'box.unmarked': '{box}の印を外しました',
+  'box.unmarked.body': { other: '{count}匹のHOMEの印を外しました。' },
+
+  'empty.noSlots.title': '表示するポケモンがいません',
+  'empty.noSlots.description': 'ポケモン図鑑のデータにポケモンがいないため、埋める枠がまだありません。',
+  'empty.game.title': '{game}で集めるポケモンはいません',
+  'empty.game.description': 'リビング図鑑のポケモンのうち、このゲームでイベントなしに手に入るものはいません。',
+  'empty.gameNothing.title': '{game}ではまだ何もゲットしていません',
+  'empty.gameNothing.description': 'ここでは{game}で手に入れたポケモンだけが数えられます。そのゲームでのゲットを記録するとここに表示され、送信済みの印を付けられます。',
+  'empty.noShiny.title': '色違いのポケモンはまだいません',
+  'empty.noShiny.description': '色違いHOME図鑑は色違いのポケモンだけを数えます。ゲットを色違いとして記録するとここに表示され、送信済みの印を付けられます。',
+  'empty.noShiny.action': '通常のHOME図鑑を表示',
+  'empty.nothing.title': '送るポケモンはまだいません',
+  'empty.nothing.description': 'HOME図鑑では、Pokémon HOMEに送ったポケモンがわかります。まずゲットを記録してください。ここに表示され、ワンクリックで送信済みの印を付けられます。',
+  'empty.nothing.action': 'ポケモン図鑑を開く',
+  'empty.filter.home.title': 'HOMEにはまだ何もいません',
+  'empty.filter.home.description': 'ゲット済みのポケモンに送信済みの印を付けると、ここに表示されます。',
+  'empty.filter.pending.title': 'ゲットしたポケモンはすべてHOMEにいます',
+  'empty.filter.pending.description': '送るポケモンはもういません。',
+  'empty.filter.missing.title': '足りないポケモンはいません',
+  'empty.filter.missing.description': 'すべての枠が埋まっています。',
+  'empty.filter.action': 'すべての枠を表示'
+}
+
+export default messages

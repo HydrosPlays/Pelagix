@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
+import { t } from '@renderer/i18n'
 import { normalizeText } from '@renderer/lib/search'
 import { cx } from './cx'
 import { renderIconSlot, Spinner, type ControlSize, type IconSlot } from './Button'
@@ -102,7 +103,7 @@ function OptionList<T extends string | number>({ listRef, id, rows, active, sele
     <Portal>
       <div ref={listRef} className="ui-listbox" onMouseDown={(e) => e.preventDefault()}>
         <div id={id} role="listbox" aria-labelledby={labelledBy} className="ui-listbox__scroll">
-          {rows.length === 0 && <div className="ui-listbox__empty">{emptyText ?? 'No options'}</div>}
+          {rows.length === 0 && <div className="ui-listbox__empty">{emptyText ?? t('components.select.noOptions')}</div>}
           {rows.map(({ option, index, heading }) => (
             <Fragment key={String(option.value)}>
               {heading !== undefined && (
@@ -148,7 +149,7 @@ export interface SelectProps<T extends string | number = string> extends ChoiceC
  * Single choice from a list. Keyboard: arrows, Home / End, Enter / Space, Escape, and typing to
  * jump to an option. Use `Combobox` instead when the list is long enough to need searching.
  */
-export function Select<T extends string | number = string>({ options, value, onChange, icon, label, hint, error, optional, ariaLabel, placeholder = 'Select…', size = 'md', disabled, maxHeight = 320, id, className, wrapperClassName }: SelectProps<T>) {
+export function Select<T extends string | number = string>({ options, value, onChange, icon, label, hint, error, optional, ariaLabel, placeholder = t('components.select.placeholder'), size = 'md', disabled, maxHeight = 320, id, className, wrapperClassName }: SelectProps<T>) {
   const auto = useId()
   const baseId = id ?? auto
   const listId = `${baseId}-list`
@@ -296,7 +297,7 @@ export function Combobox<T extends string | number = string>({
   freeText,
   clearable = true,
   icon = 'search',
-  emptyText = 'No matches',
+  emptyText = t('components.select.noMatches'),
   maxItems = 60,
   filter = defaultFilter,
   loading,
@@ -305,7 +306,7 @@ export function Combobox<T extends string | number = string>({
   error,
   optional,
   ariaLabel,
-  placeholder = 'Search…',
+  placeholder = t('components.select.searchPlaceholder'),
   size = 'md',
   disabled,
   maxHeight = 320,
@@ -444,11 +445,11 @@ export function Combobox<T extends string | number = string>({
         />
         {loading && <Spinner size={14} className="ui-combobox__spinner" />}
         {showClear && (
-          <button type="button" className="ui-input__clear" aria-label="Clear" tabIndex={-1} onClick={clear}>
+          <button type="button" className="ui-input__clear" aria-label={t('common.clear')} tabIndex={-1} onClick={clear}>
             <Icon name="close" size={14} />
           </button>
         )}
-        <button type="button" className="ui-combobox__toggle" aria-label={open ? 'Close list' : 'Open list'} tabIndex={-1} disabled={disabled} onClick={() => (open ? close() : openList())}>
+        <button type="button" className="ui-combobox__toggle" aria-label={open ? t('components.select.closeList') : t('components.select.openList')} tabIndex={-1} disabled={disabled} onClick={() => (open ? close() : openList())}>
           <Icon name="chevron-down" size={16} className="ui-select__chevron" />
         </button>
       </div>
@@ -460,7 +461,7 @@ export function Combobox<T extends string | number = string>({
           active={active}
           selected={value}
           emptyText={emptyText}
-          footer={hidden > 0 ? <div className="ui-listbox__more">{hidden.toLocaleString('en-US')} more - keep typing to narrow down</div> : undefined}
+          footer={hidden > 0 ? <div className="ui-listbox__more">{t('components.select.more', { count: hidden })}</div> : undefined}
           onHover={setActive}
           onPick={pick}
         />

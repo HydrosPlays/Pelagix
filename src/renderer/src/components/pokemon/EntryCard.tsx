@@ -4,6 +4,8 @@ import { GAME_BY_ID, SYSTEM_BY_ID } from '@shared/games'
 import type { CatchEntry, EntryKind } from '@shared/save-types'
 import { describeEntry, type EntryView } from '@renderer/domain/entries'
 import { entryDay } from '@renderer/domain/progress'
+import { useT, t as translate } from '@renderer/i18n'
+import { ballName, gameShortName, locationName } from '@renderer/i18n/terms'
 import { popIn } from '@renderer/lib/anim'
 import { useDexStore, type Dex } from '@renderer/lib/data'
 import { entryMenuItems, entryMethodText, entryOriginText, entrySummary, type EntryMenuOptions } from '@renderer/lib/entry-actions'
@@ -74,7 +76,7 @@ const KIND_ICONS: Readonly<Partial<Record<EntryKind, IconName>>> = {
 function resolveView(dex: Dex | null, entry: CatchEntry): EntryView {
   if (dex) return describeEntry(dex, entry)
   const game = GAME_BY_ID.get(entry.game)
-  const name = `Pokémon #${entry.species}`
+  const name = translate('lib.entry.unknownPokemon', { number: String(entry.species) })
   return {
     entry,
     species: undefined,
@@ -101,7 +103,8 @@ function whereLines(entry: CatchEntry, origin: string | undefined): WhereLines {
   const bareEvolved = entry.kind === 'evolved' && (entry.method === undefined || entry.method.trim() === '')
   const method = origin !== undefined && bareEvolved ? undefined : entryMethodText(entry)
   const how = (entry.kind === 'evolved' ? [origin, method] : [method, origin]).filter((text): text is string => text !== undefined)
-  if (entry.location !== undefined && entry.location !== '') return { icon: 'map-pin', primary: entry.location, secondary: how.length > 0 ? how.join(' · ') : undefined }
+  const secondary = how.length > 1 ? translate('components.entry.howBoth', { first: how[0]!, second: how[1]! }) : how[0]
+  if (entry.location !== undefined && entry.location !== '') return { icon: 'map-pin', primary: locationName(entry.location), secondary }
   return { icon: KIND_ICONS[entry.kind] ?? 'pokeball', primary: how[0], secondary: how[1] }
 }
 
@@ -116,10 +119,11 @@ const Blank = (): ReactNode => (
 
 /** Origin of the entry: console glyph, game icon, game name; a neutral tile and "Unknown game" for ids this build does not know. */
 function EntryGame({ view, size, short }: { view: EntryView; size: 'sm' | 'md'; short?: boolean }) {
+  const t = useT()
   if (view.game) return <GameBadge game={view.game} size={size} short={short} />
   const tile = size === 'sm' ? 20 : 28
   return (
-    <span className={cx('pk-gamebadge', `pk-gamebadge--${size}`)} title={`Saved as “${view.entry.game}”`}>
+    <span className={cx('pk-gamebadge', `pk-gamebadge--${size}`)} title={t('components.entry.savedAs', { id: view.entry.game })}>
       <span className="pk-gamebadge__system">
         <Icon name="help" size={size === 'sm' ? 14 : 16} />
       </span>
@@ -127,7 +131,7 @@ function EntryGame({ view, size, short }: { view: EntryView; size: 'sm' | 'md'; 
         ?
       </span>
       <span className="pk-gamebadge__text">
-        <span className="pk-gamebadge__name">Unknown game</span>
+        <span className="pk-gamebadge__name">{t('components.game.unknown')}</span>
       </span>
     </span>
   )
@@ -140,6 +144,7 @@ function EntryGame({ view, size, short }: { view: EntryView; size: 'sm' | 'md'; 
  * nickname, OT, what it evolved from, Alpha / G-Max marks and notes. Missing data is left out.
  */
 export function EntryCard({ entry, variant = 'card', showSpecies = true, actions = true, menu, onOpen, openLabel, highlight = false, className }: EntryCardProps) {
+  const t = useT()
   const dex = useDexStore((s) => s.dex)
   const view = useMemo(() => resolveView(dex, entry), [dex, entry])
   const rootRef = useRef<HTMLElement>(null)
@@ -157,7 +162,11 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
   const notes = entry.notes !== undefined && entry.notes.trim() !== '' ? entry.notes.trim() : undefined
   const values = entryValues(entry)
   const date = formatDate(view.day)
-  const dateTitle = `${entry.date !== undefined ? 'Caught' : 'Logged'} ${formatDate(view.day, 'long')}`
+  const dateTitle = t(entry.date !== undefined ? 'components.entry.caughtOn' : 'components.entry.loggedOn', { date: formatDate(view.day, 'long') })
+  const ball = ballName(entry.ball) ?? t('components.ball.unknown')
+  const level = entry.level !== undefined ? t('lib.format.level', { level: String(entry.level) }) : undefined
+  const valueText = (v: (typeof values)[number]): string =>
+    v.mark !== undefined ? t('components.entry.valueMarked', { label: v.label, text: v.text, mark: v.mark }) : t('components.entry.value', { label: v.label, text: v.text })
   const withMenu = actions && variant !== 'compact'
   // On a page about one Pokémon the name is implied, but the form that was caught still has to show.
   const formLabel = !showSpecies && (entry.form !== 0 || view.variant !== undefined || (entry.gmax === true && view.form?.gmax !== undefined)) ? view.name : undefined
@@ -178,13 +187,13 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
   const tags = (entry.alpha === true || entry.gmax === true) && (
     <>
       {entry.alpha === true && (
-        <Tag tone="catch" title="Alpha Pokémon">
-          Alpha
+        <Tag tone="catch" title={t('components.entry.alphaTitle')}>
+          {t('components.entry.alpha')}
         </Tag>
       )}
       {entry.gmax === true && (
-        <Tag tone="accent" title="Can Gigantamax">
-          G-Max
+        <Tag tone="accent" title={t('components.entry.gmaxTitle')}>
+          {t('components.entry.gmax')}
         </Tag>
       )}
     </>
@@ -192,13 +201,13 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
 
   // The tooltip wraps a real box (Menu and Tooltip both anchor to their first child, and both wrappers are `display: contents`).
   const kebab = withMenu && (
-    <Tooltip content="Entry actions" disabled={menuOpen}>
+    <Tooltip content={t('components.entry.actions')} disabled={menuOpen}>
       <span className="pk-entry__actions" onClick={(event) => event.stopPropagation()}>
         <Menu
-          label={`Entry actions: ${summary}`}
+          label={t('components.entry.actionsFor', { summary })}
           align="end"
           onOpenChange={setMenuOpen}
-          trigger={<IconButton className="pk-entry__kebab" icon="more" size="sm" label={`Entry actions: ${summary}`} tooltip={false} />}
+          trigger={<IconButton className="pk-entry__kebab" icon="more" size="sm" label={t('components.entry.actionsFor', { summary })} tooltip={false} />}
           items={entryMenuItems(entry, { ...menu, openSpecies: menu?.openSpecies ?? showSpecies })}
         />
       </span>
@@ -213,7 +222,7 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
     onClick: onOpen ? () => onOpen(entry) : undefined
   }
   // A real button under the content makes the card keyboard and screen-reader operable; pointer clicks anywhere on the card bubble to the root.
-  const opener = onOpen && <button type="button" className="pk-entry__open" aria-label={openLabel ?? `Open entry: ${summary}`} />
+  const opener = onOpen && <button type="button" className="pk-entry__open" aria-label={openLabel ?? t('components.entry.open', { summary })} />
 
   // The line under the heading: number and nickname, or (without the name) the marks and the form.
   const sub = (withTags: boolean): ReactNode => {
@@ -228,8 +237,8 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
           </span>
         )}
         {nickname !== undefined && (
-          <span className="pk-entry__nick" title={`Nickname: ${nickname}`}>
-            “{nickname}”
+          <span className="pk-entry__nick" title={t('components.entry.nicknameTitle', { nickname })}>
+            {t('components.entry.nicknameQuoted', { nickname })}
           </span>
         )}
         {withTags && tags}
@@ -258,28 +267,28 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
             title
           ) : (
             <div className="pk-entry__title">
-              <span className="pk-entry__name">{view.game?.short ?? 'Unknown game'}</span>
+              <span className="pk-entry__name">{view.game ? gameShortName(view.game.id) : t('components.game.unknown')}</span>
               {marks}
             </div>
           )}
           <div className="pk-entry__sub">
             <span title={dateTitle}>{date}</span>
             {formLabel !== undefined && <span className="pk-entry__form">{formLabel}</span>}
-            {nickname !== undefined && <span className="pk-entry__nick">“{nickname}”</span>}
+            {nickname !== undefined && <span className="pk-entry__nick">{t('components.entry.nicknameQuoted', { nickname })}</span>}
           </div>
         </div>
         <span className="pk-entry__origin">
           {view.game ? (
             <GameIcon game={view.game} size={24} />
           ) : (
-            <Tooltip content="Unknown game">
-              <span className="pk-entry__nogame" style={{ width: 24, height: 24 }} role="img" aria-label="Unknown game">
+            <Tooltip content={t('components.game.unknown')}>
+              <span className="pk-entry__nogame" style={{ width: 24, height: 24 }} role="img" aria-label={t('components.game.unknown')}>
                 ?
               </span>
             </Tooltip>
           )}
           {entry.ball !== undefined && (
-            <Tooltip content={view.ball?.name ?? 'Unknown ball'}>
+            <Tooltip content={ball}>
               <BallIcon ball={entry.ball} size={20} />
             </Tooltip>
           )}
@@ -324,24 +333,24 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
           </div>
           <div className="pk-entry__cell pk-entry__cell--ball">
             {entry.ball !== undefined ? (
-              <span className="pk-entry__ball" title={view.ball?.name ?? 'Unknown ball'}>
+              <span className="pk-entry__ball" title={ball}>
                 <BallIcon ball={entry.ball} size={20} />
                 <span className="pk-entry__ball-name" aria-hidden="true">
-                  {view.ball?.name ?? 'Unknown ball'}
+                  {ball}
                 </span>
               </span>
             ) : (
               <Blank />
             )}
           </div>
-          <div className="pk-entry__cell pk-entry__cell--level">{entry.level !== undefined ? <span className="pk-entry__level">Lv. {entry.level}</span> : <Blank />}</div>
+          <div className="pk-entry__cell pk-entry__cell--level">{level !== undefined ? <span className="pk-entry__level">{level}</span> : <Blank />}</div>
           <div className="pk-entry__cell pk-entry__cell--date">
             <span className="pk-entry__date" title={dateTitle}>
               {date}
             </span>
             {entry.ot !== undefined && entry.ot !== '' && (
-              <span className="pk-entry__how pk-entry__ot" title={`Original Trainer: ${entry.ot}`}>
-                OT {entry.ot}
+              <span className="pk-entry__how pk-entry__ot" title={t('components.entry.otTitle', { name: entry.ot })}>
+                {t('components.entry.otShort', { name: entry.ot })}
               </span>
             )}
           </div>
@@ -352,9 +361,8 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
                   <span className="pk-entry__tip">
                     {notes !== undefined && <span>{clip(notes, 320)}</span>}
                     {values.map((v) => (
-                      <span key={v.label} className="pk-entry__tip-value">
-                        {v.label} {v.text}
-                        {v.mark !== undefined && ` (${v.mark})`}
+                      <span key={v.id} className="pk-entry__tip-value">
+                        {valueText(v)}
                       </span>
                     ))}
                   </span>
@@ -362,7 +370,7 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
                 placement="left"
               >
                 <span className="pk-entry__noteflag">
-                  <Icon name={notes !== undefined ? 'note' : 'chart'} size={15} label={[notes !== undefined ? `Notes: ${clip(notes, 320)}` : '', ...values.map((v) => `${v.label} ${v.text}${v.mark !== undefined ? ` (${v.mark})` : ''}`)].filter(Boolean).join('. ')} />
+                  <Icon name={notes !== undefined ? 'note' : 'chart'} size={15} label={[notes !== undefined ? t('components.entry.notesLabel', { notes: clip(notes, 320) }) : '', ...values.map(valueText)].filter(Boolean).join('. ')} />
                 </span>
               </Tooltip>
             )}
@@ -410,9 +418,9 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
         <div className="pk-entry__extras">
           {tags}
           {entry.ot !== undefined && entry.ot !== '' && (
-            <span className="pk-entry__ot" title={`Original Trainer: ${entry.ot}`}>
+            <span className="pk-entry__ot" title={t('components.entry.otTitle', { name: entry.ot })}>
               <Icon name="user" size={14} />
-              <span className="pk-entry__ot-label">OT</span>
+              <span className="pk-entry__ot-label">{t('components.entry.ot')}</span>
               <span className="pk-entry__ot-name">{entry.ot}</span>
             </span>
           )}
@@ -422,7 +430,7 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
       {values.length > 0 && (
         <dl className="pk-entry__values">
           {values.map((v) => (
-            <div key={v.label} title={v.title} className={v.label === 'Ability' ? 'pk-entry__ability' : undefined}>
+            <div key={v.id} title={v.title} className={v.id === 'ability' ? 'pk-entry__ability' : undefined}>
               <dt>{v.label}</dt>
               <dd>{v.text}</dd>
               {v.mark !== undefined && <span className="pk-entry__mark">{v.mark}</span>}
@@ -437,13 +445,13 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
         {entry.ball !== undefined ? (
           <span className="pk-entry__ball">
             <BallIcon ball={entry.ball} size={22} label="" />
-            <span className="pk-entry__ball-name">{view.ball?.name ?? 'Unknown ball'}</span>
+            <span className="pk-entry__ball-name">{ball}</span>
           </span>
         ) : (
           <span />
         )}
         <span className="pk-entry__meta">
-          {entry.level !== undefined && <span className="pk-entry__level">Lv. {entry.level}</span>}
+          {level !== undefined && <span className="pk-entry__level">{level}</span>}
           <span className="pk-entry__date" title={dateTitle}>
             <Icon name="calendar" size={14} />
             {date}
@@ -463,16 +471,17 @@ export interface EntryRowHeaderProps {
 
 /** Column labels that line up with `<EntryCard variant="row">` (and collapse at the same widths). Decorative. */
 export function EntryRowHeader({ showSpecies = true, actions = true, className }: EntryRowHeaderProps) {
+  const t = useT()
   return (
     <div className={cx('pk-entry-head', actions && 'has-actions', !showSpecies && 'no-species', className)} aria-hidden="true">
       <div className="pk-entry__cols">
         <span />
-        {showSpecies && <span className="pk-entry__cell--name">Pokémon</span>}
-        <span className="pk-entry__cell--game">Game</span>
-        <span className="pk-entry__cell--where">Location</span>
-        <span className="pk-entry__cell--ball">Ball</span>
-        <span className="pk-entry__cell--level">Level</span>
-        <span className="pk-entry__cell--date">Date</span>
+        {showSpecies && <span className="pk-entry__cell--name">{t('components.entry.col.pokemon')}</span>}
+        <span className="pk-entry__cell--game">{t('components.entry.col.game')}</span>
+        <span className="pk-entry__cell--where">{t('components.entry.col.location')}</span>
+        <span className="pk-entry__cell--ball">{t('components.entry.col.ball')}</span>
+        <span className="pk-entry__cell--level">{t('common.level')}</span>
+        <span className="pk-entry__cell--date">{t('components.entry.col.date')}</span>
         <span className="pk-entry__cell--end" />
       </div>
     </div>

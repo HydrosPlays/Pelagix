@@ -1,7 +1,7 @@
 # PKHeX extract: output schema
 
 `node tools/extractor/run.mjs` builds `tools/extractor` (Release, PKHeX.Core by project reference) and writes
-eleven JSON files to `data/pkhex/`. This document is the contract for those files. Everything in them comes
+twelve JSON files to `data/pkhex/`. This document is the contract for those files. Everything in them comes
 from PKHeX.Core (v26.08.26 at the time of writing); nothing is hand-authored except the two small
 classifications called out under [Kinds](#kinds).
 
@@ -478,6 +478,31 @@ Per game code:
 - `games`: PKHeX's display names. `COLO` and `XD` both read `"Colosseum/XD"`.
 - `items` / `moves`: only the entries evolution arguments refer to, keyed by context because Gen 1-3 use
   their own item numbering.
+
+## localized.json
+
+```jsonc
+{ "ja": { "species": ["---", "フシギダネ", …], "types": […], "abilities": […], "balls": […],
+          "games": { "RD": "赤", … }, "items": […], "moves": […],
+          "forms": { "26": ["ノーマル", "アローラのすがた"], … },
+          "locations": { "Gen9": { "6": "南１番エリア", … }, … } },
+  "en": { … }, "fr": { … }, "it": { … }, "de": { … }, "es": { … }, "es-419": { … }, "ko": { … }, "zh-Hans": { … }, "zh-Hant": { … } }
+```
+
+The games' own text in the ten languages PKHeX carries (`GameInfo.GetStrings(language)`), for everything the other
+files name in English. `en` repeats the English tables so that a consumer can line the others up against it.
+
+- `species`, `types`, `abilities`, `balls`, `items`, `moves`: whole PKHeX tables, indexed by id like the English ones
+  (`species` and `balls` are cut like strings.json). `items` is the modern item table; a language's `items` or `moves`
+  may be a line longer or shorter than English at the end.
+- `games`: `GameVersion` name per game code, the version word only ("Scarlet", "Écarlate"). `COLO` and `XD` share
+  PKHeX's one name; `GN` is "Blue [INT]/Green [JP]" in every language.
+- `forms`: species -> the primary name of each form index, i.e. what forms.json `names[0].n` is in English. Species
+  with no named form are left out.
+- `locations`: the same sets and ids as locations.json, looked up the same way. A language PKHeX has no text for
+  repeats the English name (Korean Colosseum / XD). The names keep PKHeX's suffixes, as in locations.json.
+
+A line PKHeX has not translated is the English line again. Not listed in `meta.json.files`.
 
 ## Pitfalls
 

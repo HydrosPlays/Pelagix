@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, Icon, Spinner, cx, useScrollParent } from '@renderer/components/ui'
+import { useT } from '@renderer/i18n'
 import { motionOK } from '@renderer/lib/anim'
 import { isElectron } from '@renderer/lib/env'
 import { errorMessage, formatDateTime } from '@renderer/lib/format'
@@ -57,14 +58,15 @@ function useCurrentSection(): SectionId {
 function SaveStatus() {
   const state = useSaveState()
   const updatedAt = useSaveStore((s) => s.save.updatedAt)
+  const t = useT()
   return (
     <div className={cx('settings-status', `settings-status--${state}`)} role="status" aria-live="polite">
       <span className="settings-status__icon" aria-hidden="true">
         {state === 'saving' ? <Spinner size={14} /> : <Icon name={state === 'failing' ? 'warning' : 'check'} size={14} strokeWidth={2.4} />}
       </span>
       <span className="settings-status__text">
-        <span className="settings-status__title">{state === 'failing' ? 'Not saved' : state === 'saving' ? 'Saving…' : 'All changes saved'}</span>
-        <span className="settings-status__note">{state === 'failing' ? 'Pelagix keeps trying.' : `Settings save automatically. Last change ${formatDateTime(updatedAt)}.`}</span>
+        <span className="settings-status__title">{t(`settings.status.${state}`)}</span>
+        <span className="settings-status__note">{state === 'failing' ? t('settings.status.failingNote') : t('settings.status.note', { when: formatDateTime(updatedAt) })}</span>
       </span>
     </div>
   )
@@ -74,22 +76,23 @@ function SaveStatus() {
 function SaveAlert() {
   const lastError = useSaveStore((s) => s.lastError)
   const [retrying, setRetrying] = useState(false)
+  const t = useT()
   if (lastError === null) return null
 
   const retry = async (): Promise<void> => {
     setRetrying(true)
     const saved = await useSaveStore.getState().flush()
     setRetrying(false)
-    if (saved) toast({ kind: 'success', title: 'Saved', body: 'Your changes are stored again.' })
-    else toast({ kind: 'error', title: 'Still not saved', body: useSaveStore.getState().lastError ?? undefined })
+    if (saved) toast({ kind: 'success', title: t('settings.alert.saved.title'), body: t('settings.alert.saved.body') })
+    else toast({ kind: 'error', title: t('settings.alert.stillFailing'), body: useSaveStore.getState().lastError ?? undefined })
   }
 
   const exportCopy = async (): Promise<void> => {
     try {
       const result = await exportSaveToFile(useSaveStore.getState().save)
-      if (!result.canceled) toast({ kind: 'success', title: window.api ? 'Save exported' : 'Save downloaded', body: result.path, icon: 'download' })
+      if (!result.canceled) toast({ kind: 'success', title: window.api ? t('settings.export.done') : t('settings.export.downloaded'), body: result.path, icon: 'download' })
     } catch (err) {
-      toast({ kind: 'error', title: 'The save could not be exported', body: errorMessage(err) })
+      toast({ kind: 'error', title: t('settings.export.failed'), body: errorMessage(err) })
     }
   }
 
@@ -99,16 +102,16 @@ function SaveAlert() {
         <Icon name="warning" size={22} />
       </span>
       <div className="settings-alert__text">
-        <h2 className="settings-alert__title">Your changes are not being saved</h2>
+        <h2 className="settings-alert__title">{t('settings.alert.title')}</h2>
         <p className="u-selectable">{lastError}</p>
-        <p>Everything is still here while Pelagix stays open. Export a copy to be safe.</p>
+        <p>{t('settings.alert.safe')}</p>
       </div>
       <div className="settings-alert__actions">
         <Button variant="primary" icon="refresh" loading={retrying} onClick={() => void retry()}>
-          Try again
+          {t('settings.alert.retry')}
         </Button>
         <Button icon="download" onClick={() => void exportCopy()}>
-          Export a copy
+          {t('settings.alert.export')}
         </Button>
       </div>
     </div>
@@ -118,6 +121,7 @@ function SaveAlert() {
 export default function SettingsPage() {
   const app = useAppInfo()
   const current = useCurrentSection()
+  const t = useT()
   // Bumped when the whole save is swapped, so the rules section forgets its "before".
   const [epoch, setEpoch] = useState(0)
   const onReplaced = useCallback(() => setEpoch((n) => n + 1), [])
@@ -144,8 +148,8 @@ export default function SettingsPage() {
     <div className="page settings">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">Everything here is saved the moment you change it.</p>
+          <h1 className="page-title">{t('settings.page.title')}</h1>
+          <p className="page-subtitle">{t('settings.page.subtitle')}</p>
         </div>
       </header>
 
@@ -153,7 +157,7 @@ export default function SettingsPage() {
 
       <div className="settings-layout">
         <aside className="settings-side">
-          <nav ref={indexRef} className="settings-index" aria-label="Settings sections">
+          <nav ref={indexRef} className="settings-index" aria-label={t('settings.page.index')}>
             <ul>
               {SECTIONS.map((section) => (
                 <li key={section.id}>

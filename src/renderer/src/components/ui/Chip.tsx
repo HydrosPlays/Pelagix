@@ -1,4 +1,5 @@
 import type { CSSProperties, MouseEventHandler, ReactNode } from 'react'
+import { t } from '@renderer/i18n'
 import { cx } from './cx'
 import { renderIconSlot, type IconSlot } from './Button'
 import { Icon } from './Icon'
@@ -29,7 +30,7 @@ export interface ChipProps {
 }
 
 /** Compact label: static tag, toggleable filter chip, or removable token. */
-export function Chip({ children, tone = 'neutral', variant = 'soft', size = 'md', icon, onClick, selected, onRemove, removeLabel = 'Remove', disabled, color, title, className }: ChipProps) {
+export function Chip({ children, tone = 'neutral', variant = 'soft', size = 'md', icon, onClick, selected, onRemove, removeLabel = t('common.remove'), disabled, color, title, className }: ChipProps) {
   const classes = cx('ui-chip', `ui-chip--${tone}`, `ui-chip--${variant}`, `ui-chip--${size}`, onClick && 'ui-chip--button', selected && 'is-selected', className)
   const style = color ? ({ '--chip-color': color, '--chip-tint': `color-mix(in srgb, ${color} 16%, transparent)`, '--chip-solid': color } as CSSProperties) : undefined
   const inner = (

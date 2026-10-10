@@ -2,8 +2,10 @@ import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { SaveFile } from '@shared/save-types'
 import { BallIcon, GameBadge, GameIcon, ShinyMark, Sprite } from '@renderer/components/pokemon'
 import { Button, Chip, Dialog, Icon, Select, VirtualGrid, cx, type SelectOption } from '@renderer/components/ui'
+import { useT } from '@renderer/i18n'
+import { gameName, locationName } from '@renderer/i18n/terms'
 import { useDex } from '@renderer/lib/data'
-import { errorMessage, formatCount, formatDate, plural, todayIso } from '@renderer/lib/format'
+import { errorMessage, formatDate, shownMethod, todayIso } from '@renderer/lib/format'
 import { newId } from '@renderer/lib/id'
 import { useEntries, useRules, useSaveStore } from '@renderer/store/save'
 import { toast } from '@renderer/store/ui'
@@ -33,10 +35,11 @@ interface Choice {
 }
 
 function StatusChip({ row }: { row: PreviewRow }) {
+  const t = useT()
   if (row.status === 'new') {
     return row.fills ? (
       <Chip size="sm" tone="catch" icon="plus">
-        New slot
+        {t('gamesave.status.newSlot')}
       </Chip>
     ) : (
       <Chip size="sm" tone="accent">
@@ -47,14 +50,14 @@ function StatusChip({ row }: { row: PreviewRow }) {
   if (row.status === 'imported') {
     return (
       <Chip size="sm" variant="outline" icon={row.completes === true ? 'plus' : 'check'}>
-        {row.completes === true ? 'Adds missing details' : STATUS_LABELS.imported}
+        {row.completes === true ? t('gamesave.status.completes') : STATUS_LABELS.imported}
       </Chip>
     )
   }
   if (row.status === 'egg') {
     return (
       <Chip size="sm" variant="outline" icon="egg">
-        Egg, skipped
+        {t('gamesave.status.eggSkipped')}
       </Chip>
     )
   }
@@ -66,9 +69,12 @@ function StatusChip({ row }: { row: PreviewRow }) {
 }
 
 function Row({ row, checked, columns }: { row: PreviewRow; checked: boolean; columns: ImportSource['columns'] }) {
+  const t = useT()
   const { pokemon, entry } = row
   const pickable = row.status === 'new'
-  const detail = entry?.nickname !== undefined ? `“${entry.nickname}”` : undefined
+  const detail = entry?.nickname !== undefined ? t('gamesave.row.nickname', { nickname: entry.nickname }) : undefined
+  // What the entry stores stays English; the row shows it in the active language.
+  const where = columns === 'hunt' ? (entry?.method !== undefined ? shownMethod(entry.method) : undefined) : entry?.location !== undefined ? locationName(entry.location) : undefined
   const blank: ReactNode = (
     <span className="gamesave-row__blank" aria-hidden="true">
       –
@@ -80,7 +86,7 @@ function Row({ row, checked, columns }: { row: PreviewRow; checked: boolean; col
         {pickable && (
           <>
             {/* The row itself is the control (click, Enter, Space); the box mirrors it for assistive technology. */}
-            <input type="checkbox" className="ui-checkbox__input" checked={checked} readOnly tabIndex={-1} aria-label={`Import ${row.name}`} />
+            <input type="checkbox" className="ui-checkbox__input" checked={checked} readOnly tabIndex={-1} aria-label={t('gamesave.row.import', { name: row.name })} />
             <span className="ui-checkbox__box" aria-hidden="true">
               <Icon name="check" size={13} strokeWidth={2.6} />
             </span>
@@ -103,9 +109,9 @@ function Row({ row, checked, columns }: { row: PreviewRow; checked: boolean; col
         <>
           <span className="gamesave-row__game">{row.game ? <GameBadge game={row.game} size="sm" system={false} /> : blank}</span>
           <span className="gamesave-row__where">
-            <span className="u-truncate">{(columns === 'hunt' ? entry?.method : entry?.location) ?? blank}</span>
+            <span className="u-truncate">{where ?? blank}</span>
           </span>
-          <span className="gamesave-row__level">{columns === 'hunt' ? (entry?.date !== undefined ? formatDate(entry.date) : blank) : entry?.level !== undefined ? `Lv. ${entry.level}` : blank}</span>
+          <span className="gamesave-row__level">{columns === 'hunt' ? (entry?.date !== undefined ? formatDate(entry.date) : blank) : entry?.level !== undefined ? t('lib.format.level', { level: String(entry.level) }) : blank}</span>
           <span className="gamesave-row__ball">{entry?.ball !== undefined ? <BallIcon ball={entry.ball} size={22} /> : blank}</span>
         </>
       )}
@@ -122,6 +128,7 @@ function Row({ row, checked, columns }: { row: PreviewRow; checked: boolean; col
  * Until that button is pressed nothing changes; the picked file itself is never written to.
  */
 export function GameSaveDialog({ source: contents, onClose, onImported }: GameSaveDialogProps) {
+  const t = useT()
   const dex = useDex()
   const entries = useEntries()
   const rules = useRules()
@@ -175,11 +182,11 @@ export function GameSaveDialog({ source: contents, onClose, onImported }: GameSa
       onImported(previous, added, fresh.contents.fileName, completed)
     } catch (err) {
       done.current = null
-      toast({ kind: 'error', title: 'The Pokémon could not be added', body: errorMessage(err) })
+      toast({ kind: 'error', title: t('gamesave.dialog.failed'), body: errorMessage(err) })
     }
   }
 
-  const gameOptions = useMemo<SelectOption<string>[]>(() => (view?.preview.askGames ?? []).map((g) => ({ value: g.id, label: g.name, icon: <GameIcon game={g} size={20} tooltip={false} alt="" /> })), [view?.preview.askGames])
+  const gameOptions = useMemo<SelectOption<string>[]>(() => (view?.preview.askGames ?? []).map((g) => ({ value: g.id, label: gameName(g.id), icon: <GameIcon game={g} size={20} tooltip={false} alt="" /> })), [view?.preview.askGames])
   const counts = view?.preview.counts
 
   return (
@@ -187,7 +194,7 @@ export function GameSaveDialog({ source: contents, onClose, onImported }: GameSa
       open={contents !== null}
       onClose={onClose}
       size="xl"
-      title="Import these Pokémon?"
+      title={t('gamesave.dialog.title')}
       description={view?.contents.description}
       media={
         <span className="settings-dialog-icon">
@@ -197,10 +204,10 @@ export function GameSaveDialog({ source: contents, onClose, onImported }: GameSa
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button variant="primary" icon={view && view.chosen === 0 && view.completes > 0 ? 'check' : 'plus'} disabled={!view || (view.chosen === 0 && view.completes === 0)} onClick={confirm} data-autofocus>
-            {view && view.chosen > 0 ? `Add ${plural(view.chosen, 'entry', 'entries')}` : view && view.completes > 0 ? `Complete ${plural(view.completes, 'earlier entry', 'earlier entries')}` : 'Nothing to add'}
+            {view && view.chosen > 0 ? t('gamesave.dialog.add', { count: view.chosen }) : view && view.completes > 0 ? t('gamesave.dialog.complete', { count: view.completes }) : t('gamesave.dialog.nothing')}
           </Button>
         </>
       }
@@ -208,18 +215,16 @@ export function GameSaveDialog({ source: contents, onClose, onImported }: GameSa
       {view && counts && (
         <div className="gamesave">
           <div className="gamesave__counts" role="status">
-            <Chip tone="accent">{formatCount(counts.new)} new</Chip>
-            <Chip tone="catch">
-              {formatCount(counts.fills)} {counts.fills === 1 ? 'fills' : 'fill'} an empty Living Dex slot
-            </Chip>
-            {counts.imported > 0 && <Chip variant="outline">{formatCount(counts.imported)} already imported</Chip>}
+            <Chip tone="accent">{t('gamesave.counts.new', { count: counts.new })}</Chip>
+            <Chip tone="catch">{t('gamesave.counts.fills', { count: counts.fills })}</Chip>
+            {counts.imported > 0 && <Chip variant="outline">{t('gamesave.counts.imported', { count: counts.imported })}</Chip>}
             {counts.completes > 0 && (
               <Chip tone="accent" variant="outline">
-                {plural(counts.completes, 'earlier entry gets', 'earlier entries get')} missing details added
+                {t('gamesave.counts.completes', { count: counts.completes })}
               </Chip>
             )}
-            {counts.egg > 0 && <Chip variant="outline">{plural(counts.egg, 'egg')} skipped</Chip>}
-            {counts.unsupported > 0 && <Chip tone="warning">{formatCount(counts.unsupported)} cannot be imported</Chip>}
+            {counts.egg > 0 && <Chip variant="outline">{t('gamesave.counts.egg', { count: counts.egg })}</Chip>}
+            {counts.unsupported > 0 && <Chip tone="warning">{t('gamesave.counts.unsupported', { count: counts.unsupported })}</Chip>}
           </div>
 
           {view.contents.note !== undefined && (
@@ -231,9 +236,9 @@ export function GameSaveDialog({ source: contents, onClose, onImported }: GameSa
 
           {gameOptions.length > 0 && (
             <Select
-              label="Which game are these from?"
-              hint="This save does not record the exact game of some Pokémon. Your answer is used for the ones that can be from that game."
-              placeholder="Choose a game…"
+              label={t('gamesave.ask.label')}
+              hint={t('gamesave.ask.hint')}
+              placeholder={t('gamesave.ask.placeholder')}
               options={gameOptions}
               value={view.game}
               onChange={(game) => setChoice({ contents: view.contents, selected: null, game })}
@@ -246,13 +251,13 @@ export function GameSaveDialog({ source: contents, onClose, onImported }: GameSa
             <>
               <div className="gamesave__bar">
                 <span className="gamesave__picked">
-                  {formatCount(view.chosen)} of {formatCount(counts.new)} new chosen
+                  {t('gamesave.bar.chosen', { chosen: view.chosen, total: counts.new })}
                 </span>
                 <Button size="sm" disabled={counts.new === 0} onClick={() => select(selectAllNew(view.preview.rows))}>
-                  All new
+                  {t('gamesave.bar.allNew')}
                 </Button>
                 <Button size="sm" disabled={counts.fills === 0} onClick={() => select(selectFilling(view.preview.rows))}>
-                  Only empty slots
+                  {t('gamesave.bar.onlyEmpty')}
                 </Button>
               </div>
               <div className="gamesave__list">

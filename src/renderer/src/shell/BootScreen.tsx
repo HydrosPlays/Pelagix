@@ -1,10 +1,13 @@
 import type { ReactNode } from 'react'
 import logo from '@renderer/assets/logo-small.png'
 import { Button, Icon, Lens, cx } from '@renderer/components/ui'
+import { useT } from '@renderer/i18n'
 import { Backdrop } from './Backdrop'
 import './BootScreen.css'
 
 export interface BootStep {
+  /** Stable across languages; the label stands in when there is none. */
+  id?: string
   label: string
   state: 'pending' | 'active' | 'done' | 'error'
 }
@@ -28,7 +31,7 @@ export function BootScreen({ steps }: { steps: readonly BootStep[] }) {
         <Lens size={34} busy />
         <ul className="boot__steps">
           {steps.map((step) => (
-            <li key={step.label} className={cx('boot__step', `is-${step.state}`)}>
+            <li key={step.id ?? step.label} className={cx('boot__step', `is-${step.state}`)}>
               <span className="boot__step-mark">{step.state === 'done' ? <Icon name="check" size={12} strokeWidth={3} /> : null}</span>
               {step.label}
             </li>
@@ -53,6 +56,7 @@ export interface BootErrorProps {
 
 /** Full-window error for a start-up failure (datasets missing, save unreadable). */
 export function BootError({ title, hint, detail, onRetry, retrying, notice }: BootErrorProps) {
+  const t = useT()
   return (
     <Frame>
       <div className="boot__error" role="alert">
@@ -64,10 +68,10 @@ export function BootError({ title, hint, detail, onRetry, retrying, notice }: Bo
         {detail !== undefined && detail !== '' && <pre className="boot__error-detail u-selectable">{detail}</pre>}
         <div className="boot__error-actions">
           <Button variant="primary" icon="refresh" loading={retrying} onClick={onRetry}>
-            Try again
+            {t('shell.boot.retry')}
           </Button>
           <Button variant="ghost" onClick={() => window.location.reload()}>
-            Reload app
+            {t('shell.boot.reload')}
           </Button>
         </div>
         {notice !== undefined && <div className="boot__error-notice">{notice}</div>}

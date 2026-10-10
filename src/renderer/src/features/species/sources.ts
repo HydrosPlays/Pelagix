@@ -5,9 +5,12 @@
  */
 
 import type { EncounterKind, EncounterRow, EvolveSource, FamilyNode, FormSummary, SourceVia, SpeciesDetail, SpeciesSummary } from '@shared/dex-types'
-import { GAMES, GENERATION_NAMES, type GameDef } from '@shared/games'
+import { GAMES, type GameDef } from '@shared/games'
 import type { CatchEntry } from '@shared/save-types'
+import { generationName } from '@renderer/domain/generation'
 import { presetFromBreed, presetFromEvolve, presetFromRow, rowLocation, type GameSources, type SourcePreset } from '@renderer/domain/encounters'
+import { t, type MessageKey } from '@renderer/i18n/runtime'
+import { conditionLabel, evolutionText, formFullName, locationName, methodLabel, speciesName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
 import { formatDate, kindLabel } from '@renderer/lib/format'
 import { normalizeText } from '@renderer/lib/search'
@@ -45,7 +48,7 @@ export function gameOverview(dex: Dex, form: FormSummary): GameOverview {
   const groups: GameGroup[] = []
   const counts: Record<GameState, number> = { obtainable: 0, event: 0, transfer: 0, absent: 0 }
   for (const game of GAMES) {
-    const label = GENERATION_NAMES[game.generation] ?? 'Other'
+    const label = game.generation > 0 ? generationName(game.generation) : t('species.where.otherGames')
     const state = gameState(dex, form, game.id)
     counts[state]++
     const last = groups[groups.length - 1]
@@ -62,13 +65,12 @@ export function isBattleOnly(form: Pick<FormSummary, 'cat'>): boolean {
 
 /** "Obtainable in 23 games", with the event-only and transfer-only counts when there are any. */
 export function overviewSummary(counts: Record<GameState, number>, battleOnly = false): string {
-  const games = (n: number): string => `${n} ${n === 1 ? 'game' : 'games'}`
-  if (battleOnly && counts.obtainable === 0 && counts.event === 0) return counts.transfer > 0 ? `Seen in battle in ${games(counts.transfer)}` : 'Not in any game'
+  if (battleOnly && counts.obtainable === 0 && counts.event === 0) return counts.transfer > 0 ? t('species.where.summary.battle', { count: counts.transfer }) : t('species.where.summary.battleNone')
   const parts: string[] = []
-  if (counts.obtainable > 0) parts.push(`Obtainable in ${games(counts.obtainable)}`)
-  if (counts.event > 0) parts.push(`${parts.length === 0 ? 'Event only' : 'event only'} in ${counts.event}`)
-  if (counts.transfer > 0) parts.push(`${parts.length === 0 ? 'Transfer only' : 'transfer only'} in ${counts.transfer}`)
-  return parts.length === 0 ? 'Not obtainable in any game' : parts.join(' · ')
+  if (counts.obtainable > 0) parts.push(t('species.where.summary.obtainable', { count: counts.obtainable }))
+  if (counts.event > 0) parts.push(t(parts.length === 0 ? 'species.where.summary.event.first' : 'species.where.summary.event.next', { count: counts.event }))
+  if (counts.transfer > 0) parts.push(t(parts.length === 0 ? 'species.where.summary.transfer.first' : 'species.where.summary.transfer.next', { count: counts.transfer }))
+  return parts.length === 0 ? t('species.where.summary.none') : parts.join(' · ')
 }
 
 /**
@@ -102,20 +104,37 @@ export const SECTION_ORDER: readonly SectionId[] = ['wild', 'static', 'gift', 't
 
 export type SectionIcon = 'map-pin' | 'target' | 'gift' | 'swap' | 'bolt' | 'moon' | 'gamepad' | 'globe' | 'evolve' | 'refresh' | 'egg' | 'star'
 
-export const SECTION_INFO: Readonly<Record<SectionId, { title: string; chip: string; icon: SectionIcon; one: string; many: string }>> = {
-  wild: { title: 'Catch in the wild', chip: 'Wild', icon: 'map-pin', one: 'place', many: 'places' },
-  static: { title: 'Static encounters', chip: 'Static', icon: 'target', one: 'encounter', many: 'encounters' },
-  gift: { title: 'Gifts and eggs', chip: 'Gifts', icon: 'gift', one: 'gift', many: 'gifts' },
-  trade: { title: 'In-game trades', chip: 'Trades', icon: 'swap', one: 'trade', many: 'trades' },
-  raid: { title: 'Raids and outbreaks', chip: 'Raids', icon: 'bolt', one: 'source', many: 'sources' },
-  shadow: { title: 'Shadow Pokémon', chip: 'Shadow', icon: 'moon', one: 'encounter', many: 'encounters' },
-  walker: { title: 'Pokéwalker', chip: 'Pokéwalker', icon: 'gamepad', one: 'course', many: 'courses' },
-  dream: { title: 'Dream World', chip: 'Dream World', icon: 'globe', one: 'source', many: 'sources' },
-  evolve: { title: 'Evolve', chip: 'Evolve', icon: 'evolve', one: 'way', many: 'ways' },
-  change: { title: 'Change form', chip: 'Change form', icon: 'refresh', one: 'way', many: 'ways' },
-  breed: { title: 'Breed', chip: 'Breed', icon: 'egg', one: 'way', many: 'ways' },
-  event: { title: 'Events', chip: 'Events', icon: 'star', one: 'event', many: 'events' }
+const SECTION_ICONS: Readonly<Record<SectionId, SectionIcon>> = {
+  wild: 'map-pin', static: 'target', gift: 'gift', trade: 'swap', raid: 'bolt', shadow: 'moon',
+  walker: 'gamepad', dream: 'globe', evolve: 'evolve', change: 'refresh', breed: 'egg', event: 'star'
 }
+
+export interface SectionInfo {
+  /** Heading of the section. */
+  readonly title: string
+  /** Its name on a filter chip. */
+  readonly chip: string
+  readonly icon: SectionIcon
+  /** What the number beside the heading counts: "3 places". */
+  count(n: number): string
+}
+
+/** Wording of each section, read from the text table on each use (messages `species.section.<id>.*`). */
+export const SECTION_INFO: Readonly<Record<SectionId, SectionInfo>> = Object.fromEntries(
+  SECTION_ORDER.map((id) => [
+    id,
+    {
+      get title(): string {
+        return t(`species.section.${id}.title`)
+      },
+      get chip(): string {
+        return t(`species.section.${id}.chip`)
+      },
+      icon: SECTION_ICONS[id],
+      count: (n: number): string => t(`species.section.${id}.count`, { count: n })
+    }
+  ])
+) as Record<SectionId, SectionInfo>
 
 const KIND_SECTION: Readonly<Record<EncounterKind, SectionId>> = {
   wild: 'wild',
@@ -132,31 +151,34 @@ const KIND_SECTION: Readonly<Record<EncounterKind, SectionId>> = {
   event: 'event'
 }
 
-const VIA_LABELS: Readonly<Record<SourceVia, string>> = {
-  stadium: 'Pokémon Stadium',
-  stadium2: 'Pokémon Stadium 2',
-  boxrubysapphire: 'Pokémon Box',
-  colosseum: 'Colosseum Bonus Disc',
-  xd: 'Pokémon XD',
-  ranch: 'My Pokémon Ranch',
-  ereader: 'e-Reader',
-  ranger: 'Pokémon Ranger',
-  home: 'Pokémon HOME',
-  go: 'Pokémon GO'
+const VIA_KEYS: Readonly<Record<SourceVia, MessageKey>> = {
+  stadium: 'species.via.stadium',
+  stadium2: 'species.via.stadium2',
+  boxrubysapphire: 'species.via.boxrubysapphire',
+  colosseum: 'species.via.colosseum',
+  xd: 'species.via.xd',
+  ranch: 'species.via.ranch',
+  ereader: 'species.via.ereader',
+  ranger: 'species.via.ranger',
+  home: 'species.via.home',
+  go: 'species.via.go'
 }
 
 /** Game whose icon stands for a side product, when the app has one. */
 const VIA_GAME: Readonly<Partial<Record<SourceVia, string>>> = { stadium: 'stadium', stadium2: 'stadium2', boxrubysapphire: 'boxrubysapphire', colosseum: 'colosseum', xd: 'xd', home: 'home', go: 'go' }
 
 export function viaLabel(via: SourceVia): string {
-  return VIA_LABELS[via] ?? 'Another game'
+  return t(VIA_KEYS[via] ?? 'species.via.other')
 }
 
 export function viaGameId(via: SourceVia): string | undefined {
   return VIA_GAME[via]
 }
 
-/** One encounter row, ready to print. */
+/**
+ * One encounter row, ready to print: its texts are in the active language. What gets logged is
+ * built from `row` (see `rowPreset`), which keeps the English labels of the datasets.
+ */
 export interface SourceRow {
   /** Stable within a game's list. */
   key: string
@@ -169,7 +191,7 @@ export interface SourceRow {
   /** Conditions without "Alpha", which gets its own badge. */
   conditions: string[]
   alpha: boolean
-  /** Normalised text the filter box matches against. */
+  /** Normalised text the filter box matches against: the texts above, in the active language and in English. */
   search: string
 }
 
@@ -177,6 +199,8 @@ export interface SourceRow {
 export interface SourceBlock {
   key: string
   location: string | undefined
+  /** Normalised name of the place, in the active language and in English, for the filter box. */
+  placeSearch?: string
   rows: SourceRow[]
 }
 
@@ -204,20 +228,24 @@ export interface SourceView {
 export function eventDates(row: EncounterRow): string | undefined {
   const from = row.x?.from
   const to = row.x?.to
-  if (from !== undefined && to !== undefined) return from === to ? formatDate(from) : `${formatDate(from)} – ${formatDate(to)}`
-  if (from !== undefined) return `From ${formatDate(from)}`
-  if (to !== undefined) return `Until ${formatDate(to)}`
+  if (from !== undefined && to !== undefined) return from === to ? formatDate(from) : t('species.source.dates.range', { from: formatDate(from), to: formatDate(to) })
+  if (from !== undefined) return t('species.source.dates.from', { date: formatDate(from) })
+  if (to !== undefined) return t('species.source.dates.until', { date: formatDate(to) })
   return undefined
 }
 
 function describeRow(detail: SpeciesDetail, row: EncounterRow, key: string): SourceRow {
-  const location = rowLocation(detail, row)
-  const conditions = (row.c ?? []).filter((c) => c !== 'Alpha')
-  const method = row.m ?? kindLabel(row.k)
+  // The English labels of the datasets; they are compared and searched, and shown through the term accessors.
+  const place = rowLocation(detail, row)
+  const rawConditions = (row.c ?? []).filter((c) => c !== 'Alpha')
+  const location = place === undefined ? undefined : locationName(place)
+  const conditions = rawConditions.map(conditionLabel)
+  const method = row.m !== undefined ? methodLabel(row.m) : kindLabel(row.k)
   // An event is known by its distribution title; everything else by how you run into it.
   const eventTitled = row.k === 'event' && row.n !== undefined
   const title = eventTitled ? row.n! : method
   const detailText = eventTitled ? method : row.n
+  const words = new Set([location, place, title, row.m, detailText, ...conditions, ...rawConditions, row.x?.ot].filter((text): text is string => Boolean(text)))
   return {
     key,
     row,
@@ -226,7 +254,7 @@ function describeRow(detail: SpeciesDetail, row: EncounterRow, key: string): Sou
     detail: detailText,
     conditions,
     alpha: row.c?.includes('Alpha') === true,
-    search: normalizeText([location, title, detailText, ...conditions, row.x?.ot].filter(Boolean).join(' '))
+    search: normalizeText([...words].join(' '))
   }
 }
 
@@ -239,15 +267,17 @@ export function buildSourceView(detail: SpeciesDetail, sources: Pick<GameSources
     if (!section) bySection.set(id, (section = { blocks: [], byPlace: new Map(), count: 0 }))
     const described = describeRow(detail, row, `r${index}`)
     section.count++
-    if (described.location === undefined) {
+    // Grouped by the place as the datasets name it; `described.location` is that name in the active language.
+    const place = rowLocation(detail, row)
+    if (described.location === undefined || place === undefined) {
       section.blocks.push({ key: described.key, location: undefined, rows: [described] })
       return
     }
-    const existing = section.byPlace.get(described.location)
+    const existing = section.byPlace.get(place)
     if (existing) existing.rows.push(described)
     else {
-      const block: SourceBlock = { key: `p${index}`, location: described.location, rows: [described] }
-      section.byPlace.set(described.location, block)
+      const block: SourceBlock = { key: `p${index}`, location: described.location, placeSearch: normalizeText(described.location === place ? place : `${described.location} ${place}`), rows: [described] }
+      section.byPlace.set(place, block)
       section.blocks.push(block)
     }
   })
@@ -270,7 +300,7 @@ export function filterBlocks(blocks: readonly SourceBlock[], query: string): Sou
   if (needle === '') return blocks as SourceBlock[]
   const out: SourceBlock[] = []
   for (const block of blocks) {
-    if (block.location !== undefined && normalizeText(block.location).includes(needle)) {
+    if (block.location !== undefined && (block.placeSearch ?? normalizeText(block.location)).includes(needle)) {
       out.push(block)
       continue
     }
@@ -290,10 +320,24 @@ export function initialBlockCount(blocks: readonly SourceBlock[], rowBudget: num
   return blocks.length
 }
 
-/** "Change form: examine a meteorite" -> "Examine a meteorite"; fusion texts are kept as they are. */
+/**
+ * How a form change is done, for display. `how` is the English text of the datasets:
+ * "Change form: examine a meteorite" -> "Examine a meteorite"; fusion texts are kept as they are.
+ * A text the active language has a translation for is shown as translated.
+ */
 export function changeText(how: string): string {
+  const translated = evolutionText(how)
+  if (translated !== how) return translated
   const stripped = how.replace(/^Change form:\s*/i, '')
   return stripped.charAt(0).toUpperCase() + stripped.slice(1)
+}
+
+/** Name of a family member or parent in the active language: the form's full name, else the species', else its number. */
+export function monName(dex: Dex, speciesId: number, formIndex: number): string {
+  const species = dex.species(speciesId)
+  const form = dex.form(speciesId, formIndex)
+  if (species && form) return formFullName(species, form)
+  return species ? speciesName(species) : t('domain.entry.unknownSpecies', { number: String(speciesId) })
 }
 
 // ---------------------------------------------------------------- breeding
@@ -458,31 +502,32 @@ export function manualPreset(target: LogTarget, game: Pick<GameDef, 'id'> | null
 
 // ---------------------------------------------------------------- about
 
-const REGIONAL_DEX: ReadonlyArray<[key: string, label: string]> = [
-  ['kanto', 'Kanto'],
-  ['original-johto', 'Johto'],
-  ['updated-johto', 'Johto (HGSS)'],
-  ['hoenn', 'Hoenn'],
-  ['updated-hoenn', 'Hoenn (ORAS)'],
-  ['original-sinnoh', 'Sinnoh'],
-  ['extended-sinnoh', 'Sinnoh (Platinum)'],
-  ['original-unova', 'Unova'],
-  ['updated-unova', 'Unova (B2W2)'],
-  ['kalos-central', 'Central Kalos'],
-  ['kalos-coastal', 'Coastal Kalos'],
-  ['kalos-mountain', 'Mountain Kalos'],
-  ['original-alola', 'Alola'],
-  ['updated-alola', 'Alola (USUM)'],
-  ['letsgo-kanto', "Kanto (Let's Go)"],
-  ['galar', 'Galar'],
-  ['isle-of-armor', 'Isle of Armor'],
-  ['crown-tundra', 'Crown Tundra'],
-  ['hisui', 'Hisui'],
-  ['paldea', 'Paldea'],
-  ['kitakami', 'Kitakami'],
-  ['blueberry', 'Blueberry'],
-  ['lumiose-city', 'Lumiose'],
-  ['hyperspace', 'Hyperspace']
+/** The regional Pokédexes in release order. `same`: the original list a remake's list repeats. */
+const REGIONAL_DEX: ReadonlyArray<{ key: string; label: MessageKey; same?: string }> = [
+  { key: 'kanto', label: 'species.regionalDex.kanto' },
+  { key: 'original-johto', label: 'species.regionalDex.original-johto' },
+  { key: 'updated-johto', label: 'species.regionalDex.updated-johto', same: 'original-johto' },
+  { key: 'hoenn', label: 'species.regionalDex.hoenn' },
+  { key: 'updated-hoenn', label: 'species.regionalDex.updated-hoenn', same: 'hoenn' },
+  { key: 'original-sinnoh', label: 'species.regionalDex.original-sinnoh' },
+  { key: 'extended-sinnoh', label: 'species.regionalDex.extended-sinnoh', same: 'original-sinnoh' },
+  { key: 'original-unova', label: 'species.regionalDex.original-unova' },
+  { key: 'updated-unova', label: 'species.regionalDex.updated-unova', same: 'original-unova' },
+  { key: 'kalos-central', label: 'species.regionalDex.kalos-central' },
+  { key: 'kalos-coastal', label: 'species.regionalDex.kalos-coastal' },
+  { key: 'kalos-mountain', label: 'species.regionalDex.kalos-mountain' },
+  { key: 'original-alola', label: 'species.regionalDex.original-alola' },
+  { key: 'updated-alola', label: 'species.regionalDex.updated-alola', same: 'original-alola' },
+  { key: 'letsgo-kanto', label: 'species.regionalDex.letsgo-kanto', same: 'kanto' },
+  { key: 'galar', label: 'species.regionalDex.galar' },
+  { key: 'isle-of-armor', label: 'species.regionalDex.isle-of-armor' },
+  { key: 'crown-tundra', label: 'species.regionalDex.crown-tundra' },
+  { key: 'hisui', label: 'species.regionalDex.hisui' },
+  { key: 'paldea', label: 'species.regionalDex.paldea' },
+  { key: 'kitakami', label: 'species.regionalDex.kitakami' },
+  { key: 'blueberry', label: 'species.regionalDex.blueberry' },
+  { key: 'lumiose-city', label: 'species.regionalDex.lumiose-city' },
+  { key: 'hyperspace', label: 'species.regionalDex.hyperspace' }
 ]
 
 /** The island sub-lists of Alola repeat the Alola dex and are left out. */
@@ -498,14 +543,13 @@ export interface RegionalNumber {
 export function regionalNumbers(dexNumbers: Readonly<Record<string, number>>): RegionalNumber[] {
   const out: RegionalNumber[] = []
   const used = new Set<string>()
-  for (const [key, label] of REGIONAL_DEX) {
+  for (const { key, label, same } of REGIONAL_DEX) {
     const number = dexNumbers[key]
     if (typeof number !== 'number') continue
     used.add(key)
     // A remake's list that gives the same number as the original adds nothing: "Johto 76" says it all.
-    const region = label.split(' (')[0]
-    if (region !== label && out.some((n) => n.label === region && n.number === number)) continue
-    out.push({ key, label, number })
+    if (same !== undefined && out.some((n) => n.key === same && n.number === number)) continue
+    out.push({ key, label: t(label), number })
   }
   for (const [key, number] of Object.entries(dexNumbers)) {
     if (used.has(key) || SKIPPED_DEX.test(key) || typeof number !== 'number') continue
@@ -537,17 +581,9 @@ export function genderSplit(genderRate: number): GenderSplit | null {
   return { male: 100 - female, female }
 }
 
-const TAG_LABELS: Readonly<Record<string, string>> = {
-  legendary: 'Legendary',
-  mythical: 'Mythical',
-  baby: 'Baby',
-  starter: 'Starter',
-  fossil: 'Fossil',
-  'pseudo-legendary': 'Pseudo-legendary',
-  'ultra-beast': 'Ultra Beast',
-  paradox: 'Paradox'
-}
-
+/** Name of a species category ("Legendary"); a tag without a name is shown as it is. */
 export function tagLabel(tag: string): string {
-  return TAG_LABELS[tag] ?? tag
+  const key = `pokedex.tag.${tag}`
+  const text = t(key as MessageKey)
+  return text === key ? tag : text
 }

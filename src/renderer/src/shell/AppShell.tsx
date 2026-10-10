@@ -4,6 +4,7 @@ import { Button, EmptyState, ErrorBoundary, ScrollArea, Spinner } from '@rendere
 import AchievementWatcher from '@renderer/features/achievements/AchievementWatcher'
 import EntryEditorHost from '@renderer/features/entry/EntryEditorHost'
 import CommandPalette from '@renderer/features/search/CommandPalette'
+import { useT } from '@renderer/i18n'
 import { pageEnter } from '@renderer/lib/anim'
 import { useUiStore } from '@renderer/store/ui'
 import { Backdrop } from './Backdrop'
@@ -14,16 +15,17 @@ import { TopBar } from './TopBar'
 import './AppShell.css'
 
 function NotFound() {
+  const t = useT()
   return (
     <div className="page">
       <EmptyState
         size="lg"
         icon="map-pin"
-        title="Uncharted waters"
-        description="There is no page at this address."
+        title={t('shell.notFound.title')}
+        description={t('shell.notFound.description')}
         action={
           <Button variant="primary" icon="home" onClick={() => navigate(paths.home())}>
-            Back to Home
+            {t('shell.notFound.back')}
           </Button>
         }
       />
@@ -41,6 +43,7 @@ const scrollMemory = new Map<string, number>()
  * frame cannot be shown.
  */
 export function AppShell() {
+  const t = useT()
   const [path] = useLocation()
   const search = useSearch()
   const route = matchRoute(path)
@@ -50,6 +53,7 @@ export function AppShell() {
   const outletRef = useRef<HTMLDivElement>(null)
   const keyRef = useRef(locationKey)
   keyRef.current = locationKey
+  const firstLayout = useRef(true)
 
   // Remember where each location was scrolled to.
   useEffect(() => {
@@ -66,7 +70,10 @@ export function AppShell() {
   useLayoutEffect(() => {
     const main = mainRef.current
     if (!main) return
-    const target = navigationType() === 'pop' ? (scrollMemory.get(keyRef.current) ?? 0) : 0
+    // A language switch mounts the shell afresh on the page it was on: stay where the user was.
+    const remounted = firstLayout.current && scrollMemory.has(keyRef.current)
+    firstLayout.current = false
+    const target = navigationType() === 'pop' || remounted ? (scrollMemory.get(keyRef.current) ?? 0) : 0
     main.scrollTop = target
     if (target === 0) return
     // Virtualised pages reach their full height a frame or two after mounting.
@@ -98,14 +105,14 @@ export function AppShell() {
     <div className="shell">
       <Backdrop />
       <a href="#main" className="shell-skip" onClick={(e) => (e.preventDefault(), document.getElementById('main')?.focus())}>
-        Skip to content
+        {t('shell.skipToContent')}
       </a>
       <NavRail />
       <TopBar />
       <ScrollArea className="shell-main" scrollRef={mainRef}>
         <main id="main" tabIndex={-1} className="shell-main__content">
           <div ref={outletRef} className="shell-outlet" data-route={routeId}>
-            <ErrorBoundary resetKeys={[path]} title="This page ran into a problem">
+            <ErrorBoundary resetKeys={[path]} title={t('shell.pageError')}>
               <Suspense
                 fallback={
                   <div className="shell-suspense">

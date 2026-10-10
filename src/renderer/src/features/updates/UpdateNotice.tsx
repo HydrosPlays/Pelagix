@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Button, Icon } from '@renderer/components/ui'
+import { useLanguage } from '@renderer/i18n'
 import { noticeInfo, type NoticeInfo } from './model'
 import { useUpdateStore } from './store'
 import './updates.css'
@@ -32,7 +33,8 @@ export function UpdateNoticeView({ info, onOpen }: UpdateNoticeViewProps) {
  */
 export function UpdateNotice() {
   const state = useUpdateStore((s) => s.state)
-  const info = useMemo(() => noticeInfo(state), [state])
+  const language = useLanguage()
+  const info = useMemo(() => noticeInfo(state), [state, language])
   if (info === null) return null
   return <UpdateNoticeView info={info} onOpen={useUpdateStore.getState().openOffer} />
 }

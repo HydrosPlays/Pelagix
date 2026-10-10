@@ -1,15 +1,16 @@
 import { memo, useCallback, useEffect, useId, useImperativeHandle, useRef, type CSSProperties, type FocusEvent, type KeyboardEvent, type MouseEvent, type Ref } from 'react'
-import { GENERATION_NAMES } from '@shared/games'
 import { BallIcon, HomeMark, Sprite } from '@renderer/components/pokemon'
 import { Icon, Tooltip, cx } from '@renderer/components/ui'
 import { sectionsOf } from '@renderer/domain/gamedex'
+import { generationName } from '@renderer/domain/generation'
 import { homeStatus, type HomeDex, type HomeState } from '@renderer/domain/home'
 import type { Collection, LivingSlot } from '@renderer/domain/slots'
 import { SectionHeading } from '@renderer/features/pokedex/GamePicker'
+import { t, useT } from '@renderer/i18n'
 import { dexNo, formatCount, ratio } from '@renderer/lib/format'
 import { FloatingTip, useHoverTarget } from './HoverTip'
 import {
-  BOX_GAP, LIST_GAP, MOVE_KEYS, boxName, boxRange, moveFocus, slotInfo, slotMarker, slotStatus, slotTitle,
+  BOX_GAP, LIST_GAP, MOVE_KEYS, boxRange, boxText, moveFocus, slotInfo, slotMarker, slotStatus, slotTitle,
   type BoxModel, type GenStat, type LivingLayout, type LivingMode, type LivingRow, type LivingStats, type MoveKey, type SlotMarker
 } from './model'
 import { useRowWindow, type ScrollToRowOptions } from './windowing'
@@ -100,7 +101,7 @@ const SlotCell = memo(function SlotCell({ slot, index, shiny, filled, count, bal
       tabIndex={tabbable ? 0 : -1}
       aria-haspopup={pressed === undefined ? 'dialog' : undefined}
       aria-pressed={pressed}
-      aria-label={`${slotTitle(slot)}, ${status}`}
+      aria-label={t('living.slot.label', { slot: slotTitle(slot), status })}
     >
       <span className="living-slot__art">
         {quiet ? (
@@ -150,7 +151,7 @@ function renderSlot(slot: LivingSlot, index: number, bind: SlotBinding, extra: {
       count={info.count}
       ball={home === undefined ? info.ball : undefined}
       sparkle={bind.mode === 'normal' && info.hasShiny}
-      status={home === undefined ? slotStatus(info, bind.mode) : `${homeStatus(home, bind.mode === 'shiny')}${info.count > 1 ? ` · ${info.count} entries` : ''}`}
+      status={home === undefined ? slotStatus(info, bind.mode) : info.count > 1 ? t('living.status.withEntries', { status: homeStatus(home, bind.mode === 'shiny'), count: info.count }) : homeStatus(home, bind.mode === 'shiny')}
       home={home}
       pressed={home !== undefined && info.count === 1 ? home === 'home' : undefined}
       tabbable={index === bind.tabStop}
@@ -171,6 +172,7 @@ interface BoxPanelProps extends SlotBinding {
 }
 
 const BoxPanel = memo(function BoxPanel({ box, filled, quietFilled, ...bind }: BoxPanelProps) {
+  const t = useT()
   const titleId = useId()
   const size = box.slots.length
   const complete = size > 0 && filled === size
@@ -180,14 +182,14 @@ const BoxPanel = memo(function BoxPanel({ box, filled, quietFilled, ...bind }: B
     <section className={cx('living-box', complete && 'is-complete', bind.mode === 'shiny' && 'is-shiny')} data-box={box.index} aria-labelledby={titleId}>
       <header className="living-box__head">
         <h2 id={titleId} className="living-box__title">
-          Box {box.no}
+          {t('living.box.name', { number: box.no })}
         </h2>
         <span className="living-box__range">{boxRange(box)}</span>
         {home && canMark && (
-          <Tooltip content="Mark box as in HOME">
-            <button type="button" className="living-box__action" aria-label={`Mark ${boxName(box).replace('Box', 'box')} as in HOME`} onClick={() => home.onMarkBox(box.index)}>
+          <Tooltip content={t('living.box.markHint')}>
+            <button type="button" className="living-box__action" aria-label={boxText(box, { plain: 'living.box.mark', dex: 'living.box.markOfDex', other: 'living.box.markOfOther' })} onClick={() => home.onMarkBox(box.index)}>
               <HomeMark size={14} label="" />
-              Mark box
+              {t('living.box.markShort')}
             </button>
           </Tooltip>
         )}
@@ -195,7 +197,7 @@ const BoxPanel = memo(function BoxPanel({ box, filled, quietFilled, ...bind }: B
           {complete ? (
             <>
               <Icon name="check" size={13} strokeWidth={2.6} />
-              Complete
+              {t('living.box.status.complete')}
             </>
           ) : (
             <>
@@ -229,7 +231,8 @@ const SlotsRow = memo(function SlotsRow({ indices, ...bind }: SlotsRowProps) {
 })
 
 function Divider({ gen, stat, countMissing }: { gen: number; stat: GenStat | undefined; countMissing: boolean }) {
-  const name = GENERATION_NAMES[gen] ?? (gen > 0 ? `Generation ${gen}` : 'Other Pokémon')
+  const t = useT()
+  const name = gen > 0 ? generationName(gen) : t('living.grid.otherPokemon')
   const missing = stat ? stat.slots - stat.filled : 0
   return (
     <div className="living-divider">
@@ -237,7 +240,7 @@ function Divider({ gen, stat, countMissing }: { gen: number; stat: GenStat | und
       {stat && (
         <span className="living-divider__count">
           {countMissing ? (
-            `${formatCount(missing)} missing`
+            t('living.grid.missing', { count: missing })
           ) : (
             <>
               <b>{formatCount(stat.filled)}</b> / {formatCount(stat.slots)}
@@ -379,7 +382,7 @@ export function LivingGrid({ collection, mode, layout, cell, columns, stats, qui
     <div
       ref={listRef}
       role="group"
-      aria-label={home ? (mode === 'shiny' ? 'Shiny HOME Dex slots' : 'HOME Dex slots') : mode === 'shiny' ? 'Shiny Living Dex slots' : 'Living Dex slots'}
+      aria-label={home ? (mode === 'shiny' ? t('living.grid.labelHomeShiny') : t('living.grid.labelHome')) : mode === 'shiny' ? t('living.grid.labelShiny') : t('living.grid.label')}
       aria-describedby={hintId}
       className={cx('living-grid', `living-grid--${layout.view}`, mode === 'shiny' && 'is-shiny')}
       style={{ height: total, '--living-cell': `${cell}px`, '--living-columns': columns, '--living-box-gap': `${BOX_GAP}px`, '--living-list-gap': `${LIST_GAP}px` } as CSSProperties}
@@ -392,7 +395,7 @@ export function LivingGrid({ collection, mode, layout, cell, columns, stats, qui
       onPointerDown={tip.handlers.onPointerDown}
     >
       <span id={hintId} className="u-sr-only">
-        {home ? 'Use the arrow keys to move between slots. Enter marks a caught Pokémon as in Pokémon HOME, or opens the slot when it holds several entries or none.' : 'Use the arrow keys to move between slots and Enter to open one.'}
+        {home ? t('living.grid.hintHome') : t('living.grid.hint')}
       </span>
       {mounted.map((i) => {
         const row = rows[i]
@@ -430,7 +433,7 @@ export function LivingGrid({ collection, mode, layout, cell, columns, stats, qui
               <SectionHeading title={sections[row.section]?.title ?? ''}>
                 {stat &&
                   (countMissing ? (
-                    `${formatCount(stat.slots - stat.filled)} missing`
+                    t('living.grid.missing', { count: stat.slots - stat.filled })
                   ) : (
                     <>
                       <b>{formatCount(stat.filled)}</b> / {formatCount(stat.slots)}

@@ -8,12 +8,17 @@
  */
 
 import type { FormSummary, SpeciesSummary, SpeciesTag, TypeId } from '@shared/dex-types'
-import { GAME_BY_ID, GENERATION_NAMES, type GameDef } from '@shared/games'
+import { GAME_BY_ID, type GameDef } from '@shared/games'
+import { languageTag } from '@shared/languages'
 import type { CatchEntry } from '@shared/save-types'
+import { activeLanguage, t } from '@renderer/i18n/runtime'
+import { gameShortName, speciesName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
 import { getDexSearch, normalizeText } from '@renderer/lib/search'
 import { speciesSpritePath } from '@renderer/lib/sprites'
+import { generationName } from '@renderer/domain/generation'
 import { isFormSlotted, type Collection, type LivingSlot } from '@renderer/domain/slots'
+import { messageTable } from '@renderer/domain/text'
 
 // ---------------------------------------------------------------- view state
 
@@ -56,39 +61,47 @@ export const DEX_DISPLAYS: readonly DexDisplay[] = ['species', 'forms']
 export const DEX_SORTS: readonly DexSort[] = ['number', 'name', 'recent', 'entries']
 export const DEX_STATUSES: readonly DexStatus[] = ['all', 'caught', 'missing', 'shiny', 'shiny-missing', 'multi-game']
 
-export const SORT_LABELS: Readonly<Record<DexSort, string>> = {
-  number: 'Dex number',
-  name: 'Name',
-  recent: 'Recently logged',
-  entries: 'Most entries'
-}
+// The tables of text below read the text table on each use, so they follow the language.
 
-export const STATUS_INFO: Readonly<Record<DexStatus, { label: string; description: string }>> = {
-  all: { label: 'Any status', description: 'Caught or not.' },
-  caught: { label: 'Caught', description: 'At least one logged.' },
-  missing: { label: 'Missing', description: 'Nothing logged yet.' },
-  shiny: { label: 'Shiny caught', description: 'A shiny one is logged.' },
-  'shiny-missing': { label: 'Shiny missing', description: 'No shiny logged yet.' },
-  'multi-game': { label: 'In 2+ games', description: 'Logged from more than one game.' }
-}
+export const SORT_LABELS: Readonly<Record<DexSort, string>> = messageTable({
+  number: 'pokedex.sort.number',
+  name: 'pokedex.sort.name',
+  recent: 'pokedex.sort.recent',
+  entries: 'pokedex.sort.entries'
+})
+
+export const STATUS_INFO: Readonly<Record<DexStatus, { readonly label: string; readonly description: string }>> = Object.fromEntries(
+  DEX_STATUSES.map((status) => [
+    status,
+    {
+      get label(): string {
+        return t(`pokedex.status.${status}.label`)
+      },
+      get description(): string {
+        return t(`pokedex.status.${status}.description`)
+      }
+    }
+  ])
+) as Record<DexStatus, { readonly label: string; readonly description: string }>
 
 export const SPECIES_TAGS: readonly SpeciesTag[] = ['legendary', 'mythical', 'baby', 'starter', 'fossil', 'pseudo-legendary', 'ultra-beast', 'paradox']
 
-export const TAG_LABELS: Readonly<Record<SpeciesTag, string>> = {
-  legendary: 'Legendary',
-  mythical: 'Mythical',
-  baby: 'Baby',
-  starter: 'Starter',
-  fossil: 'Fossil',
-  'pseudo-legendary': 'Pseudo-legendary',
-  'ultra-beast': 'Ultra Beast',
-  paradox: 'Paradox'
-}
+export const TAG_LABELS: Readonly<Record<SpeciesTag, string>> = messageTable({
+  legendary: 'pokedex.tag.legendary',
+  mythical: 'pokedex.tag.mythical',
+  baby: 'pokedex.tag.baby',
+  starter: 'pokedex.tag.starter',
+  fossil: 'pokedex.tag.fossil',
+  'pseudo-legendary': 'pokedex.tag.pseudo-legendary',
+  'ultra-beast': 'pokedex.tag.ultra-beast',
+  paradox: 'pokedex.tag.paradox'
+})
 
 /** Home region of each generation, for the generation picker. */
-export const GENERATION_REGIONS: Readonly<Record<number, string>> = {
-  1: 'Kanto', 2: 'Johto', 3: 'Hoenn', 4: 'Sinnoh', 5: 'Unova', 6: 'Kalos', 7: 'Alola', 8: 'Galar', 9: 'Paldea'
-}
+export const GENERATION_REGIONS: Readonly<Record<number, string>> = messageTable<number>({
+  1: 'pokedex.region.1', 2: 'pokedex.region.2', 3: 'pokedex.region.3', 4: 'pokedex.region.4', 5: 'pokedex.region.5',
+  6: 'pokedex.region.6', 7: 'pokedex.region.7', 8: 'pokedex.region.8', 9: 'pokedex.region.9'
+})
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
 
@@ -98,7 +111,7 @@ export function romanNumeral(n: number): string {
 }
 
 export function generationLabel(gen: number): string {
-  return GENERATION_NAMES[gen] ?? `Generation ${romanNumeral(gen)}`
+  return generationName(gen)
 }
 
 /** True when any filter (not counting the search text) narrows the list. */
@@ -205,7 +218,7 @@ export function buildTiles(dex: Dex, collection: Collection, display: DexDisplay
         key: String(species.id),
         species,
         form: base,
-        label: species.name,
+        label: speciesName(species),
         order: tiles.length,
         types: base.types,
         typeSets: [base.types, ...regional],
@@ -245,14 +258,26 @@ export function buildTiles(dex: Dex, collection: Collection, display: DexDisplay
 
 // ---------------------------------------------------------------- search
 
-const labelWords = new WeakMap<LivingSlot, string[]>()
+// Per slot and language: slots are cached and outlive a language switch, their labels do not.
+const labelWords = new WeakMap<LivingSlot, { language: string; words: string[] }>()
 
-function wordsOf(slot: LivingSlot): string[] {
-  let words = labelWords.get(slot)
-  if (!words) {
-    words = normalizeText(slot.label).split(' ').filter(Boolean)
-    labelWords.set(slot, words)
+const GMAX_WORD = 'Gigantamax'
+
+/**
+ * The words a slot is found by: those of its label in the active language and, in another
+ * language than English, also those of its English name.
+ */
+function wordsOf(tile: DexTile, slot: LivingSlot): string[] {
+  const language = activeLanguage()
+  const hit = labelWords.get(slot)
+  if (hit && hit.language === language) return hit.words
+  let text = slot.label
+  if (language !== 'en') {
+    const variant = slot.variant === undefined ? undefined : tile.form.variants?.find((v) => v.id === slot.variant)?.name
+    text = [text, tile.form.full, variant ?? '', slot.gmax ? GMAX_WORD : ''].join(' ')
   }
+  const words = [...new Set(normalizeText(text).split(' ').filter(Boolean))]
+  labelWords.set(slot, { language, words })
   return words
 }
 
@@ -282,12 +307,12 @@ export function textMatcher(dex: Dex, collection: Collection, display: DexDispla
   }
   // Slot labels carry words the form names do not: "Gigantamax", a sweet, a gender sign.
   const tokens = normalizeText(text).split(' ').filter((token) => token.length >= 2)
-  const byLabel = (slot: LivingSlot): boolean => {
+  const byLabel = (tile: DexTile, slot: LivingSlot): boolean => {
     if (tokens.length === 0) return false
-    const words = wordsOf(slot)
+    const words = wordsOf(tile, slot)
     return tokens.every((token) => words.some((word) => word.startsWith(token)))
   }
-  return (tile) => whole.has(tile.species.id) || forms.has(`${tile.species.id}:${tile.form.f}`) || (tile.slot !== undefined && byLabel(tile.slot))
+  return (tile) => whole.has(tile.species.id) || forms.has(`${tile.species.id}:${tile.form.f}`) || (tile.slot !== undefined && byLabel(tile, tile.slot))
 }
 
 // ---------------------------------------------------------------- filtering
@@ -349,11 +374,20 @@ export function filterTiles(tiles: readonly DexTile[], { dex, collection, displa
 
 // ---------------------------------------------------------------- sorting
 
-const collator = new Intl.Collator('en', { sensitivity: 'base', numeric: true })
+const collators = new Map<string, Intl.Collator>()
 
-/** A sorted copy. Ties, and tiles a sort has nothing to say about, stay in national dex order. */
+/** Compares names the way the active language orders them. */
+function nameCollator(): Intl.Collator {
+  const tag = languageTag(activeLanguage())
+  let collator = collators.get(tag)
+  if (!collator) collators.set(tag, (collator = new Intl.Collator(tag, { sensitivity: 'base', numeric: true })))
+  return collator
+}
+
+/** A sorted copy. Ties, and tiles a sort has nothing to say about, stay in national dex order. By name: the names shown, in the active language's order. */
 export function sortTiles(tiles: readonly DexTile[], sort: DexSort): DexTile[] {
   const out = tiles.slice()
+  const collator = nameCollator()
   if (sort === 'name') out.sort((a, b) => collator.compare(a.label, b.label) || a.order - b.order)
   else if (sort === 'entries') out.sort((a, b) => b.entries - a.entries || a.order - b.order)
   else if (sort === 'recent') out.sort((a, b) => (a.latest === b.latest ? a.order - b.order : a.latest > b.latest ? -1 : 1))
@@ -431,7 +465,7 @@ export function activeChips(text: string, filters: DexFilters, typeName: (type: 
     (state) => ({ text: state.text, filters: { ...state.filters, ...change(state.filters) } })
 
   const query = text.trim()
-  if (query !== '') chips.push({ id: 'text', kind: 'text', label: `“${query}”`, remove: (state) => ({ text: '', filters: state.filters }) })
+  if (query !== '') chips.push({ id: 'text', kind: 'text', label: t('pokedex.chip.text', { query }), remove: (state) => ({ text: '', filters: state.filters }) })
 
   for (const gen of filters.gens) {
     chips.push({ id: `gen-${gen}`, kind: 'gen', value: gen, label: generationLabel(gen), remove: patch((f) => ({ gens: f.gens.filter((g) => g !== gen) })) })
@@ -440,27 +474,26 @@ export function activeChips(text: string, filters: DexFilters, typeName: (type: 
     chips.push({ id: `type-${type}`, kind: 'type', value: type, label: typeName(type), remove: patch((f) => ({ types: f.types.filter((t) => t !== type) })) })
   }
   if (filters.types.length > 1 && filters.typeMatch === 'all') {
-    chips.push({ id: 'type-match', kind: 'type-match', label: 'Has every type', remove: patch(() => ({ typeMatch: 'any' })) })
+    chips.push({ id: 'type-match', kind: 'type-match', label: t('pokedex.chip.typeMatch'), remove: patch(() => ({ typeMatch: 'any' })) })
   }
   if (filters.status !== 'all') {
     chips.push({ id: 'status', kind: 'status', value: filters.status, label: STATUS_INFO[filters.status].label, remove: patch(() => ({ status: 'all' })) })
   }
   if (filters.game !== null) {
-    const game = GAME_BY_ID.get(filters.game)
     chips.push({
       id: 'game',
       kind: 'game',
       value: filters.game,
-      label: `In ${game?.short ?? 'an unknown game'}`,
+      label: GAME_BY_ID.has(filters.game) ? t('pokedex.chip.game', { game: gameShortName(filters.game) }) : t('pokedex.chip.gameUnknown'),
       remove: patch(() => ({ game: null, gameEvents: false, gameMissing: false }))
     })
-    if (filters.gameMissing) chips.push({ id: 'game-missing', kind: 'game-missing', label: 'Not yet caught', remove: patch(() => ({ gameMissing: false })) })
-    if (filters.gameEvents) chips.push({ id: 'game-events', kind: 'game-events', label: 'Events included', remove: patch(() => ({ gameEvents: false })) })
+    if (filters.gameMissing) chips.push({ id: 'game-missing', kind: 'game-missing', label: t('pokedex.chip.gameMissing'), remove: patch(() => ({ gameMissing: false })) })
+    if (filters.gameEvents) chips.push({ id: 'game-events', kind: 'game-events', label: t('pokedex.chip.gameEvents'), remove: patch(() => ({ gameEvents: false })) })
   }
   for (const tag of filters.tags) {
     chips.push({ id: `tag-${tag}`, kind: 'tag', value: tag, label: TAG_LABELS[tag], remove: patch((f) => ({ tags: f.tags.filter((t) => t !== tag) })) })
   }
-  if (filters.altForms) chips.push({ id: 'alt-forms', kind: 'alt-forms', label: 'Alternate forms', remove: patch(() => ({ altForms: false })) })
+  if (filters.altForms) chips.push({ id: 'alt-forms', kind: 'alt-forms', label: t('pokedex.filter.altForms'), remove: patch(() => ({ altForms: false })) })
   return chips
 }
 

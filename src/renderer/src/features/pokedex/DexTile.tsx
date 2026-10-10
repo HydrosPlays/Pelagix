@@ -1,7 +1,9 @@
 import { memo, type CSSProperties } from 'react'
-import { GenderIcon, ShinyMark, Sprite, TYPE_NAMES, TypeBadges, typeColor } from '@renderer/components/pokemon'
+import { GenderIcon, ShinyMark, Sprite, TypeBadges, typeColor } from '@renderer/components/pokemon'
 import { cx } from '@renderer/components/ui'
-import { dexNo, listText, plural } from '@renderer/lib/format'
+import { t, useT } from '@renderer/i18n'
+import { typeName } from '@renderer/i18n/terms'
+import { dexNo, listText } from '@renderer/lib/format'
 import type { DexDensity } from '@renderer/store/ui'
 import { CaughtMark } from './CaughtMark'
 import type { DexDisplay, DexTile } from './dex-query'
@@ -20,14 +22,14 @@ export function tileHeight(density: DexDensity, display: DexDisplay): number {
 
 /** What a screen reader says for the cell: everything the tile shows, as one sentence group. */
 function describe(tile: DexTile, display: DexDisplay): string {
-  const parts = [`${tile.label}, number ${tile.species.id}`, `${listText(tile.types.map((t) => TYPE_NAMES[t] ?? t))} type`]
-  if (!tile.caught) parts.push('Not caught yet')
-  else parts.push(`Caught, ${plural(tile.entries, 'entry', 'entries')}${tile.shiny ? ', shiny logged' : ''}`)
-  if (display === 'species' && tile.speciesSlots > 1) parts.push(`${tile.slotsCaught} of ${tile.speciesSlots} forms caught`)
-  return `${parts.join('. ')}.`
+  const parts = [t('pokedex.tile.name', { name: tile.label, number: String(tile.species.id) }), t('pokedex.tile.types', { types: listText(tile.types.map(typeName)) })]
+  if (!tile.caught) parts.push(t('pokedex.tile.missing'))
+  else parts.push(t(tile.shiny ? 'pokedex.tile.caughtShiny' : 'pokedex.tile.caught', { count: tile.entries }))
+  if (display === 'species' && tile.speciesSlots > 1) parts.push(t('pokedex.tile.forms', { caught: String(tile.slotsCaught), count: tile.speciesSlots }))
+  return parts.join(' ')
 }
 
-/** The label, with a trailing ♂ / ♀ drawn as the app's coloured gender glyph. */
+/** The label, with a trailing ♂ / ♀ drawn as the app's coloured gender glyph (where the language writes the sign last, as English does). */
 function TileName({ tile, compact }: { tile: DexTile; compact: boolean }) {
   const gender = tile.slot?.gender
   const sign = gender === 'm' ? ' ♂' : gender === 'f' ? ' ♀' : null
@@ -55,6 +57,7 @@ export interface DexTileViewProps {
  * in here is focusable; the visuals are hidden from assistive tech in favour of one description.
  */
 export const DexTileView = memo(function DexTileView({ tile, display, density, shinyView }: DexTileViewProps) {
+  useT()
   const compact = density === 'compact'
   const [primary, secondary] = tile.types
   const showForms = display === 'species' && tile.speciesSlots > 1
@@ -65,7 +68,7 @@ export const DexTileView = memo(function DexTileView({ tile, display, density, s
   } as CSSProperties
 
   const forms = showForms && (
-    <span className={cx('dex-tile__forms', complete && 'is-complete')} title={`${tile.slotsCaught} of ${tile.speciesSlots} forms caught`}>
+    <span className={cx('dex-tile__forms', complete && 'is-complete')} title={t('pokedex.tile.formsTitle', { caught: String(tile.slotsCaught), count: tile.speciesSlots })}>
       {tile.slotsCaught}/{tile.speciesSlots}
     </span>
   )

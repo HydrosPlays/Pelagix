@@ -3,6 +3,7 @@ import { ErrorBoundary, Panel } from '@renderer/components/ui'
 import { useProgress } from '@renderer/domain/progress'
 import { useCollection } from '@renderer/domain/slots'
 import AchievementsSummaryCard from '@renderer/features/achievements/AchievementsSummaryCard'
+import { useT } from '@renderer/i18n'
 import { enterStagger } from '@renderer/lib/anim'
 import { useEntries, useSettings } from '@renderer/store/save'
 import { ContinueHunt } from './ContinueHunt'
@@ -17,6 +18,7 @@ function Dashboard() {
   const progress = useProgress()
   const settings = useSettings()
   const gridRef = useRef<HTMLDivElement>(null)
+  const t = useT()
 
   useLayoutEffect(() => {
     enterStagger(gridRef.current?.children, { delay: 140, step: 60, y: 14 })
@@ -35,8 +37,8 @@ function Dashboard() {
         {/* Built by the achievements feature: if it ever fails, the rest of the dashboard stays up. */}
         <ErrorBoundary
           fallback={() => (
-            <Panel title="Achievements" className="home-grid__narrow">
-              <p className="home-note">Your achievements could not be shown here. They are safe; open the Achievements page to see them.</p>
+            <Panel title={t('home.achievements.title')} className="home-grid__narrow">
+              <p className="home-note">{t('home.achievements.failed')}</p>
             </Panel>
           )}
         >

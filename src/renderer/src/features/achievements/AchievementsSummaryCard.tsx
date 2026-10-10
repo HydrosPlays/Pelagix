@@ -1,7 +1,8 @@
 import { Link } from 'wouter'
 import { cx, Icon, Panel, ProgressBar } from '@renderer/components/ui'
 import { useAchievementSummary } from '@renderer/domain/achievements'
-import { formatCount, formatDateTime, plural, timeAgo } from '@renderer/lib/format'
+import { useT } from '@renderer/i18n'
+import { formatDateTime, timeAgo } from '@renderer/lib/format'
 import { paths } from '@renderer/shell/router'
 import { Medal } from './Medal'
 import { nextRankText, progressText, rankTier } from './model'
@@ -13,15 +14,16 @@ import './AchievementsSummaryCard.css'
  */
 export default function AchievementsSummaryCard(props: { className?: string }) {
   const { rank, points, unlocked, total, recent, nearest } = useAchievementSummary(3, 2)
+  const t = useT()
 
   return (
     <Panel
       tone="gold"
-      title="Achievements"
+      title={t('achievements.summary.title')}
       className={cx('ach-sum', props.className)}
       actions={
         <Link href={paths.achievements()} className="ach-sum__link">
-          View all
+          {t('achievements.summary.viewAll')}
           <Icon name="arrow-right" size={14} />
         </Link>
       }
@@ -31,18 +33,16 @@ export default function AchievementsSummaryCard(props: { className?: string }) {
         <div className="ach-sum__rank-text">
           <div className="ach-sum__name">{rank.name}</div>
           <div className="ach-sum__line">
-            <span className="ach-sum__points">{plural(points, 'point')}</span>
+            <span className="ach-sum__points">{t('achievements.points', { count: points })}</span>
             <span aria-hidden="true">·</span>
-            <span>
-              {formatCount(unlocked)} / {formatCount(total)} unlocked
-            </span>
+            <span>{t('achievements.summary.unlocked', { unlocked, total })}</span>
           </div>
           <ProgressBar
             tone="gold"
             size="sm"
             value={total > 0 ? unlocked / total : 0}
-            label="Achievements unlocked"
-            valueText={`${formatCount(unlocked)} of ${formatCount(total)}`}
+            label={t('achievements.unlocked.label')}
+            valueText={t('achievements.unlocked.value', { unlocked, total })}
             className="ach-sum__bar"
           />
           <div className="ach-sum__next">{nextRankText(rank, points)}</div>
@@ -51,7 +51,7 @@ export default function AchievementsSummaryCard(props: { className?: string }) {
 
       {recent.length > 0 ? (
         <>
-          <div className="ach-sum__heading u-eyebrow">Latest medals</div>
+          <div className="ach-sum__heading u-eyebrow">{t('achievements.summary.latest')}</div>
           <ul className="ach-sum__list">
             {recent.map(({ def, date }) => (
               <li key={def.id} className={cx('ach-sum__item', `ach-tier--${def.tier}`)}>
@@ -69,10 +69,10 @@ export default function AchievementsSummaryCard(props: { className?: string }) {
         </>
       ) : (
         <>
-          <p className="ach-sum__empty">No medals yet. Log a catch and the first one is yours.</p>
+          <p className="ach-sum__empty">{t('achievements.summary.empty')}</p>
           {nearest.length > 0 && (
             <>
-              <div className="ach-sum__heading u-eyebrow">First goals</div>
+              <div className="ach-sum__heading u-eyebrow">{t('achievements.near.first')}</div>
               <ul className="ach-sum__list">
                 {nearest.map(({ def, state }) => (
                   <li key={def.id} className={cx('ach-sum__item', `ach-tier--${def.tier}`)}>

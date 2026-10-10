@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Icon } from '@renderer/components/ui'
+import { t, useT } from '@renderer/i18n'
 import { errorMessage } from '@renderer/lib/format'
 import { toast } from '@renderer/store/ui'
 
@@ -11,12 +12,13 @@ export function openWebPage(href: string): void {
     return
   }
   api.openExternal(href).catch((err: unknown) => {
-    toast({ kind: 'error', title: 'That link could not be opened', body: errorMessage(err) })
+    toast({ kind: 'error', title: t('updates.link.failed'), body: errorMessage(err) })
   })
 }
 
 /** A link to a web page from one of the update windows. Its tooltip shows where it goes. */
 export function WebLink({ href, children }: { href: string; children: ReactNode }) {
+  const t = useT()
   return (
     <a
       className="upd-link"
@@ -31,7 +33,7 @@ export function WebLink({ href, children }: { href: string; children: ReactNode 
       }}
     >
       {children}
-      <Icon name="external" size={13} label="(opens in your browser)" />
+      <Icon name="external" size={13} label={t('updates.link.opens')} />
     </a>
   )
 }

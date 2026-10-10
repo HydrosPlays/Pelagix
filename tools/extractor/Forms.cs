@@ -58,6 +58,25 @@ public static class Forms
         return new FormDump { Json = json, Species = rows.Count, Forms = formTotal };
     }
 
+    /// <summary>
+    /// The primary name of every form index of a species in the given language: what <c>names[0].n</c> of forms.json
+    /// is in English (the name in the newest context that lists the index). "" for an index no context names.
+    /// </summary>
+    public static string[] PrimaryNames(ushort species, GameStrings strings)
+    {
+        var lists = new List<string[]>();
+        foreach (var context in Contexts)
+        {
+            if (Tables.Any(t => t.Context == context && InGame(t, species)))
+                lists.Add(FormConverter.GetFormList(species, strings.types, strings.forms, GameInfo.GenderSymbolUnicode, context));
+        }
+        int count = lists.Count == 0 ? 0 : lists.Max(z => z.Length);
+        var names = new string[count];
+        for (int f = 0; f < count; f++)
+            names[f] = lists.First(z => f < z.Length)[f];
+        return names;
+    }
+
     private static bool InGame(TableInfo t, ushort species) => species <= t.Table.MaxSpeciesID && t.Table.IsSpeciesInGame(species);
     private static bool Present(TableInfo t, ushort species, int form) => species <= t.Table.MaxSpeciesID && t.Table.IsPresentInGame(species, (byte)form);
 

@@ -42,7 +42,7 @@ and `npm run preview` fetch it on first use; `npx install-electron` does it by h
 | `npm run typecheck:tools` | Type-checks the tooling in `tools/`. |
 | `npm test` | Runs the unit tests with Vitest. |
 | `npm run data:extract` | Runs the PKHeX extractor (`tools/extractor`). Needs the .NET SDK and `PKHeX/`. |
-| `npm run data:build` | Builds the datasets into `src/renderer/public/data/`. |
+| `npm run data:build` | Builds the datasets into `src/renderer/public/data/`, including the Pokémon terms of each language. |
 | `npm run data:validate` | Checks the built datasets. Read-only. |
 | `npm run data` | `data:extract`, `data:build` and `data:validate` in sequence. |
 | `npm run screenshots` | Re-creates the pictures in `docs/screenshots/`. |
@@ -150,13 +150,45 @@ part of the save format and must never be renamed.
 The main process only checks the top-level shape. The renderer validates each entry when a save
 is loaded or imported, and reports what it had to drop or repair.
 
+## Languages
+
+The app is shown in ten languages (`src/shared/languages.ts`). One setting,
+`settings.language` in the save, drives two things:
+
+- **Interface text** lives in `src/renderer/src/i18n/`. English is the source, in
+  `en/<namespace>.ts` (one file per feature folder), and every other language is a folder with
+  the same files. `t('namespace.key')`, `useT()` and `rich()` read it; keys are type-checked.
+  The rules for adding text are in [`src/renderer/src/i18n/README.md`](../src/renderer/src/i18n/README.md):
+  whole sentences with `{placeholders}`, plural objects, nothing resolved at module top level.
+  A missing message reads in English. `es-419` is written as the differences from `es`
+  (`LANGUAGE_BASE` in `i18n/runtime.ts`). The native file dialogs of the main process have
+  their own small table, `src/shared/main-text.ts`.
+- **Pokémon terms** go through the accessors in `src/renderer/src/i18n/terms.ts`
+  (`speciesName`, `formFullName`, `typeName`, `abilityName`, `ballName`, `gameName`,
+  `locationName` ...). English comes from the datasets; each other language loads
+  `data/terms/<language>.json` when it is chosen. See [DATA.md](DATA.md).
+
+The save always stores the datasets' English labels (an entry's method and location) and the
+user's own text as typed. Translation happens only when something is shown, so a save reads the
+same in every language. Never write translated text into the save or compare stored text with
+translated text.
+
+`src/renderer/src/i18n/parity.test.ts` guards the translations: every translated message must
+belong to an English key, keep its placeholders and tags, and carry the plural forms its
+language needs. Languages listed in `COMPLETE` there may not miss a key.
+`PELAGIX_I18N_REPORT=1 npx vitest run src/renderer/src/i18n/parity.test.ts` lists what a
+language still lacks.
+
+The language pop-up (`src/renderer/src/shell/LanguagePrompt.tsx`) opens while the save has no
+language. Smoke runs and the screenshot tool always get English, so it never blocks them.
+
 ## Tests
 
 ```
 npm test
 ```
 
-Vitest, in a Node environment: 1,773 tests in 50 files at the time of writing. They cover the
+Vitest, in a Node environment: 1,845 tests in 56 files at the time of writing. They cover the
 logic: slot rules, progress, encounter handling, achievements (including that every one of them
 can be earned on the real datasets), search, the entry editor's draft handling, the page models,
 the save store and the sprite protocol's request parsing.

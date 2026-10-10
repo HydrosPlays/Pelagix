@@ -1,5 +1,8 @@
 import type { CSSProperties } from 'react'
 import type { TypeId } from '@shared/dex-types'
+import { t } from '@renderer/i18n'
+import { typeName } from '@renderer/i18n/terms'
+import { labelTable } from '@renderer/lib/format'
 import { cx } from '../ui/cx'
 import './TypeBadge.css'
 
@@ -9,11 +12,8 @@ export const TYPE_IDS: readonly TypeId[] = [
   'fire', 'water', 'grass', 'electric', 'psychic', 'ice', 'dragon', 'dark', 'fairy', 'stellar'
 ]
 
-export const TYPE_NAMES: Readonly<Record<TypeId, string>> = {
-  normal: 'Normal', fighting: 'Fighting', flying: 'Flying', poison: 'Poison', ground: 'Ground', rock: 'Rock',
-  bug: 'Bug', ghost: 'Ghost', steel: 'Steel', fire: 'Fire', water: 'Water', grass: 'Grass', electric: 'Electric',
-  psychic: 'Psychic', ice: 'Ice', dragon: 'Dragon', dark: 'Dark', fairy: 'Fairy', stellar: 'Stellar'
-}
+/** Type names in the active language, read when asked for. Prefer `typeName()` from `@renderer/i18n/terms`, which this defers to. */
+export const TYPE_NAMES: Readonly<Record<TypeId, string>> = labelTable(TYPE_IDS, typeName)
 
 /** Types whose fill is dark enough for white text; the rest take dark ink (AA either way). */
 const LIGHT_INK: ReadonlySet<TypeId> = new Set<TypeId>(['poison', 'ground', 'ghost', 'fire', 'dragon', 'dark'])
@@ -32,10 +32,10 @@ export interface TypeBadgeProps {
 }
 
 export function TypeBadge({ type, variant = 'pill', size = 'md', className }: TypeBadgeProps) {
-  const name = TYPE_NAMES[type] ?? type
+  const name = typeName(type)
   const style = { '--tc': typeColor(type) } as CSSProperties
   if (variant === 'dot') {
-    return <span className={cx('pk-type', 'pk-type--dot', `pk-type--${size}`, type === 'stellar' && 'pk-type--stellar', className)} style={style} role="img" aria-label={`${name} type`} title={name} />
+    return <span className={cx('pk-type', 'pk-type--dot', `pk-type--${size}`, type === 'stellar' && 'pk-type--stellar', className)} style={style} role="img" aria-label={t('components.type.label', { type: name })} title={name} />
   }
   return (
     <span className={cx('pk-type', 'pk-type--pill', `pk-type--${size}`, LIGHT_INK.has(type) ? 'pk-type--ink-light' : 'pk-type--ink-dark', type === 'stellar' && 'pk-type--stellar', className)} style={style}>

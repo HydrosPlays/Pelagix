@@ -8,6 +8,7 @@ import type { ReleaseNote, UpdateError, UpdateErrorKind, UpdatePhase, UpdateProg
 import { RELEASES_URL, REPO_SLUG } from '@shared/repo'
 import type { IconName } from '@renderer/components/ui/Icon'
 import { formatBytes } from '@renderer/features/settings/settings-model'
+import { t, type MessageKey } from '@renderer/i18n/runtime'
 import { formatDate, timeAgo } from '@renderer/lib/format'
 import { parseMarkdown, safeHref, type Block, type Inline, type MdDoc } from './markdown'
 
@@ -107,15 +108,14 @@ export function offerView(state: Pick<UpdateState, 'mode' | 'phase'>, pending: O
 }
 
 export function offerTitle(version: string, view: OfferView): string {
-  if (view === 'ready') return `Pelagix ${version} is ready to install`
-  if (view === 'installing') return `Installing Pelagix ${version}`
-  return `Pelagix ${version} is available`
+  if (view === 'ready') return t('updates.offer.title.ready', { version })
+  if (view === 'installing') return t('updates.offer.title.installing', { version })
+  return t('updates.offer.title.available', { version })
 }
 
 /** The line under the title: what is running now, and how many releases the notes cover. */
 export function offerDescription(currentVersion: string, releases: number): string {
-  const running = `You have version ${currentVersion}.`
-  return releases > 1 ? `${running} The notes below cover ${releases} releases, newest first.` : running
+  return releases > 1 ? t('updates.offer.descriptionMany', { version: currentVersion, count: releases }) : t('updates.offer.description', { version: currentVersion })
 }
 
 /**
@@ -143,10 +143,10 @@ export interface ProblemWording {
 
 export function problemWording(problem: OfferProblem): ProblemWording {
   if (problem.type === 'editor-open') {
-    return { tone: 'warning', text: 'Finish or close the entry you are editing first. It has not been saved yet, and the restart would lose it.', retry: false, releaseLink: false }
+    return { tone: 'warning', text: t('updates.problem.editorOpen'), retry: false, releaseLink: false }
   }
   if (problem.type === 'not-saved') {
-    return { tone: 'danger', text: 'Your latest changes are not on disk yet, so Pelagix did not restart. Nothing is lost while it stays open. Settings shows what is wrong; try again once they are saved.', retry: true, releaseLink: false }
+    return { tone: 'danger', text: t('updates.problem.notSaved'), retry: true, releaseLink: false }
   }
   return { tone: 'danger', ...errorWording(problem), releaseLink: true }
 }
@@ -168,50 +168,54 @@ export interface OfferFooter {
   alert: ProblemWording | null
 }
 
-const OFFER_NOTES: Readonly<Record<OfferView, string>> = {
-  available: '',
-  downloading: 'You can close this window. The download carries on.',
+const OFFER_NOTES: Readonly<Record<OfferView, MessageKey | null>> = {
+  available: null,
+  downloading: 'updates.offer.note.downloading',
   // Nothing is installed when the app is simply closed (see `autoInstallOnAppQuit` in the main process), so the window says so.
-  ready: 'Pelagix closes and reopens by itself, in a few seconds. Closing it yourself does not install the update.',
-  installing: 'Pelagix closes now and reopens by itself in a few seconds.',
-  manual: 'This is a portable copy, so it is replaced by hand: download the new version from GitHub and use it instead of this one.'
+  ready: 'updates.offer.note.ready',
+  installing: 'updates.offer.note.installing',
+  manual: 'updates.offer.note.manual'
 }
 
 /** Replaces the note of the "installing" view when the app is still open long after it should have closed. */
-export const INSTALL_OVERDUE_NOTE = 'Pelagix should have closed by now. Close this window and try again, or get the installer from the release page.'
+export function installOverdueNote(): string {
+  return t('updates.offer.note.overdue')
+}
 
 /** The bottom of the changelog window: its buttons, its one line of explanation and what went wrong, if anything. */
 export function offerFooter(state: Pick<UpdateState, 'mode' | 'phase' | 'error'>, pending: OfferPending = NOTHING_PENDING, local: OfferProblem | null = null): OfferFooter {
   const view = offerView(state, pending)
-  const note = OFFER_NOTES[view]
+  const noteKey = OFFER_NOTES[view]
+  const note = noteKey === null ? '' : t(noteKey)
   const problem = offerProblem(state, local)
 
-  if (view === 'manual') return { view, note, primary: { action: 'release', label: 'Open the release page', icon: 'external', busy: false }, secondary: 'later', alert: null }
+  if (view === 'manual') return { view, note, primary: { action: 'release', label: t('updates.action.release'), icon: 'external', busy: false }, secondary: 'later', alert: null }
   if (view === 'downloading') return { view, note, primary: null, secondary: 'cancel', alert: null }
   if (view === 'installing') return { view, note, primary: null, secondary: null, alert: null }
 
   if (view === 'ready') {
     // A download that failed earlier no longer matters once the update is here.
     const shown = problem !== null && (problem.type !== 'error' || problem.during === 'install') ? problemWording(problem) : null
-    return { view, note, primary: { action: 'restart', label: shown?.retry ? 'Try again' : 'Restart and update', icon: 'refresh', busy: false }, secondary: 'later', alert: shown }
+    return { view, note, primary: { action: 'restart', label: shown?.retry ? t('updates.action.retry') : t('updates.action.restart'), icon: 'refresh', busy: false }, secondary: 'later', alert: shown }
   }
 
   // "Not saved" and "an entry is open" belong to the restart; before the download they are stale.
   const shown = problem !== null && problem.type === 'error' ? problemWording(problem) : null
   const busy = pending.download || state.phase === 'checking'
-  return { view, note, primary: { action: 'download', label: shown?.retry ? 'Try again' : 'Download and install', icon: 'download', busy }, secondary: 'later', alert: shown }
+  return { view, note, primary: { action: 'download', label: shown?.retry ? t('updates.action.retry') : t('updates.action.download'), icon: 'download', busy }, secondary: 'later', alert: shown }
 }
 
 // ---------------------------------------------------------------- what's new
 
 export function whatsNewTitle(version: string): string {
-  return `What’s new in ${version}`
+  return t('updates.whatsNew.title', { version })
 }
 
 /** The line under the title: where the update came from, and how many releases the notes cover. */
 export function whatsNewDescription(whatsNew: Pick<WhatsNew, 'version' | 'from' | 'notes'>): string {
-  const updated = whatsNew.from !== null && whatsNew.from !== whatsNew.version ? `Pelagix was updated from version ${whatsNew.from}.` : 'Pelagix was updated.'
-  return whatsNew.notes.length > 1 ? `${updated} The notes below cover ${whatsNew.notes.length} releases, newest first.` : updated
+  const count = whatsNew.notes.length
+  if (whatsNew.from !== null && whatsNew.from !== whatsNew.version) return count > 1 ? t('updates.whatsNew.updatedFromMany', { from: whatsNew.from, count }) : t('updates.whatsNew.updatedFrom', { from: whatsNew.from })
+  return count > 1 ? t('updates.whatsNew.updatedMany', { count }) : t('updates.whatsNew.updated')
 }
 
 // ---------------------------------------------------------------- the indicator in the rail
@@ -229,11 +233,11 @@ export interface IndicatorInfo {
 export function indicatorInfo(state: UpdateState | null): IndicatorInfo | null {
   if (state === null || state.mode === 'off' || state.offer === null) return null
   const view = offerView(state)
-  if (view === 'downloading') return { label: `Downloading ${percentText(state.progress)}`, icon: 'download', progress: progressFraction(state.progress), ready: false }
+  if (view === 'downloading') return { label: t('updates.indicator.downloading', { percent: percentText(state.progress) }), icon: 'download', progress: progressFraction(state.progress), ready: false }
   // Not "Restart to update": the marker opens the window, and a restart by hand installs nothing.
-  if (view === 'ready') return { label: 'Update ready', icon: 'refresh', progress: null, ready: true }
-  if (view === 'installing') return { label: 'Restarting…', icon: 'refresh', progress: null, ready: true }
-  return { label: 'Update available', icon: 'download', progress: null, ready: false }
+  if (view === 'ready') return { label: t('updates.indicator.ready'), icon: 'refresh', progress: null, ready: true }
+  if (view === 'installing') return { label: t('updates.indicator.restarting'), icon: 'refresh', progress: null, ready: true }
+  return { label: t('updates.indicator.available'), icon: 'download', progress: null, ready: false }
 }
 
 // ---------------------------------------------------------------- the notice on screens without a rail
@@ -255,7 +259,7 @@ export function noticeInfo(state: UpdateState | null): NoticeInfo | null {
   const marker = indicatorInfo(state)
   if (marker === null || state === null || state.offer === null) return null
   const view = offerView(state)
-  const text = view === 'downloading' ? `Downloading Pelagix ${state.offer.version}: ${percentText(state.progress)}` : offerTitle(state.offer.version, view)
+  const text = view === 'downloading' ? t('updates.notice.downloading', { version: state.offer.version, percent: percentText(state.progress) }) : offerTitle(state.offer.version, view)
   return { text, icon: marker.icon, button: offerButton(view) }
 }
 
@@ -272,34 +276,36 @@ export interface StatusLine {
  * What a downloaded update still needs. Said in full because the obvious guess is wrong: closing
  * and reopening the app installs nothing, only the button in the changelog window does.
  */
-export const READY_DETAIL = 'Choose “Restart and update” to install it. Closing Pelagix yourself does not.'
+export function readyDetail(): string {
+  return t('updates.status.ready.detail')
+}
 
 /** The status at the top of the Updates section. */
 export function statusLine(state: UpdateState, now: number): StatusLine {
-  if (state.mode === 'off') return { tone: 'quiet', title: 'Update checks run in the packaged app', detail: 'This is a development build, so nothing is checked or downloaded.' }
+  if (state.mode === 'off') return { tone: 'quiet', title: t('updates.status.off.title'), detail: t('updates.status.off.detail') }
 
   const offer = state.offer
   const checked = lastCheckedText(state.lastCheckedAt, now)
-  if (state.phase === 'checking') return { tone: 'busy', title: 'Checking for updates…', detail: offer ? `Version ${offer.version} is available.` : checked }
+  if (state.phase === 'checking') return { tone: 'busy', title: t('updates.status.checking'), detail: offer ? t('updates.check.available', { version: offer.version }) : checked }
 
   if (offer !== null) {
     const view = offerView(state)
-    if (view === 'installing') return { tone: 'busy', title: `Installing version ${offer.version}…`, detail: 'Pelagix closes and reopens by itself.' }
+    if (view === 'installing') return { tone: 'busy', title: t('updates.status.installing.title', { version: offer.version }), detail: t('updates.status.installing.detail') }
     if (view === 'downloading') {
       const detail = [percentText(state.progress), progressDetail(state.progress)].filter((part) => part !== '').join(' · ')
-      return { tone: 'busy', title: `Downloading version ${offer.version}`, detail }
+      return { tone: 'busy', title: t('updates.status.downloading', { version: offer.version }), detail }
     }
-    if (view === 'ready') return { tone: 'news', title: `Version ${offer.version} is ready to install`, detail: READY_DETAIL }
-    return { tone: 'news', title: `Version ${offer.version} is available`, detail: view === 'manual' ? 'Download it from GitHub to replace this copy.' : checked }
+    if (view === 'ready') return { tone: 'news', title: t('updates.status.ready.title', { version: offer.version }), detail: readyDetail() }
+    return { tone: 'news', title: t('updates.status.available.title', { version: offer.version }), detail: view === 'manual' ? t('updates.status.available.manual') : checked }
   }
 
   // Only a check the user asked for leaves an error behind; until the next one, "up to date" would be a guess.
-  if (state.error !== null && state.error.during === 'check') return { tone: 'warn', title: 'The last check did not work', detail: errorWording(state.error).text }
+  if (state.error !== null && state.error.during === 'check') return { tone: 'warn', title: t('updates.status.checkFailed'), detail: errorWording(state.error).text }
 
   if (state.lastCheckedAt === null) {
-    return { tone: 'quiet', title: 'Not checked yet', detail: state.autoCheck ? 'Pelagix checks by itself a few seconds after it starts.' : 'Automatic checks are off. Check whenever you like.' }
+    return { tone: 'quiet', title: t('updates.status.notChecked'), detail: state.autoCheck ? t('updates.status.notChecked.auto') : t('updates.status.notChecked.manual') }
   }
-  return { tone: 'ok', title: 'Pelagix is up to date', detail: checked }
+  return { tone: 'ok', title: t('updates.status.upToDate'), detail: checked }
 }
 
 /**
@@ -307,10 +313,10 @@ export function statusLine(state: UpdateState, now: number): StatusLine {
  * Only the button inside that window restarts the app, so only that one is called "Restart".
  */
 export function offerButton(view: OfferView): { label: string; icon: IconName } {
-  if (view === 'downloading') return { label: 'Show the download', icon: 'download' }
-  if (view === 'ready') return { label: 'Install the update', icon: 'refresh' }
-  if (view === 'installing') return { label: 'Show the restart', icon: 'refresh' }
-  return { label: 'See what’s new', icon: 'note' }
+  if (view === 'downloading') return { label: t('updates.button.showDownload'), icon: 'download' }
+  if (view === 'ready') return { label: t('updates.button.install'), icon: 'refresh' }
+  if (view === 'installing') return { label: t('updates.button.showRestart'), icon: 'refresh' }
+  return { label: t('updates.button.whatsNew'), icon: 'note' }
 }
 
 export interface CheckOutcome {
@@ -321,44 +327,45 @@ export interface CheckOutcome {
 /** The line shown next to "Check for updates" once a check the user asked for has come back. */
 export function checkOutcome(state: UpdateState): CheckOutcome {
   if (state.error !== null && state.error.during === 'check') return { tone: 'error', text: errorWording(state.error).text }
-  if (state.offer !== null) return { tone: 'news', text: `Version ${state.offer.version} is available.` }
-  return { tone: 'ok', text: 'You have the newest version.' }
+  if (state.offer !== null) return { tone: 'news', text: t('updates.check.available', { version: state.offer.version }) }
+  return { tone: 'ok', text: t('updates.check.newest') }
 }
 
 // ---------------------------------------------------------------- failures
 
-const CHECK_ERRORS: Readonly<Record<UpdateErrorKind, string>> = {
-  offline: 'GitHub could not be reached. Check your internet connection, then try again.',
-  'not-ready': 'The newest release is not ready yet: its update files are still missing. Try again later.',
-  'rate-limited': 'GitHub is turning away requests from your network at the moment. That usually clears within an hour.',
-  corrupt: 'GitHub sent an answer Pelagix could not read. Try again later.',
-  disk: 'Pelagix could not write to its data folder, so the check was not finished.',
-  unknown: 'The check did not work. Try again later.'
+// Message keys: the text is looked up when the failure is shown.
+const CHECK_ERRORS: Readonly<Record<UpdateErrorKind, MessageKey>> = {
+  offline: 'updates.error.check.offline',
+  'not-ready': 'updates.error.check.notReady',
+  'rate-limited': 'updates.error.check.rateLimited',
+  corrupt: 'updates.error.check.corrupt',
+  disk: 'updates.error.check.disk',
+  unknown: 'updates.error.check.unknown'
 }
 
-const DOWNLOAD_ERRORS: Readonly<Record<UpdateErrorKind, string>> = {
-  offline: 'The download stopped because GitHub could not be reached. Check your internet connection, then try again.',
-  'not-ready': 'The files for this update are not on GitHub yet. Try again later.',
-  'rate-limited': 'GitHub is turning away downloads from your network at the moment. That usually clears within an hour.',
-  corrupt: 'The download arrived damaged and was thrown away. Download it again.',
-  disk: 'The update could not be saved on this computer. Free up some disk space, then try again.',
-  unknown: 'The download did not work. Try again, or get the new version from the release page.'
+const DOWNLOAD_ERRORS: Readonly<Record<UpdateErrorKind, MessageKey>> = {
+  offline: 'updates.error.download.offline',
+  'not-ready': 'updates.error.download.notReady',
+  'rate-limited': 'updates.error.download.rateLimited',
+  corrupt: 'updates.error.download.corrupt',
+  disk: 'updates.error.download.disk',
+  unknown: 'updates.error.download.unknown'
 }
 
-const INSTALL_ERRORS: Readonly<Partial<Record<UpdateErrorKind, string>>> = {
-  corrupt: 'The downloaded update turned out to be damaged, so it was not installed. Download it again.',
-  disk: 'Windows would not start the installer. Try again, or get the installer from the release page.'
+const INSTALL_ERRORS: Readonly<Partial<Record<UpdateErrorKind, MessageKey>>> = {
+  corrupt: 'updates.error.install.corrupt',
+  disk: 'updates.error.install.disk'
 }
-const INSTALL_ERROR = 'The update could not be started. Try again, or get the installer from the release page.'
+const INSTALL_ERROR: MessageKey = 'updates.error.install.unknown'
 
 /** Kinds where pressing the same button again straight away is pointless. */
 const NO_RETRY: ReadonlySet<UpdateErrorKind> = new Set(['not-ready', 'rate-limited'])
 
 /** Plain words for a failed step. The error itself never reaches the page, only its kind. */
 export function errorWording(error: Pick<UpdateError, 'kind' | 'during'>): { text: string; retry: boolean } {
-  if (error.during === 'install') return { text: INSTALL_ERRORS[error.kind] ?? INSTALL_ERROR, retry: true }
+  if (error.during === 'install') return { text: t(INSTALL_ERRORS[error.kind] ?? INSTALL_ERROR), retry: true }
   const table = error.during === 'download' ? DOWNLOAD_ERRORS : CHECK_ERRORS
-  return { text: table[error.kind] ?? table.unknown, retry: !NO_RETRY.has(error.kind) }
+  return { text: t(table[error.kind] ?? table.unknown), retry: !NO_RETRY.has(error.kind) }
 }
 
 // ---------------------------------------------------------------- amounts and times
@@ -382,7 +389,7 @@ export function progressFraction(progress: UpdateProgress | null): number {
 
 /** "640 KB/s", "2.10 MB/s"; "" when nothing is moving (or the figure makes no sense). */
 export function speedText(bytesPerSecond: number): string {
-  return Number.isFinite(bytesPerSecond) && bytesPerSecond > 0 ? `${formatBytes(bytesPerSecond)}/s` : ''
+  return Number.isFinite(bytesPerSecond) && bytesPerSecond > 0 ? t('updates.progress.speed', { size: formatBytes(bytesPerSecond) }) : ''
 }
 
 /** "12.4 MB of 29.5 MB"; only the amount so far when the total is unknown; "" before anything has arrived. */
@@ -390,7 +397,7 @@ export function amountText(progress: UpdateProgress | null): string {
   if (progress === null) return ''
   const total = Number.isFinite(progress.total) ? progress.total : 0
   const done = Number.isFinite(progress.transferred) ? Math.max(0, progress.transferred) : 0
-  if (total > 0) return `${formatBytes(Math.min(done, total))} of ${formatBytes(total)}`
+  if (total > 0) return t('updates.progress.amount', { done: formatBytes(Math.min(done, total)), total: formatBytes(total) })
   return done > 0 ? formatBytes(done) : ''
 }
 
@@ -402,11 +409,11 @@ export function progressDetail(progress: UpdateProgress | null): string {
 
 /** "Last checked 5 min ago", "Last checked yesterday", "Last checked on 2 Oct 2026"; "Not checked yet" for null. */
 export function lastCheckedText(at: number | null, now: number): string {
-  if (at === null || !Number.isFinite(at)) return 'Not checked yet'
+  if (at === null || !Number.isFinite(at)) return t('updates.status.notChecked')
   const ago = timeAgo(new Date(at), new Date(now))
-  if (ago === '') return 'Not checked yet'
+  if (ago === '') return t('updates.status.notChecked')
   // Older than a month comes back as a plain date.
-  return /^\d/.test(ago) && !ago.endsWith('ago') ? `Last checked on ${ago}` : `Last checked ${ago}`
+  return ago === formatDate(new Date(at)) ? t('updates.status.lastCheckedOn', { date: ago }) : t('updates.status.lastChecked', { when: ago })
 }
 
 // ---------------------------------------------------------------- releases

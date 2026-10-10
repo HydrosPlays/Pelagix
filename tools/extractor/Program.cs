@@ -110,6 +110,7 @@ public static class Program
 
         var balls = Balls.Build(encounters, go, gifts);
         var stringTables = Strings.Build(strings, evolutions);
+        var localized = Localized.Build(locations);
 
         // ---- meta
         var gamesMeta = Games.Order.Select(code => new Obj
@@ -198,6 +199,7 @@ public static class Program
             ("eggs.json", eggs.Json, 1),
             ("balls.json", balls, 1),
             ("strings.json", stringTables, 1),
+            ("localized.json", localized, 2),
         ];
         var sizes = new List<(string Name, long Bytes)>();
         foreach (var (name, value, breakDepth) in files)

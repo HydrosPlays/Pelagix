@@ -8,6 +8,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { ABILITY_BY_ID } from '../../src/shared/abilities.ts'
 import { BALL_BY_ID } from '../../src/shared/balls.ts'
 import type {
   DexIndex, EncounterKind, EncounterRow, FormCategory, FormDetail, FormSummary, SpeciesDetail, SpeciesSummary
@@ -21,6 +22,8 @@ import type { PokedexFile } from '../../src/shared/pokedexes.ts'
 import { OUT_DIR, OUT_SPECIES_DIR } from './paths.ts'
 import { compareRows, isTimeLimited, rowIdentity } from './row-order.ts'
 import { SpriteManifest } from './sources.ts'
+import { TERM_LANGUAGES, TERMS_DIR } from './terms.ts'
+import type { TermsFile } from './terms.ts'
 
 const CATEGORIES: ReadonlySet<string> = new Set<FormCategory>([
   'base', 'regional', 'gender', 'cosmetic', 'changeable', 'fusion', 'event', 'partner', 'mega', 'battle', 'hidden'
@@ -531,6 +534,88 @@ function validatePokedexes(details: Map<number, SpeciesDetail>): void {
   }
 }
 
+/** Largest terms file the installer should carry; a jump past it means something other than names got in. */
+const MAX_TERMS_BYTES = 450_000
+
+/**
+ * terms/<language>.json: one file per language besides English, every key naming something the
+ * datasets have, every text clean, and the tables the games fully translate actually filled.
+ */
+function validateTerms(index: DexIndex, details: Map<number, SpeciesDetail>): void {
+  const species = new Map(index.species.map((s) => [String(s.id), s]))
+  const formKeys = new Set<string>()
+  const variantKeys = new Set<string>()
+  for (const s of index.species) {
+    for (const form of s.forms) {
+      formKeys.add(`${s.id}-${form.f}`)
+      for (const variant of form.variants ?? []) variantKeys.add(`${s.id}-${form.f}-${variant.id}`)
+    }
+  }
+  const places = new Set([...details.values()].flatMap((d) => d.strings))
+  const games = new Set(GAMES.map((g) => g.id))
+  const groups = new Set(GAMES.map((g) => g.group))
+  const allowed: Record<string, (key: string) => boolean> = {
+    species: (key) => species.has(key),
+    genus: (key) => species.has(key),
+    flavor: (key) => species.has(key),
+    forms: (key) => formKeys.has(key),
+    formFull: (key) => formKeys.has(key),
+    variants: (key) => variantKeys.has(key),
+    types: (key) => TYPES.has(key),
+    abilities: (key) => ABILITY_BY_ID.has(Number(key)),
+    balls: (key) => BALL_BY_ID.has(Number(key)),
+    games: (key) => games.has(key),
+    gameShort: (key) => games.has(key),
+    gameGroups: (key) => groups.has(key),
+    locations: (key) => places.has(key),
+    names: (key) => key.trim() !== ''
+  }
+  const expected = new Set(TERM_LANGUAGES.map((l) => `${l.id}.json`))
+  const present = fs.existsSync(TERMS_DIR) ? fs.readdirSync(TERMS_DIR) : []
+  check(present.length === expected.size && present.every((name) => expected.has(name)), () => `terms/: expected ${[...expected].join(', ')}; found ${present.join(', ') || 'nothing'}. Run "node tools/build-data/terms.ts".`)
+
+  for (const { id } of TERM_LANGUAGES) {
+    const file = path.join(TERMS_DIR, `${id}.json`)
+    if (!fs.existsSync(file)) continue
+    const text = fs.readFileSync(file, 'utf8')
+    let terms: TermsFile
+    try {
+      terms = JSON.parse(text) as TermsFile
+    } catch {
+      check(false, () => `terms/${id}.json is not valid JSON`)
+      continue
+    }
+    check(terms.v === 1 && terms.language === id, () => `terms/${id}.json: wrong version or language`)
+    check(Buffer.byteLength(text) <= MAX_TERMS_BYTES, () => `terms/${id}.json is ${Buffer.byteLength(text)} bytes, over the ${MAX_TERMS_BYTES} allowed`)
+    for (const [part, isKey] of Object.entries(allowed)) {
+      const table = (terms as unknown as Record<string, unknown>)[part]
+      if (!check(typeof table === 'object' && table !== null && !Array.isArray(table), () => `terms/${id}.json: "${part}" is missing or not a table`)) continue
+      for (const [key, value] of Object.entries(table as Record<string, unknown>)) {
+        check(isKey(key), () => `terms/${id}.json: ${part} has the unknown key "${key}"`)
+        const clean = typeof value === 'string' && value !== '' && value === value.trim() && !/[\x00-\x1f\x7f\xad\ufffd]/.test(value) && !/undefined|\[object/.test(value)
+        check(clean, () => `terms/${id}.json: ${part}["${key}"] is not clean display text: ${JSON.stringify(value)}`)
+      }
+    }
+    const count = (part: keyof TermsFile): number => Object.keys((terms[part] as Record<string, string> | undefined) ?? {}).length
+    // The games translate these tables in full; a name left out reads the same as in English (most Italian balls do).
+    check(count('abilities') >= 250, () => `terms/${id}.json: only ${count('abilities')} ability names`)
+    check(count('types') >= 14, () => `terms/${id}.json: only ${count('types')} type names`)
+    check(count('balls') >= 10, () => `terms/${id}.json: only ${count('balls')} ball names`)
+    check(count('gameShort') >= 30, () => `terms/${id}.json: only ${count('gameShort')} game names`)
+    check(count('genus') >= 850, () => `terms/${id}.json: only ${count('genus')} genus texts`)
+    check(count('flavor') >= 700, () => `terms/${id}.json: only ${count('flavor')} Pokédex entries`)
+    check(count('formFull') >= 400, () => `terms/${id}.json: only ${count('formFull')} form names`)
+    check(count('locations') >= 0.75 * places.size, () => `terms/${id}.json: only ${count('locations')} of ${places.size} place names`)
+    // Two forms of one species never read the same.
+    for (const s of index.species) {
+      const fulls = s.forms.map((form) => terms.formFull?.[`${s.id}-${form.f}`] ?? form.full)
+      const labels = s.forms.map((form) => terms.forms?.[`${s.id}-${form.f}`] ?? form.name).filter((label) => label !== '')
+      check(new Set(fulls).size === fulls.length, () => `terms/${id}.json: two forms of ${s.name} share a full name`)
+      check(new Set(labels).size === labels.length, () => `terms/${id}.json: two forms of ${s.name} share a label`)
+    }
+  }
+}
+
 function main(): void {
   const loaded = load()
   if (!loaded) {
@@ -542,6 +627,7 @@ function main(): void {
   validateIndex(index)
   const counted = validateSpecies(index, details, manifest)
   validatePokedexes(details)
+  validateTerms(index, details)
   check(index.meta.counts.species === index.species.length, () => `meta.counts.species ${index.meta.counts.species} != ${index.species.length}`)
   check(index.meta.counts.forms === counted.forms, () => `meta.counts.forms ${index.meta.counts.forms} != ${counted.forms}`)
   check(index.meta.counts.rows === counted.rows, () => `meta.counts.rows ${index.meta.counts.rows} != ${counted.rows}`)

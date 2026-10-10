@@ -10,10 +10,12 @@
 import { useMemo } from 'react'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+import { isLanguageId, type LanguageId } from '@shared/languages'
 import { createEmptySave, type AppSettings, type CatchEntry, type DexRules, type SaveFile } from '@shared/save-types'
+import { t } from '@renderer/i18n/runtime'
 import { errorMessage } from '@renderer/lib/format'
 import { newId } from '@renderer/lib/id'
-import { checkEntry, parseSaveReport, sanitizeRules, sanitizeSettings, saveBackend, type SaveBackend, type SaveParseReport } from '@renderer/lib/storage'
+import { checkEntry, parseSaveReport, saveWarnings, sanitizeRules, sanitizeSettings, saveBackend, type SaveBackend, type SaveParseReport } from '@renderer/lib/storage'
 
 export type SaveStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -60,14 +62,19 @@ export interface SaveState {
   /** Changes settings. `rules` in the patch is merged like `setRules`. */
   setSettings(patch: Partial<Omit<AppSettings, 'rules'>> & { rules?: Partial<DexRules> }): void
   /** Records achievements as unlocked at `now` (ISO timestamp, default: the current time). Returns the ids that were new. */
+  /** Chooses the language of the interface and of the Pokémon terms. The app puts it on screen (see `applyLanguage`). */
+  setLanguage(language: LanguageId): void
   unlockAchievements(ids: readonly string[], now?: string): string[]
-  /** Replaces everything (import). The save is validated again on the way in. */
+  /**
+   * Replaces everything (import). The save is validated again on the way in. The language is
+   * not replaced: it belongs to this computer, and only when none is chosen yet is the incoming one taken.
+   */
   replaceSave(save: SaveFile): void
   /** Adds entries whose id is not present yet (import "merge", undo of a delete). */
   mergeEntries(entries: readonly CatchEntry[]): MergeResult
   /** Changes several entries in one step; unknown ids and changes that would make an entry invalid are skipped. Returns how many changed. */
   patchEntries(changes: readonly EntryCompletion[]): number
-  /** Deletes all entries and achievements; settings too unless `keepSettings`. */
+  /** Deletes all entries and achievements; settings too unless `keepSettings`. The chosen language stays either way. */
   resetAll(options?: { keepSettings?: boolean }): void
   /** Writes pending changes now. Resolves true when everything is on disk, false when the write failed. */
   flush(): Promise<boolean>
@@ -85,6 +92,13 @@ export interface SaveStoreOptions {
 }
 
 const RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000]
+
+/** Settings with the language set to `language`; without one when it is undefined. */
+function withLanguage(settings: AppSettings, language: LanguageId | undefined): AppSettings {
+  if (settings.language === language) return settings
+  const { language: _dropped, ...rest } = settings
+  return language === undefined ? rest : { ...rest, language }
+}
 
 function sameRules(a: DexRules, b: DexRules): boolean {
   return (Object.keys(a) as Array<keyof DexRules>).every((k) => a[k] === b[k])
@@ -143,7 +157,7 @@ export function createSaveStore(options: SaveStoreOptions = {}) {
             (err: unknown) => {
               if (mine <= persistedRev) return // a newer write has landed since
               if (sentRev === mine) sentRev = persistedRev
-              set({ lastError: `Your changes could not be saved: ${errorMessage(err, 'unknown error')}` })
+              set({ lastError: t('lib.store.saveFailed', { reason: errorMessage(err, t('lib.store.unknownError')) }) })
               const delay = RETRY_DELAYS_MS[failures++]
               if (delay !== undefined && timer === null) schedule(delay)
             }
@@ -179,10 +193,13 @@ export function createSaveStore(options: SaveStoreOptions = {}) {
           const attempt = (async () => {
             try {
               const raw = await backend.load()
-              const { save, ...report } = parseSaveReport(raw, now())
+              const parsed = parseSaveReport(raw, now())
+              const { save, ...rest } = parsed
+              // The notes are worded when they are read: the language is not known yet while the save loads.
+              const report = Object.defineProperty(rest, 'warnings', { enumerable: true, get: () => saveWarnings(parsed) })
               set({ status: 'ready', save, loadReport: raw === null || raw === undefined ? null : report, lastError: null, dirty: false })
             } catch (err) {
-              set({ status: 'error', lastError: `Your save could not be loaded: ${errorMessage(err, 'unknown error')}` })
+              set({ status: 'error', lastError: t('lib.store.loadFailed', { reason: errorMessage(err, t('lib.store.unknownError')) }) })
             } finally {
               hydrating = null
             }
@@ -195,7 +212,7 @@ export function createSaveStore(options: SaveStoreOptions = {}) {
           requireReady('addEntry')
           const stamp = now()
           const { entry, reason } = checkEntry({ ...input, id: newId(), createdAt: stamp, updatedAt: stamp }, stamp)
-          if (!entry) throw new Error(`This entry cannot be saved: ${reason ?? 'invalid data'}.`)
+          if (!entry) throw new Error(t('lib.store.entryInvalid', { reason: reason ?? t('lib.storage.reason.data') }))
           const save = get().save
           commit({ ...save, entries: [...save.entries, entry] }, stamp)
           return entry
@@ -209,7 +226,7 @@ export function createSaveStore(options: SaveStoreOptions = {}) {
           if (!old) return null
           const stamp = now()
           const { entry, reason } = checkEntry({ ...old, ...patch, id: old.id, createdAt: old.createdAt, updatedAt: stamp }, stamp)
-          if (!entry) throw new Error(`This entry cannot be saved: ${reason ?? 'invalid data'}.`)
+          if (!entry) throw new Error(t('lib.store.entryInvalid', { reason: reason ?? t('lib.storage.reason.data') }))
           const entries = save.entries.slice()
           entries[index] = entry
           commit({ ...save, entries }, stamp)
@@ -252,12 +269,17 @@ export function createSaveStore(options: SaveStoreOptions = {}) {
           const next: AppSettings = {
             rules,
             theme: patch.theme === 'dark' || patch.theme === 'light' ? patch.theme : old.theme,
+            ...(isLanguageId(patch.language) ? { language: patch.language } : old.language !== undefined && { language: old.language }),
             reduceMotion: typeof patch.reduceMotion === 'boolean' ? patch.reduceMotion : old.reduceMotion,
             trainerName: typeof patch.trainerName === 'string' ? sanitizeSettings({ trainerName: patch.trainerName }).trainerName : old.trainerName
           }
-          const unchanged = rules === old.rules && next.theme === old.theme && next.reduceMotion === old.reduceMotion && next.trainerName === old.trainerName
+          const unchanged = rules === old.rules && next.theme === old.theme && next.language === old.language && next.reduceMotion === old.reduceMotion && next.trainerName === old.trainerName
           if (unchanged) return
           commit({ ...save, settings: next }, now())
+        },
+
+        setLanguage(language) {
+          get().setSettings({ language })
         },
 
         unlockAchievements(ids, at) {
@@ -276,7 +298,8 @@ export function createSaveStore(options: SaveStoreOptions = {}) {
         replaceSave(save) {
           requireReady('replaceSave')
           const stamp = now()
-          commit(parseSaveReport(save, stamp).save, stamp)
+          const next = parseSaveReport(save, stamp).save
+          commit({ ...next, settings: withLanguage(next.settings, get().save.settings.language ?? next.settings.language) }, stamp)
         },
 
         mergeEntries(incoming) {
@@ -318,7 +341,8 @@ export function createSaveStore(options: SaveStoreOptions = {}) {
           requireReady('resetAll')
           const stamp = now()
           const fresh = createEmptySave(stamp)
-          commit(resetOptions?.keepSettings ? { ...fresh, settings: get().save.settings } : fresh, stamp)
+          const settings = get().save.settings
+          commit({ ...fresh, settings: resetOptions?.keepSettings ? settings : withLanguage(fresh.settings, settings.language) }, stamp)
         },
 
         async flush() {

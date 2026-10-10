@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { AppInfo } from '@shared/api'
 import { Icon, Panel, cx, type IconName } from '@renderer/components/ui'
+import { t, useT } from '@renderer/i18n'
 import { isElectron } from '@renderer/lib/env'
 import { errorMessage } from '@renderer/lib/format'
 import { useSaveStore } from '@renderer/store/save'
@@ -12,19 +13,20 @@ export type SectionId = 'trainer' | 'rules' | 'appearance' | 'data' | 'sprites' 
 
 export interface SectionDef {
   id: SectionId
-  title: string
+  /** The section's name in the active language, read when shown. */
+  readonly title: string
   icon: IconName
 }
 
-const ALL_SECTIONS: readonly SectionDef[] = [
-  { id: 'trainer', title: 'Trainer', icon: 'user' },
-  { id: 'rules', title: 'Living Dex rules', icon: 'grid' },
-  { id: 'appearance', title: 'Appearance', icon: 'sun' },
-  { id: 'data', title: 'Your data', icon: 'database' },
-  { id: 'sprites', title: 'Sprite cache', icon: 'image' },
-  { id: 'updates', title: 'Updates', icon: 'download' },
-  { id: 'about', title: 'About', icon: 'info' }
-]
+const section = (id: SectionId, icon: IconName): SectionDef => ({
+  id,
+  icon,
+  get title() {
+    return t(`settings.section.${id}`)
+  }
+})
+
+const ALL_SECTIONS: readonly SectionDef[] = [section('trainer', 'user'), section('rules', 'grid'), section('appearance', 'sun'), section('data', 'database'), section('sprites', 'image'), section('updates', 'download'), section('about', 'info')]
 
 /** Sections that only exist in the desktop app. A browser has nothing to check or install, so it gets no dead entry in the index. */
 const DESKTOP_ONLY: ReadonlySet<SectionId> = new Set<SectionId>(['updates'])
@@ -45,6 +47,7 @@ export interface SettingsSectionProps {
 
 /** One titled block of the page. Its heading takes focus when the index jumps to it. */
 export function SettingsSection({ id, description, aside, children }: SettingsSectionProps) {
+  useT()
   const def = ALL_SECTIONS.find((s) => s.id === id)
   const domId = sectionDomId(id)
   return (
@@ -102,15 +105,14 @@ export function useSaveState(): SaveState {
   return failing ? 'failing' : dirty ? 'saving' : 'saved'
 }
 
-const SAVE_STATE_TEXT: Readonly<Record<SaveState, string>> = { saved: 'Saved', saving: 'Saving…', failing: 'Not saved' }
-
 /** The small "Saved" marker next to a field; it tells the truth while a write is pending or failing. */
 export function SavedMark() {
   const state = useSaveState()
+  const t = useT()
   return (
     <span className={cx('settings-saved', `settings-saved--${state}`)}>
       {state !== 'saving' && <Icon name={state === 'failing' ? 'warning' : 'check'} size={14} />}
-      {SAVE_STATE_TEXT[state]}
+      {t(`settings.mark.${state}`)}
     </span>
   )
 }
@@ -119,6 +121,7 @@ export function SavedMark() {
 
 /** A web link: the system browser inside the desktop app, a new tab in a browser. */
 export function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
+  const t = useT()
   return (
     <a
       className="settings-link"
@@ -130,12 +133,12 @@ export function ExternalLink({ href, children }: { href: string; children: React
         if (!api) return
         event.preventDefault()
         api.openExternal(href).catch((err: unknown) => {
-          toast({ kind: 'error', title: 'That link could not be opened', body: errorMessage(err) })
+          toast({ kind: 'error', title: t('settings.link.failed'), body: errorMessage(err) })
         })
       }}
     >
       {children}
-      <Icon name="external" size={13} label="(opens in your browser)" />
+      <Icon name="external" size={13} label={t('settings.link.opens')} />
     </a>
   )
 }

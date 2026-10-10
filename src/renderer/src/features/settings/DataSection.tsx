@@ -1,11 +1,12 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { SaveFile } from '@shared/save-types'
 import { Button, Checkbox, Dialog, Icon, TextField } from '@renderer/components/ui'
 import { GameSaveDialog } from '@renderer/features/gamesave/GameSaveDialog'
 import { failureText, gameSaveSource, type ImportSource } from '@renderer/features/gamesave/model'
 import { shinyDexFailureText, shinyDexSource } from '@renderer/features/gamesave/shinydex'
+import { rich, t, useT } from '@renderer/i18n'
 import { shake } from '@renderer/lib/anim'
-import { errorMessage, formatCount, formatDateTime, plural } from '@renderer/lib/format'
+import { errorMessage, formatCount, formatDateTime } from '@renderer/lib/format'
 import { exportSaveToFile, importSaveFromFile, type SaveParseReport } from '@renderer/lib/storage'
 import { useSaveStore } from '@renderer/store/save'
 import { toast } from '@renderer/store/ui'
@@ -20,10 +21,10 @@ async function exportCurrentSave(): Promise<void> {
   try {
     const result = await exportSaveToFile(useSaveStore.getState().save)
     if (result.canceled) return
-    if (window.api) toast({ kind: 'success', title: 'Save exported', body: result.path, icon: 'download' })
-    else toast({ kind: 'success', title: 'Save downloaded', body: result.path ? `Look for ${result.path} in your downloads.` : undefined, icon: 'download' })
+    if (window.api) toast({ kind: 'success', title: t('settings.export.done'), body: result.path, icon: 'download' })
+    else toast({ kind: 'success', title: t('settings.export.downloaded'), body: result.path ? t('settings.export.downloadedBody', { file: result.path }) : undefined, icon: 'download' })
   } catch (err) {
-    toast({ kind: 'error', title: 'The save could not be exported', body: errorMessage(err) })
+    toast({ kind: 'error', title: t('settings.export.failed'), body: errorMessage(err) })
   }
 }
 
@@ -36,14 +37,14 @@ function undoToast(title: string, body: string, previous: SaveFile, onUndone: ()
     icon: 'database',
     durationMs: UNDO_MS,
     action: {
-      label: 'Undo',
+      label: t('settings.undo.action'),
       onSelect: () => {
         try {
           useSaveStore.getState().replaceSave(previous)
           onUndone()
-          toast({ kind: 'success', title: 'Your previous save is back', body: plural(previous.entries.length, 'entry', 'entries'), icon: 'undo' })
+          toast({ kind: 'success', title: t('settings.undo.done.title'), body: t('settings.undo.done.body', { count: previous.entries.length }), icon: 'undo' })
         } catch (err) {
-          toast({ kind: 'error', title: 'The previous save could not be restored', body: errorMessage(err) })
+          toast({ kind: 'error', title: t('settings.undo.failed'), body: errorMessage(err) })
         }
       }
     }
@@ -51,6 +52,8 @@ function undoToast(title: string, body: string, previous: SaveFile, onUndone: ()
 }
 
 // ---------------------------------------------------------------- import
+
+const bold = { b: (children: ReactNode) => <b>{children}</b> }
 
 interface ImportDialogProps {
   report: SaveParseReport | null
@@ -60,6 +63,7 @@ interface ImportDialogProps {
 }
 
 function ImportDialog({ report, onClose, onReplaced }: ImportDialogProps) {
+  const t = useT()
   const currentEntries = useSaveStore((s) => s.save.entries)
   const fresh = useMemo(() => (report ? { report, summary: summarizeImport(report, currentEntries), current: currentEntries.length } : null), [report, currentEntries])
   // Frozen while the dialog plays its exit, so its text neither blanks out nor changes under the fade.
@@ -77,12 +81,12 @@ function ImportDialog({ report, onClose, onReplaced }: ImportDialogProps) {
       const { added, skipped } = store.mergeEntries(shown.save.entries)
       onClose()
       if (added === 0) {
-        toast({ kind: 'info', title: 'Nothing new to add', body: 'Every entry in that file is already in your save.' })
+        toast({ kind: 'info', title: t('settings.import.nothingNew.title'), body: t('settings.import.nothingNew.body') })
         return
       }
-      undoToast(`${plural(added, 'entry', 'entries')} added`, skipped > 0 ? `${plural(skipped, 'entry was', 'entries were')} already in your save.` : 'Your settings and achievements stayed as they were.', previous, onReplaced)
+      undoToast(t('settings.import.added.title', { count: added }), skipped > 0 ? t('settings.import.added.skipped', { count: skipped }) : t('settings.import.added.untouched'), previous, onReplaced)
     } catch (err) {
-      toast({ kind: 'error', title: 'The entries could not be merged', body: errorMessage(err) })
+      toast({ kind: 'error', title: t('settings.import.mergeFailed'), body: errorMessage(err) })
     }
   }
 
@@ -94,9 +98,9 @@ function ImportDialog({ report, onClose, onReplaced }: ImportDialogProps) {
       store.replaceSave(shown.save)
       onClose()
       onReplaced()
-      undoToast('Save replaced', `${plural(shown.save.entries.length, 'entry', 'entries')} loaded from the file.`, previous, onReplaced)
+      undoToast(t('settings.import.replaced.title'), t('settings.import.replaced.body', { count: shown.save.entries.length }), previous, onReplaced)
     } catch (err) {
-      toast({ kind: 'error', title: 'The save could not be replaced', body: errorMessage(err) })
+      toast({ kind: 'error', title: t('settings.import.replaceFailed'), body: errorMessage(err) })
     }
   }
 
@@ -105,8 +109,8 @@ function ImportDialog({ report, onClose, onReplaced }: ImportDialogProps) {
       open={report !== null}
       onClose={onClose}
       size="lg"
-      title="Import this save?"
-      description="Nothing has changed yet. Check the file, then choose what to do with it."
+      title={t('settings.import.title')}
+      description={t('settings.import.description')}
       media={
         <span className="settings-dialog-icon">
           <Icon name="upload" size={22} />
@@ -114,20 +118,20 @@ function ImportDialog({ report, onClose, onReplaced }: ImportDialogProps) {
       }
       footer={
         <Button variant="ghost" onClick={onClose} data-autofocus>
-          Cancel
+          {t('common.cancel')}
         </Button>
       }
     >
       {summary && shown && (
         <div className="settings-import">
           <dl className="settings-facts">
-            <Fact label="Entries">
+            <Fact label={t('settings.data.entries')}>
               {formatCount(summary.entries)}
-              {summary.shiny > 0 && <span className="settings-fact__extra">{formatCount(summary.shiny)} shiny</span>}
+              {summary.shiny > 0 && <span className="settings-fact__extra">{t('settings.import.shiny', { count: summary.shiny })}</span>}
             </Fact>
-            <Fact label="Last saved">{formatDateTime(summary.savedAt) || 'Unknown'}</Fact>
-            <Fact label="Trainer">{summary.trainerName === '' ? 'Not set' : summary.trainerName}</Fact>
-            <Fact label="Achievements">{formatCount(summary.achievements)}</Fact>
+            <Fact label={t('settings.import.lastSaved')}>{formatDateTime(summary.savedAt) || t('common.unknown')}</Fact>
+            <Fact label={t('settings.import.trainer')}>{summary.trainerName === '' ? t('settings.import.trainerNotSet') : summary.trainerName}</Fact>
+            <Fact label={t('settings.data.achievements')}>{formatCount(summary.achievements)}</Fact>
           </dl>
 
           {(summary.dropped > 0 || summary.repaired > 0 || summary.newer) && (
@@ -135,23 +139,19 @@ function ImportDialog({ report, onClose, onReplaced }: ImportDialogProps) {
               {summary.newer && (
                 <li>
                   <Icon name="warning" size={16} />
-                  <span>This file was written by a newer version of Pelagix. Anything this version does not understand is left out.</span>
+                  <span>{t('settings.import.warning.newer')}</span>
                 </li>
               )}
               {summary.dropped > 0 && (
                 <li>
                   <Icon name="warning" size={16} />
-                  <span>
-                    {plural(summary.dropped, 'entry', 'entries')} could not be read (damaged or repeated) and {summary.dropped === 1 ? 'is' : 'are'} left out.
-                  </span>
+                  <span>{t('settings.import.warning.dropped', { count: summary.dropped })}</span>
                 </li>
               )}
               {summary.repaired > 0 && (
                 <li>
                   <Icon name="info" size={16} />
-                  <span>
-                    {plural(summary.repaired, 'entry', 'entries')} had a detail that made no sense; {summary.repaired === 1 ? 'it is' : 'they are'} kept without it.
-                  </span>
+                  <span>{t('settings.import.warning.repaired', { count: summary.repaired })}</span>
                 </li>
               )}
             </ul>
@@ -161,36 +161,34 @@ function ImportDialog({ report, onClose, onReplaced }: ImportDialogProps) {
             <div className="settings-choice">
               <h3 className="settings-choice__title">
                 <Icon name="plus" size={16} />
-                Merge entries
+                {t('settings.import.merge.title')}
               </h3>
               <p className="settings-choice__text">
-                {summary.fresh === 0 ? (
-                  'Every entry in this file is already in your save, so there is nothing to add.'
-                ) : (
-                  <>
-                    Adds the <b>{plural(summary.fresh, 'entry', 'entries')}</b> you do not have yet{summary.known > 0 ? ` (${formatCount(summary.known)} ${summary.known === 1 ? 'is' : 'are'} already here)` : ''}. Your settings and achievements stay as they are.
-                  </>
-                )}
+                {summary.fresh === 0
+                  ? t('settings.import.merge.nothing')
+                  : summary.known > 0
+                    ? rich('settings.import.merge.textKnown', bold, { count: summary.fresh, known: t('settings.import.merge.known', { count: summary.known }) })
+                    : rich('settings.import.merge.text', bold, { count: summary.fresh })}
               </p>
               <Button variant="primary" icon="plus" block disabled={summary.fresh === 0} onClick={merge}>
-                Merge entries
+                {t('settings.import.merge.title')}
               </Button>
             </div>
             <div className="settings-choice settings-choice--danger">
               <h3 className="settings-choice__title">
                 <Icon name="swap" size={16} />
-                Replace everything
+                {t('settings.import.replace.title')}
               </h3>
               <p className="settings-choice__text">
-                Swaps your current save (<b>{plural(currentCount, 'entry', 'entries')}</b>, its settings and achievements) for this file.{' '}
+                {rich('settings.import.replace.text', bold, { count: currentCount })}{' '}
                 {currentCount > 0 && (
                   <button type="button" className="settings-inline-button" onClick={() => void exportCurrentSave()}>
-                    Export what you have first
+                    {t('settings.import.replace.exportFirst')}
                   </button>
                 )}
               </p>
               <Button variant="danger" icon="swap" block onClick={replace}>
-                Replace everything
+                {t('settings.import.replace.title')}
               </Button>
             </div>
           </div>
@@ -212,6 +210,7 @@ function ResetDialog({ open, onClose, onReplaced }: { open: boolean; onClose: ()
   const [nudged, setNudged] = useState(false)
   const fieldRef = useRef<HTMLDivElement>(null)
   const armed = typed.trim() === RESET_WORD
+  const t = useT()
 
   const close = (): void => {
     onClose()
@@ -232,19 +231,29 @@ function ResetDialog({ open, onClose, onReplaced }: { open: boolean; onClose: ()
       store.resetAll({ keepSettings })
       close()
       onReplaced()
-      undoToast('Your Living Dex was reset', `${plural(previous.entries.length, 'entry', 'entries')} deleted${keepSettings ? '; your settings were kept' : ''}.`, previous, onReplaced)
+      undoToast(t('settings.reset.done.title'), t(keepSettings ? 'settings.reset.done.bodyKept' : 'settings.reset.done.body', { count: previous.entries.length }), previous, onReplaced)
     } catch (err) {
-      toast({ kind: 'error', title: 'The reset did not go through', body: errorMessage(err) })
+      toast({ kind: 'error', title: t('settings.reset.failed'), body: errorMessage(err) })
     }
   }
+
+  const achievements = t('settings.reset.achievements', { count: achievementCount })
+  const description =
+    achievementCount > 0
+      ? entryCount === 0
+        ? t('settings.reset.description.nothingAnd', { achievements })
+        : t('settings.reset.description.entriesAnd', { count: entryCount, achievements })
+      : entryCount === 0
+        ? t('settings.reset.description.nothing')
+        : t('settings.reset.description.entries', { count: entryCount })
 
   return (
     <Dialog
       open={open}
       onClose={close}
       size="md"
-      title="Reset your Living Dex?"
-      description={`This deletes ${entryCount === 0 ? 'everything you have logged' : `all ${plural(entryCount, 'entry', 'entries')}`}${achievementCount > 0 ? ` and ${plural(achievementCount, 'unlocked achievement')}` : ''}.`}
+      title={t('settings.reset.title')}
+      description={description}
       media={
         <span className="settings-dialog-icon settings-dialog-icon--danger">
           <Icon name="warning" size={22} />
@@ -253,10 +262,10 @@ function ResetDialog({ open, onClose, onReplaced }: { open: boolean; onClose: ()
       footer={
         <>
           <Button variant="ghost" onClick={close}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button variant="danger" icon="trash" aria-disabled={!armed} className={armed ? undefined : 'settings-reset__confirm--waiting'} onClick={reset}>
-            Delete everything
+            {t('settings.reset.confirm')}
           </Button>
         </>
       }
@@ -268,29 +277,25 @@ function ResetDialog({ open, onClose, onReplaced }: { open: boolean; onClose: ()
           reset()
         }}
       >
-        <Checkbox checked={keepSettings} onChange={setKeepSettings} label="Keep my settings" description="Trainer name, Living Dex rules and theme stay as they are. Untick to start completely fresh." />
+        <Checkbox checked={keepSettings} onChange={setKeepSettings} label={t('settings.reset.keep.label')} description={t('settings.reset.keep.description')} />
         <div ref={fieldRef}>
           <TextField
-            label={
-              <>
-                Type <b className="settings-reset__word">{RESET_WORD}</b> to confirm
-              </>
-            }
+            label={rich('settings.reset.type', { word: () => <b className="settings-reset__word">{RESET_WORD}</b> })}
             value={typed}
             onChange={(text) => {
               setTyped(text)
               setNudged(false)
             }}
             autoCapitalize="characters"
-            error={nudged && !armed ? `Type ${RESET_WORD} in capital letters to go ahead.` : undefined}
+            error={nudged && !armed ? t('settings.reset.typeError', { word: RESET_WORD }) : undefined}
             data-autofocus
           />
         </div>
         {entryCount > 0 && (
           <p className="settings-text">
-            Want a way back?{' '}
+            {t('settings.reset.wayBack')}{' '}
             <button type="button" className="settings-inline-button" onClick={() => void exportCurrentSave()}>
-              Export your save first
+              {t('settings.reset.exportFirst')}
             </button>
           </p>
         )}
@@ -316,6 +321,7 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
   const [report, setReport] = useState<SaveParseReport | null>(null)
   const [gameSave, setGameSave] = useState<ImportSource | null>(null)
   const [resetOpen, setResetOpen] = useState(false)
+  const t = useT()
 
   const exportSave = async (): Promise<void> => {
     setBusy('export')
@@ -329,7 +335,7 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
       const picked = await importSaveFromFile()
       if (picked) setReport(picked)
     } catch (err) {
-      toast({ kind: 'error', title: 'That file could not be imported', body: errorMessage(err) })
+      toast({ kind: 'error', title: t('settings.data.importFailed'), body: errorMessage(err) })
     } finally {
       setBusy(null)
     }
@@ -345,9 +351,9 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
       // The main process has checked the reader's answer; this only keeps a malformed one away from the preview.
       const contents = result.ok === true ? result.contents : null
       if (contents && Array.isArray(contents.pokemon) && typeof contents.fileName === 'string' && typeof contents.save?.trainer === 'string' && typeof contents.save.version?.name === 'string') setGameSave(gameSaveSource(contents))
-      else toast({ kind: 'error', title: 'That file could not be imported', body: failureText(result.ok === false ? result.reason : undefined) })
+      else toast({ kind: 'error', title: t('settings.data.importFailed'), body: failureText(result.ok === false ? result.reason : undefined) })
     } catch (err) {
-      toast({ kind: 'error', title: 'That file could not be imported', body: errorMessage(err, failureText(undefined)) })
+      toast({ kind: 'error', title: t('settings.data.importFailed'), body: errorMessage(err, failureText(undefined)) })
     } finally {
       setBusy(null)
     }
@@ -362,51 +368,55 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
       if (result === null) return
       const history = result.ok === true ? result.history : null
       if (history && Array.isArray(history.rows) && typeof history.fileName === 'string' && typeof history.dropped === 'number' && typeof history.unusable === 'number') setGameSave(shinyDexSource(history))
-      else toast({ kind: 'error', title: 'That file could not be imported', body: shinyDexFailureText(result.ok === false ? result.reason : undefined) })
+      else toast({ kind: 'error', title: t('settings.data.importFailed'), body: shinyDexFailureText(result.ok === false ? result.reason : undefined) })
     } catch (err) {
-      toast({ kind: 'error', title: 'That file could not be imported', body: errorMessage(err, shinyDexFailureText(undefined)) })
+      toast({ kind: 'error', title: t('settings.data.importFailed'), body: errorMessage(err, shinyDexFailureText(undefined)) })
     } finally {
       setBusy(null)
     }
   }
 
   const gameSaveImported = (previous: SaveFile, added: number, fileName: string, completed: number): void => {
-    const filled = `${plural(completed, 'earlier entry', 'earlier entries')} got the ability, PID, IVs or EVs ${completed === 1 ? 'it' : 'they'} lacked.`
     if (added === 0 && completed > 0) {
-      undoToast(`${plural(completed, 'entry', 'entries')} completed`, `From ${fileName}: ${filled}`, previous, onReplaced)
+      undoToast(t('settings.gameSave.completed.title', { count: completed }), t('settings.gameSave.completed.body', { count: completed, file: fileName }), previous, onReplaced)
       return
     }
     if (added === 0) {
-      toast({ kind: 'info', title: 'Nothing new to add', body: 'Every Pokémon you chose is already in your save.' })
+      toast({ kind: 'info', title: t('settings.import.nothingNew.title'), body: t('settings.gameSave.nothingNew.body') })
       return
     }
-    undoToast(`${plural(added, 'entry', 'entries')} added`, `Imported from ${fileName}. You can edit them like any other entry.${completed > 0 ? ` ${filled}` : ''}`, previous, onReplaced)
+    undoToast(
+      t('settings.import.added.title', { count: added }),
+      completed > 0 ? t('settings.gameSave.added.bodyCompleted', { count: completed, file: fileName }) : t('settings.gameSave.added.body', { file: fileName }),
+      previous,
+      onReplaced
+    )
   }
 
   return (
-    <SettingsSection id="data" description="Your save holds every entry, your settings and your achievements. Keep a copy somewhere safe.">
+    <SettingsSection id="data" description={t('settings.data.description')}>
       <dl className="settings-facts">
-        <Fact label="Entries">{formatCount(entryCount)}</Fact>
-        <Fact label="Achievements">{formatCount(achievementCount)}</Fact>
-        <Fact label="Last change">{formatDateTime(updatedAt) || 'Never'}</Fact>
-        <Fact label="Started">{formatDateTime(createdAt) || 'Unknown'}</Fact>
+        <Fact label={t('settings.data.entries')}>{formatCount(entryCount)}</Fact>
+        <Fact label={t('settings.data.achievements')}>{formatCount(achievementCount)}</Fact>
+        <Fact label={t('settings.data.lastChange')}>{formatDateTime(updatedAt) || t('settings.data.never')}</Fact>
+        <Fact label={t('settings.data.started')}>{formatDateTime(createdAt) || t('common.unknown')}</Fact>
       </dl>
 
       <div className="settings-where">
         <Icon name="database" size={18} />
         <div className="settings-where__text">
-          <span className="settings-row__label">Where your save lives</span>
+          <span className="settings-row__label">{t('settings.data.where.title')}</span>
           {app.desktop ? (
             app.info ? (
               <>
                 <code className="settings-path u-selectable">{saveFilePath(app.info.userData)}</code>
-                <span className="settings-row__desc">Pelagix writes this file after every change and keeps backups in the same folder.</span>
+                <span className="settings-row__desc">{t('settings.data.where.file')}</span>
               </>
             ) : (
-              <span className="settings-row__desc">{app.error ?? 'In the Pelagix data folder on this computer.'}</span>
+              <span className="settings-row__desc">{app.error ?? t('settings.data.where.folder')}</span>
             )
           ) : (
-            <span className="settings-row__desc">In this browser's storage, on this device only. Clearing the site data of this page erases it, so export a copy now and then.</span>
+            <span className="settings-row__desc">{t('settings.data.where.browser')}</span>
           )}
         </div>
       </div>
@@ -414,44 +424,41 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
       <div className="settings-actions">
         <div className="settings-action">
           <div className="settings-row__text">
-            <span className="settings-row__label">Export save</span>
-            <span className="settings-row__desc">A single file with everything in it. Use it as a backup or to move to another computer.</span>
+            <span className="settings-row__label">{t('settings.data.export.label')}</span>
+            <span className="settings-row__desc">{t('settings.data.export.description')}</span>
           </div>
           <Button icon="download" loading={busy === 'export'} onClick={() => void exportSave()}>
-            Export save
+            {t('settings.data.export.label')}
           </Button>
         </div>
         <div className="settings-action">
           <div className="settings-row__text">
-            <span className="settings-row__label">Import save</span>
-            <span className="settings-row__desc">Open a save file. You see what is in it before anything changes, and choose to merge or replace.</span>
+            <span className="settings-row__label">{t('settings.data.import.label')}</span>
+            <span className="settings-row__desc">{t('settings.data.import.description')}</span>
           </div>
           <Button icon="upload" loading={busy === 'import'} onClick={() => void importSave()}>
-            Import save
+            {t('settings.data.import.label')}
           </Button>
         </div>
         {app.desktop && (
           <div className="settings-action">
             <div className="settings-row__text">
-              <span className="settings-row__label">Import from a game save</span>
-              <span className="settings-row__desc">Open a save file of a Pokémon game and add the Pokémon in it as entries. You choose which ones first. The save file is only read, never changed.</span>
+              <span className="settings-row__label">{t('settings.data.gameSave.label')}</span>
+              <span className="settings-row__desc">{t('settings.data.gameSave.description')}</span>
             </div>
             <Button icon="gamepad" loading={busy === 'game'} disabled={busy !== null && busy !== 'game'} onClick={() => void importGameSave()}>
-              {busy === 'game' ? 'Reading…' : 'Import from a game save'}
+              {busy === 'game' ? t('settings.data.reading') : t('settings.data.gameSave.label')}
             </Button>
           </div>
         )}
         {app.desktop && (
           <div className="settings-action">
             <div className="settings-row__text">
-              <span className="settings-row__label">Import from ShinyDex</span>
-              <span className="settings-row__desc">
-                Choose your ShinyDex export, a .json file. A saved copy of your History page on shinydex.com works too: scroll to the end so that every shiny is listed, save the page from the browser and choose
-                the .html file. You choose which shinies to add first, and your rules and settings stay as they are.
-              </span>
+              <span className="settings-row__label">{t('settings.data.shinyDex.label')}</span>
+              <span className="settings-row__desc">{t('settings.data.shinyDex.description')}</span>
             </div>
             <Button icon="sparkle" loading={busy === 'shinydex'} disabled={busy !== null && busy !== 'shinydex'} onClick={() => void importShinyDex()}>
-              {busy === 'shinydex' ? 'Reading…' : 'Import from ShinyDex'}
+              {busy === 'shinydex' ? t('settings.data.reading') : t('settings.data.shinyDex.label')}
             </Button>
           </div>
         )}
@@ -461,12 +468,12 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
         <div className="settings-row__text">
           <span className="settings-danger__title">
             <Icon name="warning" size={16} />
-            Danger zone
+            {t('settings.data.danger.title')}
           </span>
-          <span className="settings-row__desc">Reset deletes every entry and achievement. You are asked to confirm, and you can keep your settings.</span>
+          <span className="settings-row__desc">{t('settings.data.danger.description')}</span>
         </div>
         <Button variant="danger" icon="trash" onClick={() => setResetOpen(true)}>
-          Reset…
+          {t('settings.data.danger.reset')}
         </Button>
       </div>
 

@@ -16,11 +16,13 @@ import { GAME_BY_ID } from '@shared/games'
 import type { CatchEntry } from '@shared/save-types'
 import type { MenuItem } from '@renderer/components/ui/Menu'
 import { describeEntry } from '@renderer/domain/entries'
+import { t } from '@renderer/i18n/runtime'
+import { formFullName, gameName, speciesName } from '@renderer/i18n/terms'
 import { navigate, paths } from '@renderer/shell/router'
 import { useSaveStore, type SaveState } from '@renderer/store/save'
 import { useUiStore, type UiState } from '@renderer/store/ui'
 import { useDexStore, type Dex } from './data'
-import { errorMessage, kindLabel } from './format'
+import { errorMessage, kindLabel, shownMethod } from './format'
 
 // ---------------------------------------------------------------- wording
 
@@ -29,7 +31,7 @@ import { errorMessage, kindLabel } from './format'
  * "5★ Tera Raid"), else the kind ("Gift", "Evolved"). Undefined when neither says anything.
  */
 export function entryMethodText(entry: Pick<CatchEntry, 'kind' | 'method'>): string | undefined {
-  if (entry.method !== undefined && entry.method.trim() !== '') return entry.method
+  if (entry.method !== undefined && entry.method.trim() !== '') return shownMethod(entry.method)
   return entry.kind === 'other' ? undefined : kindLabel(entry.kind)
 }
 
@@ -43,8 +45,10 @@ export function entryOriginText(dex: Dex | null, entry: Pick<CatchEntry, 'specie
   if (!origin) return undefined
   const [species, form] = origin
   if (species === entry.species && form === entry.form) return undefined
-  const name = dex?.form(species, form)?.full ?? dex?.species(species)?.name ?? `Pokémon #${species}`
-  return `${species === entry.species ? 'Changed from' : 'Evolved from'} ${name}`
+  const summary = dex?.species(species)
+  const formSummary = dex?.form(species, form)
+  const name = formSummary ? formFullName(species, formSummary) : summary ? speciesName(summary) : t('lib.entry.unknownPokemon', { number: String(species) })
+  return t(species === entry.species ? 'lib.entry.changedFrom' : 'lib.entry.evolvedFrom', { name })
 }
 
 /**
@@ -52,10 +56,10 @@ export function entryOriginText(dex: Dex | null, entry: Pick<CatchEntry, 'specie
  * "Shiny Alolan Raichu · Pokémon Sun", "Sparky (Pikachu) · Pokémon Yellow".
  */
 export function entrySummary(dex: Dex | null, entry: CatchEntry): string {
-  const name = dex ? describeEntry(dex, entry).name : `Pokémon #${entry.species}`
-  const full = entry.shiny ? `Shiny ${name}` : name
-  const who = entry.nickname !== undefined && entry.nickname !== '' ? `${entry.nickname} (${full})` : full
-  return `${who} · ${GAME_BY_ID.get(entry.game)?.name ?? 'Unknown game'}`
+  const name = dex ? describeEntry(dex, entry).name : t('lib.entry.unknownPokemon', { number: String(entry.species) })
+  const full = entry.shiny ? t('lib.entry.shinyName', { name }) : name
+  const who = entry.nickname !== undefined && entry.nickname !== '' ? t('lib.entry.nicknamed', { nickname: entry.nickname, name: full }) : full
+  return t('lib.entry.summary', { who, game: GAME_BY_ID.has(entry.game) ? gameName(entry.game) : t('lib.entry.unknownGame') })
 }
 
 // ---------------------------------------------------------------- actions
@@ -102,7 +106,7 @@ export function createEntryActions(overrides: Partial<EntryActionDeps> = {}): En
   const save = (): ReturnType<EntryActionDeps['save']['getState']> => deps.save.getState()
   const ui = (): ReturnType<EntryActionDeps['ui']['getState']> => deps.ui.getState()
 
-  const gone = (): void => void ui().push({ kind: 'error', title: 'That entry no longer exists', body: 'It may have been deleted already.' })
+  const gone = (): void => void ui().push({ kind: 'error', title: t('lib.actions.gone.title'), body: t('lib.actions.gone.body') })
   const failed = (title: string, err: unknown): void => void ui().push({ kind: 'error', title, body: errorMessage(err) })
 
   const actions: EntryActions = {
@@ -120,7 +124,7 @@ export function createEntryActions(overrides: Partial<EntryActionDeps> = {}): En
       try {
         copy = save().duplicateEntry(id)
       } catch (err) {
-        failed('The entry could not be duplicated', err)
+        failed(t('lib.actions.duplicateFailed'), err)
         return null
       }
       if (!copy) {
@@ -130,10 +134,10 @@ export function createEntryActions(overrides: Partial<EntryActionDeps> = {}): En
       const copyId = copy.id
       ui().push({
         kind: 'success',
-        title: 'Entry duplicated',
+        title: t('lib.actions.duplicated'),
         body: entrySummary(deps.dex(), copy),
         icon: 'copy',
-        action: { label: 'Edit', onSelect: () => void actions.editEntry(copyId) }
+        action: { label: t('common.edit'), onSelect: () => void actions.editEntry(copyId) }
       })
       return copy
     },
@@ -143,7 +147,7 @@ export function createEntryActions(overrides: Partial<EntryActionDeps> = {}): En
       try {
         removed = save().deleteEntry(id)
       } catch (err) {
-        failed('The entry could not be deleted', err)
+        failed(t('lib.actions.deleteFailed'), err)
         return null
       }
       if (!removed) {
@@ -156,10 +160,10 @@ export function createEntryActions(overrides: Partial<EntryActionDeps> = {}): En
       if (ui().lastCapture === id) ui().setLastCapture(null)
       ui().push({
         kind: 'info',
-        title: 'Entry deleted',
+        title: t('lib.actions.deleted'),
         body: entrySummary(deps.dex(), entry),
         icon: 'trash',
-        action: { label: 'Undo', onSelect: () => void actions.restoreEntry(entry) }
+        action: { label: t('common.undo'), onSelect: () => void actions.restoreEntry(entry) }
       })
       return entry
     },
@@ -169,14 +173,14 @@ export function createEntryActions(overrides: Partial<EntryActionDeps> = {}): En
       try {
         added = save().mergeEntries([entry]).added
       } catch (err) {
-        failed('The entry could not be restored', err)
+        failed(t('lib.actions.restoreFailed'), err)
         return false
       }
       if (added === 0) {
-        ui().push({ kind: 'info', title: 'Nothing to restore', body: 'That entry is already in your Living Dex.' })
+        ui().push({ kind: 'info', title: t('lib.actions.nothingToRestore.title'), body: t('lib.actions.nothingToRestore.body') })
         return false
       }
-      ui().push({ kind: 'success', title: 'Entry restored', body: entrySummary(deps.dex(), entry), icon: 'undo' })
+      ui().push({ kind: 'success', title: t('lib.actions.restored'), body: entrySummary(deps.dex(), entry), icon: 'undo' })
       return true
     },
 
@@ -189,12 +193,12 @@ export function createEntryActions(overrides: Partial<EntryActionDeps> = {}): En
       // A Pokémon this version's data does not know has no Pokédex page to open.
       const dex = deps.dex()
       const hasPage = dex === null || dex.species(entry.species) !== undefined
-      if (options.openSpecies !== false && hasPage) items.push({ id: 'open-species', label: 'Open Pokédex page', icon: 'dex', onSelect: () => actions.openEntrySpecies(entry) })
+      if (options.openSpecies !== false && hasPage) items.push({ id: 'open-species', label: t('lib.actions.menu.openSpecies'), icon: 'dex', onSelect: () => actions.openEntrySpecies(entry) })
       items.push(
-        { id: 'edit', label: 'Edit', icon: 'edit', onSelect: () => void actions.editEntry(entry.id) },
+        { id: 'edit', label: t('common.edit'), icon: 'edit', onSelect: () => void actions.editEntry(entry.id) },
         {
           id: 'duplicate',
-          label: 'Duplicate',
+          label: t('common.duplicate'),
           icon: 'copy',
           onSelect: () => {
             const copy = actions.duplicateEntryWithToast(entry.id)
@@ -204,7 +208,7 @@ export function createEntryActions(overrides: Partial<EntryActionDeps> = {}): En
         { separator: true, id: 'before-delete' },
         {
           id: 'delete',
-          label: 'Delete',
+          label: t('common.delete'),
           icon: 'trash',
           danger: true,
           onSelect: () => {

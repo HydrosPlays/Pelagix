@@ -5,6 +5,8 @@ import type { CatchEntry } from '@shared/save-types'
 import { GameIcon, SystemIcon } from '@renderer/components/pokemon'
 import { Button, Chip, cx, EmptyState, Icon, Skeleton, Switch, Tag, TextField } from '@renderer/components/ui'
 import { sourcesByGame, type GameSources, type SourcePreset } from '@renderer/domain/encounters'
+import { useT, type MessageKey } from '@renderer/i18n'
+import { formFullName, gameName, gameShortName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
 import { errorMessage } from '@renderer/lib/format'
 import { useSaveStore } from '@renderer/store/save'
@@ -29,11 +31,11 @@ import {
 /** The game picked last, for the rest of the session: moving to another Pokémon keeps showing it. */
 let rememberedGame: string | null = null
 
-const STATE_TEXT: Readonly<Record<GameState, string>> = {
-  obtainable: 'Obtainable',
-  event: 'Event only',
-  transfer: 'Transfer only',
-  absent: 'Not in this game'
+const STATE_TEXT: Readonly<Record<GameState, MessageKey>> = {
+  obtainable: 'species.where.state.obtainable',
+  event: 'species.where.state.event',
+  transfer: 'species.where.state.transfer',
+  absent: 'species.where.state.absent'
 }
 
 export interface WhereToFindProps {
@@ -50,41 +52,43 @@ export interface WhereToFindProps {
 }
 
 function StateTag({ state, battleOnly }: { state: GameState; battleOnly: boolean }) {
-  if (state === 'transfer' && battleOnly) return <Tag variant="outline">Battle only</Tag>
-  if (state === 'obtainable') return <Tag tone="success">{STATE_TEXT.obtainable}</Tag>
+  const t = useT()
+  if (state === 'transfer' && battleOnly) return <Tag variant="outline">{t('species.where.state.battle')}</Tag>
+  if (state === 'obtainable') return <Tag tone="success">{t(STATE_TEXT.obtainable)}</Tag>
   if (state === 'event') {
     return (
       <Tag tone="gold" icon="star">
-        {STATE_TEXT.event}
+        {t(STATE_TEXT.event)}
       </Tag>
     )
   }
-  return <Tag variant="outline">{STATE_TEXT[state]}</Tag>
+  return <Tag variant="outline">{t(STATE_TEXT[state])}</Tag>
 }
 
 function GameItem({ game, state, battleOnly, selected, logged, onPick }: { game: GameDef; state: GameState; battleOnly: boolean; selected: boolean; logged: boolean; onPick: () => void }) {
-  const stateText = state === 'transfer' && battleOnly ? 'Battle only' : STATE_TEXT[state]
+  const t = useT()
+  const stateText = state === 'transfer' && battleOnly ? t('species.where.state.battle') : t(STATE_TEXT[state])
   return (
     <button
       type="button"
       role="radio"
       aria-checked={selected}
-      aria-label={`${game.name}: ${stateText}${logged ? ', logged' : ''}`}
+      aria-label={t(logged ? 'species.where.game.optionLogged' : 'species.where.game.option', { game: gameName(game.id), state: stateText })}
       tabIndex={selected ? 0 : -1}
       className={cx('sp-game', `sp-game--${state}`, selected && 'is-selected')}
       onClick={onPick}
     >
       <GameIcon game={game} size={24} tooltip={false} alt="" />
-      <span className="sp-game__name">{game.short}</span>
+      <span className="sp-game__name">{gameShortName(game.id)}</span>
       {state === 'event' && (
         <span className="sp-game__state sp-game__state--event">
           <Icon name="star" size={11} />
-          Event only
+          {t('species.where.state.event')}
         </span>
       )}
-      {(state === 'transfer' || state === 'absent') && <span className="sp-game__state">{state === 'absent' ? 'Not in game' : stateText}</span>}
+      {(state === 'transfer' || state === 'absent') && <span className="sp-game__state">{state === 'absent' ? t('species.where.state.absentShort') : stateText}</span>}
       {logged && (
-        <span className="sp-game__logged" title="You have logged this form in this game">
+        <span className="sp-game__logged" title={t('species.where.game.logged')}>
           <Icon name="check" size={12} strokeWidth={2.6} />
         </span>
       )}
@@ -93,15 +97,17 @@ function GameItem({ game, state, battleOnly, selected, logged, onPick }: { game:
 }
 
 /** Explains a game where the form cannot be obtained and offers the ones where it can. */
-function Elsewhere({ dex, form, game, state, onPick }: { dex: Dex; form: FormSummary; game: GameDef | null; state: GameState | null; onPick: (id: string) => void }) {
+function Elsewhere({ dex, species, form, game, state, onPick }: { dex: Dex; species: SpeciesSummary; form: FormSummary; game: GameDef | null; state: GameState | null; onPick: (id: string) => void }) {
+  const t = useT()
   const obtainable = dex.obtainableGames(form)
   const events = dex.eventGames(form)
   const battleOnly = isBattleOnly(form)
+  const name = formFullName(species, form)
   let lead: string
-  if (battleOnly) lead = `${form.full} only exists during a battle, so there is nothing to catch or keep in a box.`
-  else if (!game || state === null) lead = `${form.full} has no known source in any game.`
-  else if (state === 'transfer') lead = `${form.full} cannot be obtained in ${game.name}. It exists there, but has to be traded or transferred in.`
-  else lead = `${form.full} is not in ${game.name}.`
+  if (battleOnly) lead = t('species.where.else.battle', { name })
+  else if (!game || state === null) lead = t('species.where.else.noSource', { name })
+  else if (state === 'transfer') lead = t('species.where.else.transfer', { name, game: gameName(game.id) })
+  else lead = t('species.where.else.absent', { name, game: gameName(game.id) })
 
   return (
     <div className="sp-else">
@@ -113,11 +119,11 @@ function Elsewhere({ dex, form, game, state, onPick }: { dex: Dex; form: FormSum
       </div>
       {obtainable.length > 0 && (
         <div className="sp-else__group">
-          <div className="u-eyebrow">Where you can get it</div>
+          <div className="u-eyebrow">{t('species.where.else.obtainable')}</div>
           <div className="sp-else__games">
             {obtainable.map((g) => (
               <Chip key={g.id} icon={<GameIcon game={g} size={16} tooltip={false} alt="" />} onClick={() => onPick(g.id)}>
-                {g.short}
+                {gameShortName(g.id)}
               </Chip>
             ))}
           </div>
@@ -125,18 +131,18 @@ function Elsewhere({ dex, form, game, state, onPick }: { dex: Dex; form: FormSum
       )}
       {events.length > 0 && (
         <div className="sp-else__group">
-          <div className="u-eyebrow">Event only</div>
+          <div className="u-eyebrow">{t('species.where.else.event')}</div>
           <div className="sp-else__games">
             {events.map((g) => (
               <Chip key={g.id} tone="gold" icon={<GameIcon game={g} size={16} tooltip={false} alt="" />} onClick={() => onPick(g.id)}>
-                {g.short}
+                {gameShortName(g.id)}
               </Chip>
             ))}
           </div>
         </div>
       )}
-      {obtainable.length === 0 && events.length === 0 && !battleOnly && <p className="sp-else__note">In practice it is only available by transfer or from a past event. You can still log yours by hand.</p>}
-      {battleOnly && <p className="sp-else__note">If you track these anyway, log one by hand.</p>}
+      {obtainable.length === 0 && events.length === 0 && !battleOnly && <p className="sp-else__note">{t('species.where.else.onlyTransfer')}</p>}
+      {battleOnly && <p className="sp-else__note">{t('species.where.else.battleNote')}</p>}
     </div>
   )
 }
@@ -155,6 +161,7 @@ interface PaneProps {
 
 /** Filter bar + the source list of the picked game. Keyed by form and game, so its state starts fresh for each. */
 function SourcesPane({ dex, game, subject, target, view, sources, eventOnly, onLog, onOpenSpecies }: PaneProps) {
+  const t = useT()
   const [query, setQuery] = useState('')
   const [only, setOnly] = useState<ReadonlySet<SectionId>>(new Set())
   const showFilter = view.total >= 8
@@ -182,9 +189,9 @@ function SourcesPane({ dex, game, subject, target, view, sources, eventOnly, onL
     <>
       {showFilter && (
         <div className="sp-filter">
-          <TextField value={query} onChange={setQuery} size="sm" icon="search" placeholder="Filter by place or method" aria-label={`Filter the sources in ${game.name}`} clearable wrapperClassName="sp-filter__box" />
+          <TextField value={query} onChange={setQuery} size="sm" icon="search" placeholder={t('species.where.filter.placeholder')} aria-label={t('species.where.filter.label', { game: gameName(game.id) })} clearable wrapperClassName="sp-filter__box" />
           {view.present.length > 1 && (
-            <div className="sp-filter__chips" role="group" aria-label="Show only">
+            <div className="sp-filter__chips" role="group" aria-label={t('species.where.filter.only')}>
               {view.present.map((id) => (
                 <Chip key={id} size="sm" selected={only.has(id)} onClick={() => toggle(id)}>
                   {SECTION_INFO[id].chip} {counts.get(id) ?? 0}
@@ -207,9 +214,9 @@ function SourcesPane({ dex, game, subject, target, view, sources, eventOnly, onL
         onOpenSpecies={onOpenSpecies}
         emptyState={
           <div className="sp-nomatch">
-            <p>Nothing here matches {query.trim() !== '' ? `“${query.trim()}”` : 'that filter'}.</p>
+            <p>{query.trim() !== '' ? t('species.where.filter.noMatch', { query: query.trim() }) : t('species.where.filter.noMatchFilter')}</p>
             <Button size="sm" onClick={clear}>
-              Clear the filter
+              {t('species.where.filter.clear')}
             </Button>
           </div>
         }
@@ -223,6 +230,8 @@ function SourcesPane({ dex, game, subject, target, view, sources, eventOnly, onL
  * and log a catch straight from the way you got it.
  */
 export function WhereToFind({ dex, species, form, detail, entries, view, onLog, onOpenSpecies, headingRef }: WhereToFindProps) {
+  const t = useT()
+  const fullName = formFullName(species, form)
   const [userPick, setUserPick] = useState<string | null>(null)
   const [showAbsent, setShowAbsent] = useState(false)
 
@@ -264,18 +273,18 @@ export function WhereToFind({ dex, species, form, detail, entries, view, onLog, 
 
   let body: ReactNode
   if (!hasSources) {
-    body = <Elsewhere dex={dex} form={form} game={game} state={state} onPick={pick} />
+    body = <Elsewhere dex={dex} species={species} form={form} game={game} state={state} onPick={pick} />
   } else if (detail.error) {
     body = (
       <EmptyState
         size="sm"
         tone="danger"
         icon="warning"
-        title="The details could not be loaded"
-        description={errorMessage(detail.error, 'The data file for this Pokémon is missing or unreadable.')}
+        title={t('species.where.error.title')}
+        description={errorMessage(detail.error, t('species.where.error.description'))}
         action={
           <Button size="sm" icon="refresh" onClick={detail.retry}>
-            Try again
+            {t('species.retry')}
           </Button>
         }
       />
@@ -283,7 +292,7 @@ export function WhereToFind({ dex, species, form, detail, entries, view, onLog, 
   } else if (!detail.data || !subject) {
     body = (
       <div className="sp-loading" aria-busy="true">
-        <span className="u-sr-only">Loading where to find {form.full}</span>
+        <span className="u-sr-only">{t('species.where.loading', { name: fullName })}</span>
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <Skeleton key={i} height={38} radius={8} />
         ))}
@@ -296,9 +305,7 @@ export function WhereToFind({ dex, species, form, detail, entries, view, onLog, 
           <span className="sp-else__icon" aria-hidden="true">
             <Icon name="info" size={18} />
           </span>
-          <p>
-            {form.full} can be obtained in {game?.name ?? 'this game'}, but Pelagix has no details on how. You can still log yours by hand.
-          </p>
+          <p>{game ? t('species.where.noDetails', { name: fullName, game: gameName(game.id) }) : t('species.where.noDetailsNoGame', { name: fullName })}</p>
         </div>
       </div>
     )
@@ -315,19 +322,19 @@ export function WhereToFind({ dex, species, form, detail, entries, view, onLog, 
       <div className="section-header sp-where__header">
         <div>
           <h2 id="sp-where-title" ref={headingRef} tabIndex={-1} className="section-title">
-            Where to find {form.cat === 'base' ? 'it' : form.full}
+            {form.cat === 'base' ? t('species.where.title') : t('species.where.titleForm', { name: fullName })}
           </h2>
           <p className="sp-where__summary">{overviewSummary(overview.counts, battleOnly)}</p>
         </div>
         <Button icon="edit" onClick={() => onLog(manualPreset(target, game, state))}>
-          Log manually
+          {t('species.where.logManually')}
         </Button>
       </div>
 
       <div className="sp-where__layout">
         <div className="sp-games">
-          <div ref={listRef} className="sp-games__list" role="radiogroup" aria-label="Game" onKeyDown={rovingRadioKeyDown}>
-            {visibleGroups.length === 0 && <p className="sp-games__none">This form is not in any game yet.</p>}
+          <div ref={listRef} className="sp-games__list" role="radiogroup" aria-label={t('pokedex.game.label')} onKeyDown={rovingRadioKeyDown}>
+            {visibleGroups.length === 0 && <p className="sp-games__none">{t('species.where.noGames')}</p>}
             {visibleGroups.map((group) => (
               <div key={group.label} className="sp-games__group" role="presentation">
                 <div className="sp-games__label">{group.label}</div>
@@ -339,7 +346,7 @@ export function WhereToFind({ dex, species, form, detail, entries, view, onLog, 
           </div>
           {overview.counts.absent > 0 && (
             <div className="sp-games__foot">
-              <Switch checked={showAbsent} onChange={setShowAbsent} label="Show unavailable" />
+              <Switch checked={showAbsent} onChange={setShowAbsent} label={t('species.where.showUnavailable')} />
             </div>
           )}
         </div>
@@ -349,7 +356,7 @@ export function WhereToFind({ dex, species, form, detail, entries, view, onLog, 
             <header className="sp-pane__head">
               <GameIcon game={game} size={40} tooltip={false} alt="" />
               <div className="sp-pane__title">
-                <h3 className="sp-pane__name">{game.name}</h3>
+                <h3 className="sp-pane__name">{gameName(game.id)}</h3>
                 <div className="sp-pane__meta">
                   {system && (
                     <>

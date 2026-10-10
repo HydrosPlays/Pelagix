@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { setActiveLanguage } from '@renderer/i18n/runtime'
+import { registerTerms } from '@renderer/i18n/terms'
 import type { FormSummary, SpeciesSummary } from '@shared/dex-types'
 import { DexSearch, getDexSearch, normalizeText, searchDex, type SearchHit } from './search'
 import { fixtureDex as dex, ID } from './test-fixture'
@@ -203,5 +205,33 @@ describe('options and helpers', () => {
     expect(top('porygon2')).toBe('Porygon2')
     // Numbers starting with the digits; Porygon2 also matches by name but is listed once.
     expect(index.search('2').map((h) => h.species.id)).toEqual([29, 233, 250])
+  })
+})
+
+describe('names in the language on screen', () => {
+  afterEach(() => setActiveLanguage('en'))
+
+  it('keeps letters of every script', () => {
+    expect(normalizeText('ピカチュウ')).toBe(normalizeText('ﾋﾟｶﾁｭｳ'))
+    expect(normalizeText('ガブリアス')).not.toBe(normalizeText('カフリアス'))
+    expect(normalizeText('皮卡丘')).toBe('皮卡丘')
+    expect(normalizeText('Raichu d’Alola')).toBe('raichu dalola')
+  })
+
+  it('finds a Pokémon by its name in the active language and by its English name', () => {
+    registerTerms('fr', { species: { [ID.raichu]: 'Raichu', 25: 'Pikachu', 1: 'Bulbizarre' }, formFull: { [`${ID.raichu}-1`]: 'Raichu d’Alola' } })
+    registerTerms('ja', { species: { 25: 'ピカチュウ' } })
+    expect(search('bulbizarre')).toEqual([])
+    setActiveLanguage('fr')
+    expect(first('bulbizarre')).toMatchObject({ species: { id: 1 }, rank: 'exact', viaForm: false })
+    expect(first('bulbasaur')).toMatchObject({ species: { id: 1 }, rank: 'exact', viaForm: false })
+    expect(first('raichu dalola')).toMatchObject({ species: { id: ID.raichu }, form: { f: 1 }, viaForm: true })
+    expect(first('alolan raichu')).toMatchObject({ species: { id: ID.raichu }, form: { f: 1 }, viaForm: true })
+    setActiveLanguage('ja')
+    expect(first('ピカチュウ')).toMatchObject({ species: { id: 25 }, rank: 'exact' })
+    expect(first('ピカ')).toMatchObject({ species: { id: 25 }, rank: 'prefix' })
+    expect(first('pikachu').species.id).toBe(25)
+    setActiveLanguage('en')
+    expect(search('bulbizarre')).toEqual([])
   })
 })

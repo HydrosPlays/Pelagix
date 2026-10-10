@@ -9,9 +9,10 @@ import type { FormSummary, SpeciesSummary } from '@shared/dex-types'
 import { ShinyMark, Sprite, TypeBadges } from '@renderer/components/pokemon'
 import { cx, Icon, Kbd, Portal, useEscapeLayer, useFocusTrap, useModalRoot, usePresence } from '@renderer/components/ui'
 import { CaughtMark } from '@renderer/features/pokedex/CaughtMark'
+import { activeLanguage, rich, t, translate, useT, type MessageKey } from '@renderer/i18n'
 import { popIn } from '@renderer/lib/anim'
 import { useDexStore } from '@renderer/lib/data'
-import { dexNo, plural } from '@renderer/lib/format'
+import { dexNo } from '@renderer/lib/format'
 import { resolveFormSprite, speciesSpritePath } from '@renderer/lib/sprites'
 import { navigate, paths } from '@renderer/shell/router'
 import { NAV_ITEMS } from '@renderer/shell/routes'
@@ -23,17 +24,34 @@ import './CommandPalette.css'
 
 const EXIT_MS = 110
 
-const PAGE_KEYWORDS: Readonly<Record<string, string>> = {
-  home: 'dashboard overview start progress',
-  dex: 'pokedex pokemon browse species list',
-  living: 'boxes collection forms slots',
-  homedex: 'pokemon home sent transferred stored bank boxes',
-  journal: 'entries log history catches diary',
-  achievements: 'trophies medals badges goals',
-  settings: 'preferences options rules theme import export backup'
+const PAGE_KEYWORDS: Readonly<Record<string, MessageKey>> = {
+  home: 'search.keywords.page.home',
+  dex: 'search.keywords.page.dex',
+  living: 'search.keywords.page.living',
+  homedex: 'search.keywords.page.homedex',
+  journal: 'search.keywords.page.journal',
+  achievements: 'search.keywords.page.achievements',
+  settings: 'search.keywords.page.settings'
 }
 
-const PAGES: readonly PalettePage[] = NAV_ITEMS.map((item) => ({ id: `page-${item.id}`, label: item.label, icon: item.icon, href: item.href, keywords: PAGE_KEYWORDS[item.id] }))
+/**
+ * The pages the palette lists, named in the active language. Each is also found by its extra
+ * words and, in another language than English, by its English name and English extra words.
+ */
+function palettePages(): PalettePage[] {
+  const english = activeLanguage() === 'en'
+  return NAV_ITEMS.map((item) => {
+    const key = PAGE_KEYWORDS[item.id]
+    const words: string[] = key ? [t(key)] : []
+    if (!english) {
+      const nameKey = `shell.route.${item.id}`
+      const name = translate('en', nameKey as MessageKey)
+      if (name !== nameKey) words.push(name)
+      if (key) words.push(translate('en', key))
+    }
+    return { id: `page-${item.id}`, label: item.label, icon: item.icon, href: item.href, keywords: words.length > 0 ? [...new Set(words)].join(' ') : undefined }
+  })
+}
 
 /** Remembers every Pokémon page the user lands on, however they got there. */
 function useRecentTracker(): void {
@@ -53,6 +71,7 @@ function renderPath(species: SpeciesSummary, form: FormSummary, shiny: boolean):
 }
 
 function PokemonRow({ item, shinyView }: { item: PokemonItem; shinyView: boolean }) {
+  const t = useT()
   const entries = useEntries()
   const own = useMemo(() => {
     const all = entriesBySpecies(entries).get(item.species.id) ?? []
@@ -71,8 +90,8 @@ function PokemonRow({ item, shinyView }: { item: PokemonItem; shinyView: boolean
       </span>
       <TypeBadges types={item.form.types} size="sm" className="cmdk-item__types" />
       <span className="cmdk-item__state">
-        {shiny && <ShinyMark size={14} label="Shiny logged" />}
-        {own.length > 0 ? <CaughtMark entries={own.length} labelled /> : <span className="u-sr-only">Not caught yet</span>}
+        {shiny && <ShinyMark size={14} label={t('search.row.shiny')} />}
+        {own.length > 0 ? <CaughtMark entries={own.length} labelled /> : <span className="u-sr-only">{t('search.row.missing')}</span>}
       </span>
     </>
   )
@@ -95,6 +114,8 @@ function ActionRow({ item }: { item: ActionItem }) {
 // ---------------------------------------------------------------- palette
 
 function Palette({ closing }: { closing: boolean }) {
+  const t = useT()
+  const pages = useMemo(palettePages, [])
   const dex = useDexStore((s) => s.dex)
   const settings = useSettings()
   const shinyView = useUiStore((s) => s.dexView.shinyView)
@@ -121,8 +142,8 @@ function Palette({ closing }: { closing: boolean }) {
   }, [])
 
   const live = useMemo(
-    () => buildPalette({ dex, query, recent, pages: PAGES, shinyView, theme: settings.theme, reduceMotion: settings.reduceMotion, editorOpen }),
-    [dex, query, recent, shinyView, settings.theme, settings.reduceMotion, editorOpen]
+    () => buildPalette({ dex, query, recent, pages, shinyView, theme: settings.theme, reduceMotion: settings.reduceMotion, editorOpen }),
+    [dex, query, recent, pages, shinyView, settings.theme, settings.reduceMotion, editorOpen]
   )
   // While it fades out the list stays as it was: the action that was just run has already changed what it would say.
   const shown = useRef(live)
@@ -149,14 +170,14 @@ function Palette({ closing }: { closing: boolean }) {
     } else if (item.action === 'shiny') {
       close()
       useUiStore.getState().setDexView({ shinyView: !shinyView })
-      toast({ kind: 'info', icon: 'sparkle', title: shinyView ? 'Shiny view is off' : 'Shiny view is on', body: shinyView ? undefined : 'Pokémon are shown in their shiny colours.' })
+      toast({ kind: 'info', icon: 'sparkle', title: shinyView ? t('search.toast.shiny.off') : t('search.toast.shiny.on'), body: shinyView ? undefined : t('search.toast.shiny.on.body') })
     } else if (item.action === 'theme') {
       close()
       useSaveStore.getState().setSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })
     } else {
       close()
       useSaveStore.getState().setSettings({ reduceMotion: !settings.reduceMotion })
-      toast({ kind: 'info', icon: 'motion', title: settings.reduceMotion ? 'Reduced motion is off' : 'Reduced motion is on' })
+      toast({ kind: 'info', icon: 'motion', title: settings.reduceMotion ? t('search.toast.motion.off') : t('search.toast.motion.on') })
     }
   }
 
@@ -199,7 +220,7 @@ function Palette({ closing }: { closing: boolean }) {
           if (event.target === event.currentTarget) close()
         }}
       >
-        <div ref={panelRef} className="cmdk__panel" role="dialog" aria-modal="true" aria-label="Search and commands" tabIndex={-1}>
+        <div ref={panelRef} className="cmdk__panel" role="dialog" aria-modal="true" aria-label={t('search.label')} tabIndex={-1}>
           <div className="cmdk__search">
             <Icon name="search" size={20} className="cmdk__search-icon" />
             <input
@@ -207,12 +228,12 @@ function Palette({ closing }: { closing: boolean }) {
               className="cmdk__input"
               type="text"
               role="combobox"
-              aria-label="Search Pokémon, pages and actions"
+              aria-label={t('search.input')}
               aria-autocomplete="list"
               aria-expanded="true"
               aria-controls={listId}
               aria-activedescendant={items[current] ? `${baseId}-${items[current].id}` : undefined}
-              placeholder="Search Pokémon, pages and actions"
+              placeholder={t('search.input')}
               autoComplete="off"
               spellCheck={false}
               maxLength={80}
@@ -226,12 +247,12 @@ function Palette({ closing }: { closing: boolean }) {
             <Kbd>Esc</Kbd>
           </div>
 
-          <div ref={listRef} id={listId} role="listbox" aria-label="Results" className="cmdk__list" onMouseDown={(event) => event.preventDefault()}>
+          <div ref={listRef} id={listId} role="listbox" aria-label={t('search.results')} className="cmdk__list" onMouseDown={(event) => event.preventDefault()}>
             {items.length === 0 && (
               <div className="cmdk__empty">
                 <Icon name="search" size={22} />
-                <p className="cmdk__empty-title">Nothing matches “{query.trim()}”</p>
-                <p className="cmdk__empty-hint">Try a Pokémon’s name or dex number, or a page such as Journal.</p>
+                <p className="cmdk__empty-title">{t('search.empty.title', { query: query.trim() })}</p>
+                <p className="cmdk__empty-hint">{t('search.empty.hint')}</p>
               </div>
             )}
             {sections.map((section) => (
@@ -278,18 +299,12 @@ function Palette({ closing }: { closing: boolean }) {
           </div>
 
           <div className="cmdk__footer" aria-hidden="true">
-            <span className="cmdk__key">
-              <Kbd keys={['↑', '↓']} /> Move
-            </span>
-            <span className="cmdk__key">
-              <Kbd>↵</Kbd> Open
-            </span>
-            <span className="cmdk__key">
-              <Kbd>Esc</Kbd> Close
-            </span>
+            <span className="cmdk__key">{rich('search.footer.move', { keys: () => <Kbd keys={['↑', '↓']} /> })}</span>
+            <span className="cmdk__key">{rich('search.footer.open', { keys: () => <Kbd>↵</Kbd> })}</span>
+            <span className="cmdk__key">{rich('search.footer.close', { keys: () => <Kbd>Esc</Kbd> })}</span>
           </div>
           <span className="u-sr-only" role="status">
-            {searching ? (items.length === 0 ? 'No results' : plural(items.length, 'result')) : ''}
+            {searching ? (items.length === 0 ? t('search.status.none') : t('search.status.count', { count: items.length })) : ''}
           </span>
         </div>
       </div>

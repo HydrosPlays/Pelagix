@@ -1,15 +1,18 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { Router } from 'wouter'
 import { ErrorBoundary, Toaster } from '@renderer/components/ui'
 import { UpdateNotice } from '@renderer/features/updates/UpdateNotice'
 import UpdateWatcher from '@renderer/features/updates/UpdateWatcher'
 import UpdateWindows from '@renderer/features/updates/UpdateWindows'
+import { rich, useLanguage, useT } from '@renderer/i18n'
 import { initMotion } from '@renderer/lib/anim'
 import { useDexStore } from '@renderer/lib/data'
 import { isElectron } from '@renderer/lib/env'
 import { errorMessage } from '@renderer/lib/format'
 import { AppShell } from '@renderer/shell/AppShell'
 import { BootError, BootScreen, type BootStep } from '@renderer/shell/BootScreen'
+import { applyLanguage } from '@renderer/shell/language'
+import { LanguagePrompt } from '@renderer/shell/LanguagePrompt'
 import { useHashLocation } from '@renderer/shell/router'
 import { applyTheme } from '@renderer/shell/theme'
 import { useSaveStore } from '@renderer/store/save'
@@ -41,18 +44,25 @@ function forgetWhatWasOpen(): void {
 }
 
 /**
- * Boot sequence: load the save and the Pokédex index side by side, apply the theme, then mount the
- * shell. Until both are ready the branded loading screen shows; a failure gets a full-window
+ * Boot sequence: load the save and the Pokédex index side by side, apply the theme and the
+ * language, then mount the shell. Until both are ready the branded loading screen shows; a failure gets a full-window
  * explanation with a retry.
  *
  * The toasts and, in the desktop app, the update watcher with its windows are mounted here and
  * not by the shell: a version whose shell cannot start, or has crashed, must still be able to
  * offer the version that fixes it.
+ *
+ * Everything that shows text is keyed on the active language, so a language switch mounts it
+ * afresh and no memo or state keeps text of the language before. A save without a language gets
+ * the pop-up that asks for one, once; nothing else opens by itself until it is answered.
  */
 export default function App() {
   const saveStatus = useSaveStore((s) => s.status)
   const saveError = useSaveStore((s) => s.lastError)
   const theme = useSaveStore((s) => s.save.settings.theme)
+  const language = useSaveStore((s) => s.save.settings.language)
+  const t = useT()
+  const shown = useLanguage()
   const dexStatus = useDexStore((s) => s.status)
   const dexError = useDexStore((s) => s.error)
   const [retrying, setRetrying] = useState(false)
@@ -64,6 +74,10 @@ export default function App() {
     if (saveStatus === 'ready') applyTheme(theme)
   }, [saveStatus, theme])
 
+  useEffect(() => {
+    if (saveStatus === 'ready' && language !== undefined) void applyLanguage(language)
+  }, [saveStatus, language])
+
   // Tell the user once when their save had to be repaired on the way in.
   useEffect(() => {
     if (saveStatus !== 'ready' || loadReportShown) return
@@ -72,7 +86,7 @@ export default function App() {
     if (!report || report.warnings.length === 0) return
     toast({
       kind: report.dropped > 0 || report.newer ? 'error' : 'info',
-      title: report.newer ? 'This save comes from a newer Pelagix' : 'Your save was repaired while loading',
+      title: report.newer ? t('shell.loadReport.newer') : t('shell.loadReport.repaired'),
       body: report.warnings.slice(0, 2).join(' ')
     })
   }, [saveStatus])
@@ -89,18 +103,15 @@ export default function App() {
   // The screens without a navigation rail show the update marker themselves. Desktop app only:
   // a browser has nothing to check or install.
   const updateNotice = isElectron ? <UpdateNotice /> : undefined
+  const askLanguage = !loading && !failed && language === undefined
 
   let screen: ReactNode
   if (dexStatus === 'error') {
     screen = (
       <BootError
-        title="The Pokédex datasets are missing"
-        hint={
-          <>
-            Run <code>npm run data</code> to build the datasets, then try again.
-          </>
-        }
-        detail={errorMessage(dexError, 'The dataset could not be loaded.')}
+        title={t('shell.boot.dataMissing.title')}
+        hint={rich('shell.boot.dataMissing.hint', { code: (children) => <code>{children}</code> })}
+        detail={errorMessage(dexError, t('shell.boot.dataMissing.detail'))}
         onRetry={retry}
         retrying={retrying}
         notice={updateNotice}
@@ -109,8 +120,8 @@ export default function App() {
   } else if (saveStatus === 'error') {
     screen = (
       <BootError
-        title="Your save could not be loaded"
-        hint="Nothing has been overwritten. Make sure the save file is readable, then try again."
+        title={t('shell.boot.saveFailed.title')}
+        hint={t('shell.boot.saveFailed.hint')}
         detail={saveError ?? undefined}
         onRetry={retry}
         retrying={retrying}
@@ -121,14 +132,14 @@ export default function App() {
     screen = (
       <BootScreen
         steps={[
-          { label: 'Loading your save', state: stepState(saveStatus) },
-          { label: 'Surfacing Pokédex data', state: stepState(dexStatus) }
+          { id: 'save', label: t('shell.boot.step.save'), state: stepState(saveStatus) },
+          { id: 'dex', label: t('shell.boot.step.dex'), state: stepState(dexStatus) }
         ]}
       />
     )
   } else {
     screen = (
-      <ErrorBoundary title="Pelagix ran into a problem" extra={updateNotice} onError={forgetWhatWasOpen}>
+      <ErrorBoundary title={t('shell.appError')} extra={updateNotice} onError={forgetWhatWasOpen}>
         <Router hook={useHashLocation}>
           <AppShell />
         </Router>
@@ -138,15 +149,19 @@ export default function App() {
 
   return (
     <>
-      {screen}
+      <Fragment key={shown}>{screen}</Fragment>
+      {/* Outside the keyed part: it stays up, and keeps its highlight, while the language under it changes. */}
+      <ErrorBoundary fallback={() => null}>
+        <LanguagePrompt open={askLanguage} />
+      </ErrorBoundary>
       {isElectron && (
         <ErrorBoundary fallback={() => null}>
-          {/* Nothing comes up over the loading screen; once that is over, with or without a shell, it may. */}
-          <UpdateWatcher hold={loading} />
+          {/* Nothing comes up over the loading screen or before the language is chosen; after that, with or without a shell, it may. */}
+          <UpdateWatcher hold={loading || askLanguage} />
         </ErrorBoundary>
       )}
       {isElectron && (
-        <ErrorBoundary fallback={() => null}>
+        <ErrorBoundary key={`windows-${shown}`} fallback={() => null}>
           <UpdateWindows />
         </ErrorBoundary>
       )}

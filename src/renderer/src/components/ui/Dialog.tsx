@@ -1,4 +1,5 @@
 import { useId, useRef, type CSSProperties, type ReactNode } from 'react'
+import { t } from '@renderer/i18n'
 import { cx } from './cx'
 import { IconButton } from './IconButton'
 import { Portal } from './Portal'
@@ -112,7 +113,7 @@ function ModalContent({ title, description, media, footer, hideClose, flush, chi
               </p>
             )}
           </div>
-          {!hideClose && <IconButton icon="close" label="Close" size="sm" tooltip={false} className="ui-modal__close" onClick={onClose} />}
+          {!hideClose && <IconButton icon="close" label={t('common.close')} size="sm" tooltip={false} className="ui-modal__close" onClick={onClose} />}
         </header>
       )}
       <div className={cx('ui-modal__body', flush && 'ui-modal__body--flush')}>{children}</div>

@@ -11,6 +11,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { GAME_BY_ID } from '@shared/games'
 import { POKEDEX_NAMES, pokedexesOfGame } from '@shared/pokedexes'
 import type { CatchEntry } from '@shared/save-types'
+import { t, type MessageKey } from '@renderer/i18n/runtime'
+import { gameShortName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
 import { isFormSlotted, useCollection, type Collection, type LivingSlot } from './slots'
 
@@ -49,7 +51,8 @@ export async function fetchPokedexes(fetchFn: typeof fetch = fetch, url = './dat
 export interface DexSection {
   /** PokeAPI identifier of the Pokédex, or `other` for what the game has outside its Pokédexes. */
   id: string
-  title: string
+  /** In the active language; read on each use (sections are cached and outlive a language switch). */
+  readonly title: string
   /** Index of the section's first item, and how many items follow it. */
   start: number
   count: number
@@ -59,14 +62,43 @@ export const OTHER_SECTION = 'other'
 
 export interface SectionPlan {
   /** The game's Pokédexes in order, then the `other` section. */
-  sections: ReadonlyArray<{ id: string; title: string }>
+  sections: ReadonlyArray<{ readonly id: string; readonly title: string }>
   /** Per species: index into `sections` and its place there. Species in no Pokédex are absent. */
   placeOf: ReadonlyMap<number, { section: number; rank: number }>
 }
 
+const sectionGames = new WeakMap<object, string>()
+
+/** The game (`GameDef.id`) whose view a section was made for; undefined for an object that is not one of those sections. */
+export function gameOfSection(section: object): string | undefined {
+  return sectionGames.get(section)
+}
+
 /** "Other Pokémon obtainable in Sword". */
 export function otherTitle(gameId: string): string {
-  return `Other Pokémon obtainable in ${GAME_BY_ID.get(gameId)?.short ?? 'this game'}`
+  return GAME_BY_ID.has(gameId) ? t('domain.dex.other', { game: gameShortName(gameId) }) : t('domain.dex.otherUnknownGame')
+}
+
+/**
+ * Name of a regional Pokédex ("Galar Pokédex") in the active language, by its PokeAPI identifier:
+ * the message `pokedex.dex.<id>`, else the English name of the shared table, else the id.
+ */
+export function pokedexName(id: string): string {
+  const key = `pokedex.dex.${id}`
+  const text = t(key as MessageKey)
+  return text === key ? (POKEDEX_NAMES[id] ?? id) : text
+}
+
+/** The same without the word "Pokédex" ("Galar"), for a tab: the message `pokedex.dexShort.<id>`. */
+export function pokedexShortName(id: string): string {
+  const key = `pokedex.dexShort.${id}`
+  const text = t(key as MessageKey)
+  return text === key ? (POKEDEX_NAMES[id] ?? id).replace(' Pokédex', '') : text
+}
+
+/** Heading of a section by its id. */
+export function sectionTitle(sectionId: string, gameId: string): string {
+  return sectionId === OTHER_SECTION ? otherTitle(gameId) : pokedexName(sectionId)
 }
 
 /**
@@ -83,7 +115,14 @@ export function planSections(gameId: string, pokedexes: Pokedexes): SectionPlan 
       if (!placeOf.has(species)) placeOf.set(species, { section, rank })
     })
   })
-  return { sections: [...names.map((id) => ({ id, title: POKEDEX_NAMES[id] ?? id })), { id: OTHER_SECTION, title: otherTitle(gameId) }], placeOf }
+  const sections = [...names, OTHER_SECTION].map((id) => ({
+    id,
+    get title(): string {
+      return sectionTitle(id, gameId)
+    }
+  }))
+  for (const section of sections) sectionGames.set(section, gameId)
+  return { sections, placeOf }
 }
 
 /**
@@ -105,7 +144,17 @@ export function arrange<T>(items: readonly T[], speciesOf: (item: T) => number, 
     if (bucket.length === 0 || !def) return
     // Array.prototype.sort is stable: forms of one species keep their order.
     bucket.sort((a, b) => a.rank - b.rank)
-    sections.push({ id: def.id, title: def.title, start: out.length, count: bucket.length })
+    const section: DexSection = {
+      id: def.id,
+      get title(): string {
+        return def.title
+      },
+      start: out.length,
+      count: bucket.length
+    }
+    const game = sectionGames.get(def)
+    if (game !== undefined) sectionGames.set(section, game)
+    sections.push(section)
     for (const each of bucket) out.push(each.item)
   })
   return { items: out, sections }

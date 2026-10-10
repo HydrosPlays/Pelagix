@@ -29,6 +29,7 @@ const api: PelagixApi = {
   appInfo: () => invoke('pelagix:app-info'),
   openExternal: (url) => invoke('pelagix:open-external', url),
   setTheme: (theme) => invoke('pelagix:set-theme', theme),
+  setLanguage: (language) => invoke('pelagix:set-language', language),
   updateState: () => invoke('pelagix:update-state'),
   onUpdateState: (listener) => subscribe('pelagix:update-changed', listener),
   checkForUpdates: () => invoke('pelagix:update-check'),

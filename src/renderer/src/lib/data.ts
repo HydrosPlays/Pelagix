@@ -14,6 +14,7 @@ import { create } from 'zustand'
 import { BALLS, type BallDef } from '@shared/balls'
 import type { DexIndex, DexMeta, FormSummary, GameIdx, SpeciesDetail, SpeciesSummary } from '@shared/dex-types'
 import { GAME_BY_ID, GAMES, type GameDef } from '@shared/games'
+import { t } from '@renderer/i18n/runtime'
 import { isDev } from './env'
 
 // ---------------------------------------------------------------- Dex
@@ -316,11 +317,12 @@ export function createDataLoader(options: DataLoaderOptions = {}): DataLoader {
       const fixture = await fetchJson(doFetch, `${fixtureBase}dex.json`)
       if (fixture.ok) return { dex: new Dex(validateDexIndex(fixture.value), 'fixture'), base: fixtureBase }
       throw new Error(
-        `The Pokédex dataset is missing: ${dataBase}dex.json (${primary.reason}) and the development fixture ` +
-          `${fixtureBase}dex.json (${fixture.reason}). Run "npm run data" to build it.`
+        t('data.load.datasetMissing', {
+          dataset: `${dataBase}dex.json`, reason: primary.reason, fixture: `${fixtureBase}dex.json`, fixtureReason: fixture.reason
+        })
       )
     }
-    throw new Error(`Could not load the Pokédex dataset ${dataBase}dex.json: ${primary.reason}.`)
+    throw new Error(t('data.load.datasetFailed', { dataset: `${dataBase}dex.json`, reason: primary.reason }))
   }
 
   function loadDexWithBase(): Promise<{ dex: Dex; base: string }> {
@@ -338,7 +340,7 @@ export function createDataLoader(options: DataLoaderOptions = {}): DataLoader {
     const { base } = await loadDexWithBase()
     const url = `${base}species/${id}.json`
     const result = await fetchJson(doFetch, url)
-    if (!result.ok) throw new Error(`Could not load ${url}: ${result.reason}.`)
+    if (!result.ok) throw new Error(t('data.load.fileFailed', { file: url, reason: result.reason }))
     return validateSpeciesDetail(result.value, id)
   }
 

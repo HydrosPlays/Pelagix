@@ -12,23 +12,23 @@ import type { CatchEntry, DexRules, EntryKind } from '@shared/save-types'
 import type { ShinyDexFailure, ShinyDexHistory, ShinyDexKnown, ShinyDexRow } from '@shared/shinydex-types'
 import { collectionFor, slotKeyFor } from '@renderer/domain/slots'
 import { draftToInput, settleDraft, TEXT_LIMITS, type Draft } from '@renderer/features/entry/draft'
+import { t, type MessageKey } from '@renderer/i18n/runtime'
+import { formFullName, speciesName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
-import { ENTRY_KINDS, formatCount, isIsoDate, plural } from '@renderer/lib/format'
+import { ENTRY_KINDS, isIsoDate, labelTable } from '@renderer/lib/format'
 import { normalizeText } from '@renderer/lib/search'
 import type { EntryInput } from '@renderer/store/save'
 import { byFingerprint, type ImportSource, type Preview, type PreviewOptions, type PreviewRow } from './model'
 
 // ---------------------------------------------------------------- wording
 
-/** One plain sentence per way reading the picked file can fail. */
-export const SHINYDEX_FAILURE_TEXT: Readonly<Record<ShinyDexFailure, string>> = {
-  'not-shinydex': 'That file is neither a ShinyDex export nor a saved ShinyDex History page: no shinies were found in it.',
-  'too-large': 'That file is too large to be a ShinyDex export or a saved ShinyDex page.',
-  unreadable: 'That file could not be opened. Another program may be using it.'
-}
+const FAILURES: readonly ShinyDexFailure[] = ['not-shinydex', 'too-large', 'unreadable']
+
+/** One plain sentence per way reading the picked file can fail, read in the active language whenever it is asked for. */
+export const SHINYDEX_FAILURE_TEXT: Readonly<Record<ShinyDexFailure, string>> = labelTable(FAILURES, (reason) => t(`gamesave.shinydexFailure.${reason}` as MessageKey))
 
 export function shinyDexFailureText(reason: unknown): string {
-  return typeof reason === 'string' && Object.hasOwn(SHINYDEX_FAILURE_TEXT, reason) ? SHINYDEX_FAILURE_TEXT[reason as ShinyDexFailure] : 'Something went wrong while reading that file.'
+  return typeof reason === 'string' && Object.hasOwn(SHINYDEX_FAILURE_TEXT, reason) ? SHINYDEX_FAILURE_TEXT[reason as ShinyDexFailure] : t('gamesave.shinydexFailure.other')
 }
 
 // ---------------------------------------------------------------- games
@@ -272,15 +272,18 @@ export function buildShinyDexPreview(dex: Dex, history: ShinyDexHistory, existin
     const shiny = !(valid(raw) && raw.known?.shiny === false)
     const cannot = (name: string, reason: string, at: readonly [number, number] = [0, 0], game?: GameDef): PreviewRow => ({ index, pokemon: { species: at[0], form: at[1], shiny, gender: 'n', fingerprint: '' }, status: 'unsupported', reason, name, game, fills: false })
     try {
-      if (!valid(raw)) return cannot('Unknown Pokémon', 'It could not be read.')
-      const shown = raw.name.trim() || dex.species(raw.known?.species ?? 0)?.name || 'Unknown Pokémon'
+      if (!valid(raw)) return cannot(t('gamesave.row.unknownPokemon'), t('gamesave.reason.unreadable'))
+      // The file's own name for it is only shown while Pelagix cannot tell which Pokémon it is.
+      const knownSpecies = dex.species(raw.known?.species ?? 0)
+      const shown = raw.name.trim() || (knownSpecies ? speciesName(knownSpecies) : '') || t('gamesave.row.unknownPokemon')
       const found = resolvePokemon(dex, raw)
-      if (found === null) return cannot(shown, 'Pelagix does not know this Pokémon.')
-      const name = dex.form(found[0], found[1])?.full ?? shown
+      if (found === null) return cannot(shown, t('gamesave.reason.unknownPokemon'))
+      const foundForm = dex.form(found[0], found[1])
+      const name = foundForm ? formFullName(found[0], foundForm) : shown
       const game = gameOfSlug(raw.game)
-      if (!game) return cannot(name, `Game not recognised${raw.game !== '' ? ` (${raw.game})` : ''}.`, found)
+      if (!game) return cannot(name, raw.game !== '' ? t('gamesave.reason.gameNotRecognisedNamed', { game: raw.game }) : t('gamesave.reason.gameNotRecognised'), found)
       const fingerprint = prints[index]
-      if (raw.date === null || typeof fingerprint !== 'string') return cannot(name, 'Its date could not be read.', found, game)
+      if (raw.date === null || typeof fingerprint !== 'string') return cannot(name, t('gamesave.reason.noDate'), found, game)
 
       const entry = entryFromRow(dex, raw, found, game.id, fingerprint, options.today)
       const pokemon = { species: found[0], form: found[1], shiny, gender: entry.gender ?? 'n', fingerprint }
@@ -290,7 +293,7 @@ export function buildShinyDexPreview(dex: Dex, history: ShinyDexHistory, existin
       if (fills) claimed.add(slotKey)
       return { index, pokemon, status: 'new', name, game, entry, slotKey, fills }
     } catch {
-      return cannot('Unknown Pokémon', 'It could not be read.')
+      return cannot(t('gamesave.row.unknownPokemon'), t('gamesave.reason.unreadable'))
     }
   })
 
@@ -304,20 +307,17 @@ export function buildShinyDexPreview(dex: Dex, history: ShinyDexHistory, existin
 /** A ShinyDex export or a saved ShinyDex History page as the preview window shows it. */
 export function shinyDexSource(history: ShinyDexHistory): ImportSource {
   const fromExport = history.source === 'export'
-  const count = plural(history.rows.length, 'shiny Pokémon', 'shiny Pokémon')
   const notes = [
-    history.dropped > 0 ? `This file lists more shinies than Pelagix reads at once. The last ${formatCount(history.dropped)} are left out.` : '',
-    history.unusable > 0 ? `${plural(history.unusable, 'entry', 'entries')} in this file could not be read and ${history.unusable === 1 ? 'is' : 'are'} left out.` : ''
+    history.dropped > 0 ? t('gamesave.source.shinydex.dropped', { count: history.dropped }) : '',
+    history.unusable > 0 ? t('gamesave.source.shinydex.unusable', { count: history.unusable }) : ''
   ].filter(Boolean)
   return {
     fileName: history.fileName,
     icon: 'sparkle',
-    description: fromExport
-      ? `${history.fileName} is a ShinyDex export with ${count}. Nothing has changed yet, and the file is only read. Only its Pokémon are read: game, method, date and whatever details it holds. Your rules, settings and achievements stay as they are.`
-      : `${history.fileName} is a saved ShinyDex history with ${count}. Nothing has changed yet, and the file is only read. Game, method, date and ball come from ShinyDex; anything else you add by hand.`,
+    description: t(fromExport ? 'gamesave.source.shinydex.export' : 'gamesave.source.shinydex.page', { file: history.fileName, count: history.rows.length }),
     ...(notes.length > 0 && { note: notes.join(' ') }),
-    empty: 'There are no shinies in this file.',
-    listLabel: 'Shinies in this file',
+    empty: t('gamesave.source.shinydex.empty'),
+    listLabel: t('gamesave.source.shinydex.list'),
     columns: 'hunt',
     preview: (dex, existing, rules, options) => buildShinyDexPreview(dex, history, existing, rules, options)
   }

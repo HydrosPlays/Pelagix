@@ -4,6 +4,8 @@ import type { CatchEntry } from '@shared/save-types'
 import { EntryCard } from '@renderer/components/pokemon'
 import { Badge, Button, Icon } from '@renderer/components/ui'
 import { sortEntries } from '@renderer/domain/entries'
+import { useT } from '@renderer/i18n'
+import { formFullName, speciesName } from '@renderer/i18n/terms'
 import { editEntry } from '@renderer/lib/entry-actions'
 
 /** Cards shown before "Show all": two rows on a wide window. */
@@ -21,6 +23,7 @@ export interface SpeciesEntriesProps {
 
 /** The user's logged catches of this Pokémon, the selected form first. */
 export function SpeciesEntries({ species, form, entries, highlightId, onLogAnother, onFindIt }: SpeciesEntriesProps) {
+  const t = useT()
   const [all, setAll] = useState(false)
   const ordered = useMemo(() => {
     const newest = sortEntries(entries, 'newest')
@@ -37,18 +40,16 @@ export function SpeciesEntries({ species, form, entries, highlightId, onLogAnoth
       <div className="section-header">
         <div>
           <h2 id="sp-entries-title" className="section-title">
-            Your entries
-            {entries.length > 0 && <Badge count={entries.length} max={999} tone="neutral" label={`${entries.length} logged`} />}
+            {t('species.entries.title')}
+            {entries.length > 0 && <Badge count={entries.length} max={999} tone="neutral" label={t('species.entries.logged', { count: entries.length })} />}
           </h2>
           {entries.length > 0 && otherForms > 0 && (
-            <p className="sp-entries__summary">
-              {ofForm} of {form.full}, {otherForms} of other forms
-            </p>
+            <p className="sp-entries__summary">{t('species.entries.summary', { ofForm, name: formFullName(species, form), others: otherForms })}</p>
           )}
         </div>
         {entries.length > 0 && (
           <Button variant="catch" icon="plus" onClick={onLogAnother}>
-            Log another
+            {t('species.entries.logAnother')}
           </Button>
         )}
       </div>
@@ -59,12 +60,12 @@ export function SpeciesEntries({ species, form, entries, highlightId, onLogAnoth
             <Icon name="pokeball" size={24} />
           </span>
           <div className="sp-entries__emptytext">
-            <h3>No {species.name} in your Living Dex yet</h3>
-            <p>Pick the game you caught it in below, find the way you got it and press Log.</p>
+            <h3>{t('species.entries.empty.title', { name: speciesName(species) })}</h3>
+            <p>{t('species.entries.empty.description')}</p>
           </div>
           <div className="sp-entries__emptyactions">
             <Button variant="primary" iconEnd="arrow-down" onClick={onFindIt}>
-              Where to find it
+              {t('species.entries.empty.find')}
             </Button>
           </div>
         </div>
@@ -78,7 +79,7 @@ export function SpeciesEntries({ species, form, entries, highlightId, onLogAnoth
           {ordered.length > INITIAL && (
             <div className="sp-entries__more">
               <Button size="sm" variant="ghost" icon={all ? 'chevron-up' : 'chevron-down'} aria-expanded={all} onClick={() => setAll(!all)}>
-                {all ? 'Show fewer' : `Show all ${ordered.length} entries`}
+                {all ? t('species.showFewer') : t('species.entries.showAll', { count: ordered.length })}
               </Button>
             </div>
           )}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ErrorBoundary } from '@renderer/components/ui'
+import { t } from '@renderer/i18n'
 import { useDexStore } from '@renderer/lib/data'
 import { useSaveStore } from '@renderer/store/save'
 import { toast, useUiStore } from '@renderer/store/ui'
@@ -8,7 +9,7 @@ import { EntryEditor, type EditorRequest } from './EntryEditor'
 /** Shown in place of an editor that threw: says so once, and closes the request so the app carries on. */
 function EditorFailed() {
   useEffect(() => {
-    toast({ kind: 'error', title: 'The entry editor ran into a problem', body: 'Nothing was changed. Please try again.' })
+    toast({ kind: 'error', title: t('entry.toast.crashed.title'), body: t('entry.toast.crashed.body') })
     useUiStore.getState().closeEditor()
   }, [])
   return null

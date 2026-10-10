@@ -3,7 +3,9 @@
 import { app, dialog, ipcMain, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { join } from 'node:path'
 import type { PelagixChannel, PelagixEventChannel, PelagixEvents, PelagixIpc } from '@shared/api'
-import type { SaveFile, ThemeId } from '@shared/save-types'
+import { DEFAULT_LANGUAGE, isLanguageId, type LanguageId } from '@shared/languages'
+import { mainText, type MainTextKey } from '@shared/main-text'
+import { createEmptySave, type SaveFile, type ThemeId } from '@shared/save-types'
 import { readGameSave, readerPath } from './game-save'
 import { readShinyDexHistory } from './shinydex'
 import { exportFileName, isPlainObject, readImportFile, writeExportFile, type SaveStore } from './save'
@@ -12,15 +14,19 @@ import type { UpdateService } from './update-service'
 import { plainVersion } from './update-version'
 import { applyTheme, isAppUrl } from './window'
 
-const JSON_FILTERS = [
-  { name: 'Pelagix save', extensions: ['json'] },
-  { name: 'All files', extensions: ['*'] }
+/** The language the page last reported (`setLanguage`). The dialog text is looked up when a dialog opens, never before. */
+let language: LanguageId = DEFAULT_LANGUAGE
+const text = (key: MainTextKey): string => mainText(language, key)
+
+const jsonFilters = (): Electron.FileFilter[] => [
+  { name: text('filter.pelagixSave'), extensions: ['json'] },
+  { name: text('filter.allFiles'), extensions: ['*'] }
 ]
 // Saves of the Switch games are called "main", without an extension, so no filter by extension is offered.
-const GAME_SAVE_FILTERS = [{ name: 'All files', extensions: ['*'] }]
-const SHINYDEX_FILTERS = [
-  { name: 'ShinyDex export or saved page', extensions: ['json', 'html', 'htm'] },
-  { name: 'All files', extensions: ['*'] }
+const gameSaveFilters = (): Electron.FileFilter[] => [{ name: text('filter.allFiles'), extensions: ['*'] }]
+const shinyDexFilters = (): Electron.FileFilter[] => [
+  { name: text('filter.shinyDex'), extensions: ['json', 'html', 'htm'] },
+  { name: text('filter.allFiles'), extensions: ['*'] }
 ]
 const MAX_URL_LENGTH = 2048
 
@@ -74,6 +80,23 @@ function expectTheme(args: unknown[]): ThemeId {
   return theme
 }
 
+function expectLanguage(args: unknown[]): LanguageId {
+  const value = args[0]
+  if (args.length !== 1 || !isLanguageId(value)) invalid('setLanguage', 'expected one language id')
+  return value
+}
+
+/**
+ * A boot test (PELAGIX_SMOKE) must never stop at the "choose your language" pop-up: the save it
+ * loads reads as if English had been chosen. In memory only; nothing is written for it.
+ */
+export function withSmokeLanguage(raw: unknown, now: string): unknown {
+  if (raw === null || raw === undefined) return { ...createEmptySave(now), settings: { ...createEmptySave(now).settings, language: DEFAULT_LANGUAGE } }
+  if (!isPlainObject(raw)) return raw
+  const settings = isPlainObject(raw['settings']) ? raw['settings'] : {}
+  return isLanguageId(settings['language']) ? raw : { ...raw, settings: { ...settings, language: DEFAULT_LANGUAGE } }
+}
+
 function expectBoolean(method: string, args: unknown[]): boolean {
   const value = args[0]
   if (args.length !== 1 || typeof value !== 'boolean') invalid(method, 'expected one boolean')
@@ -122,8 +145,9 @@ export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveSt
     ipcMain.handle(channel, async (event, ...args: unknown[]) => handler(args, requireWindow(event)))
   }
 
-  handle('pelagix:save-load', (args) => {
+  handle('pelagix:save-load', async (args) => {
     expectNoArgs('loadSave', args)
+    if (process.env['PELAGIX_SMOKE'] === '1') return withSmokeLanguage(await store.load(), new Date().toISOString())
     return store.load()
   })
 
@@ -132,9 +156,9 @@ export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveSt
   handle('pelagix:save-export', async (args, win) => {
     const save = expectSave('exportSave', args)
     const { canceled, filePath } = await dialog.showSaveDialog(win, {
-      title: 'Export Pelagix save',
+      title: text('dialog.exportSave'),
       defaultPath: join(app.getPath('documents'), exportFileName(new Date())),
-      filters: JSON_FILTERS
+      filters: jsonFilters()
     })
     if (canceled || !filePath) return { canceled: true }
     await writeExportFile(filePath, save)
@@ -144,9 +168,9 @@ export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveSt
   handle('pelagix:save-import', async (args, win) => {
     expectNoArgs('importSave', args)
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-      title: 'Import Pelagix save',
+      title: text('dialog.importSave'),
       properties: ['openFile'],
-      filters: JSON_FILTERS
+      filters: jsonFilters()
     })
     const path = filePaths[0]
     if (canceled || path === undefined) return null
@@ -156,9 +180,9 @@ export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveSt
   handle('pelagix:game-save-read', async (args, win) => {
     expectNoArgs('readGameSave', args)
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-      title: 'Import from a game save',
+      title: text('dialog.importGameSave'),
       properties: ['openFile'],
-      filters: GAME_SAVE_FILTERS
+      filters: gameSaveFilters()
     })
     const path = filePaths[0]
     if (canceled || path === undefined) return null
@@ -169,9 +193,9 @@ export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveSt
   handle('pelagix:shinydex-read', async (args, win) => {
     expectNoArgs('readShinyDex', args)
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-      title: 'Import from ShinyDex',
+      title: text('dialog.importShinyDex'),
       properties: ['openFile'],
-      filters: SHINYDEX_FILTERS
+      filters: shinyDexFilters()
     })
     const path = filePaths[0]
     if (canceled || path === undefined) return null
@@ -201,6 +225,10 @@ export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveSt
   handle('pelagix:open-external', (args) => shell.openExternal(expectHttpsUrl(args)))
 
   handle('pelagix:set-theme', (args, win) => applyTheme(win, expectTheme(args)))
+
+  handle('pelagix:set-language', (args) => {
+    language = expectLanguage(args)
+  })
 
   handle('pelagix:update-state', (args) => {
     expectNoArgs('updateState', args)

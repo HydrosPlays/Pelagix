@@ -13,6 +13,8 @@
 import { useMemo } from 'react'
 import type { FormCategory, FormSummary, SpeciesSummary } from '@shared/dex-types'
 import { DEFAULT_RULES, type CatchEntry, type DexRules, type SaveFile } from '@shared/save-types'
+import { t } from '@renderer/i18n/runtime'
+import { formFullName, speciesName, variantName } from '@renderer/i18n/terms'
 import { useDex, type Dex } from '@renderer/lib/data'
 import { resolveFormSprite, speciesSpritePath } from '@renderer/lib/sprites'
 import { useEntries, useRules } from '@renderer/store/save'
@@ -32,8 +34,8 @@ export interface LivingSlot {
   gender?: 'm' | 'f'
   /** This is the Gigantamax slot of the form. */
   gmax?: boolean
-  /** Full display name including any gender, variant or Gigantamax marker. */
-  label: string
+  /** Full display name including any gender, variant or Gigantamax marker, in the active language (read on each use). */
+  readonly label: string
   cat: FormCategory
   /** HOME render path for the slot (see lib/sprites); falls back to the normal render when no shiny one exists. */
   spritePath(shiny: boolean): string
@@ -86,25 +88,23 @@ export interface Collection {
 
 export const RULE_KEYS = Object.keys(DEFAULT_RULES) as ReadonlyArray<keyof DexRules>
 
-/** Label and one-line explanation of each rule, for the settings screen. */
-export const RULE_INFO: Readonly<Record<keyof DexRules, { label: string; description: string }>> = {
-  regional: { label: 'Regional forms', description: 'Alolan, Galarian, Hisuian and Paldean forms get their own slot.' },
-  genderForms: { label: 'Gender forms', description: 'Meowstic, Indeedee, Basculegion and Oinkologne ♂ / ♀ are separate slots.' },
-  genderDiffs: { label: 'Gender differences', description: 'Separate ♂ and ♀ slots for species whose genders look different.' },
-  cosmetic: { label: 'Cosmetic forms', description: 'Unown letters, Vivillon patterns, Alcremie creams and other permanent looks.' },
-  changeable: { label: 'Changeable forms', description: 'Forms you can switch freely: Rotom appliances, Deoxys, Shaymin, Oricorio and more.' },
-  heldItem: {
-    label: 'Held-item forms',
-    description: 'Forms kept only while holding an item: Arceus plates, Silvally memories, Genesect drives, Ogerpon masks and Origin Forme Dialga, Palkia and Giratina.'
-  },
-  fusion: { label: 'Fusions', description: 'Kyurem, Necrozma and Calyrex fusions.' },
-  event: { label: 'Event forms', description: 'Distribution-only forms such as cap Pikachu or Poké Ball Vivillon.' },
-  partner: { label: 'Partner forms', description: "Let's Go partner Pikachu and Eevee, which never leave their game." },
-  alcremieSweets: { label: 'Alcremie sweets', description: 'All 63 cream and sweet combinations instead of the 9 creams.' },
-  mega: { label: 'Mega Evolutions', description: 'Mega Evolutions and Primal Reversions (they cannot sit in a box).' },
-  battle: { label: 'Battle forms', description: 'Other battle-only states and totems (they cannot sit in a box).' },
-  gmax: { label: 'Gigantamax', description: 'An extra slot for every form that can Gigantamax.' }
-}
+/**
+ * Label and one-line explanation of each rule, for the settings screen. The text is read from the
+ * text table each time (messages `domain.rule.<rule>.label` / `.description`), so it follows the language.
+ */
+export const RULE_INFO: Readonly<Record<keyof DexRules, { readonly label: string; readonly description: string }>> = Object.fromEntries(
+  RULE_KEYS.map((key) => [
+    key,
+    {
+      get label(): string {
+        return t(`domain.rule.${key}.label`)
+      },
+      get description(): string {
+        return t(`domain.rule.${key}.description`)
+      }
+    }
+  ])
+) as Record<keyof DexRules, { readonly label: string; readonly description: string }>
 
 const allRules = (on: boolean): DexRules => Object.fromEntries(RULE_KEYS.map((k) => [k, on])) as unknown as DexRules
 
@@ -112,30 +112,27 @@ export type RulePresetId = 'species' | 'forms' | 'completionist'
 
 export interface RulePreset {
   id: RulePresetId
-  label: string
-  description: string
+  readonly label: string
+  readonly description: string
   rules: DexRules
 }
 
+const rulePreset = (id: RulePresetId, rules: DexRules): RulePreset => ({
+  id,
+  // Getters: read from the text table each time, so they follow the language.
+  get label(): string {
+    return t(`domain.preset.${id}.label`)
+  },
+  get description(): string {
+    return t(`domain.preset.${id}.description`)
+  },
+  rules
+})
+
 export const RULE_PRESETS: Readonly<Record<RulePresetId, RulePreset>> = {
-  species: {
-    id: 'species',
-    label: 'Species',
-    description: 'One slot per species. Any form of a Pokémon fills it.',
-    rules: allRules(false)
-  },
-  forms: {
-    id: 'forms',
-    label: 'Forms',
-    description: 'Every form you can keep in a box: regional, gender, cosmetic and changeable forms.',
-    rules: { ...DEFAULT_RULES }
-  },
-  completionist: {
-    id: 'completionist',
-    label: 'Completionist',
-    description: 'Everything: event and partner forms, fusions, Mega Evolutions, battle forms, Gigantamax and all 63 Alcremie.',
-    rules: allRules(true)
-  }
+  species: rulePreset('species', allRules(false)),
+  forms: rulePreset('forms', { ...DEFAULT_RULES }),
+  completionist: rulePreset('completionist', allRules(true))
 }
 
 /** The preset whose rules equal `rules`, or null for a custom mix. */
@@ -213,8 +210,9 @@ function speciesSlots(species: SpeciesSummary, rules: DexRules): LivingSlot[] {
   for (const form of slotted) {
     const key = formKey(species, form)
     const generic = lone && isBase(species, form)
-    const name = generic ? species.name : form.full
-    const make = (suffix: string, label: string, extra: { variant?: number; gender?: 'm' | 'f'; gmax?: boolean; shown?: FormSummary }): void => {
+    // Names are read when the label is: the slots are cached per Dex, and outlive a language switch.
+    const name = (): string => (generic ? speciesName(species) : formFullName(species, form))
+    const make = (suffix: string, label: () => string, extra: { variant?: number; gender?: 'm' | 'f'; gmax?: boolean; shown?: FormSummary }): void => {
       const shown = extra.shown ?? form
       const gender = extra.gender ?? (generic ? undefined : form.gender)
       const useSpeciesRender = generic && form.sprite !== String(species.id) && extra.variant === undefined && extra.gender === undefined && !extra.gmax
@@ -225,7 +223,9 @@ function speciesSlots(species: SpeciesSummary, rules: DexRules): LivingSlot[] {
         ...(extra.variant !== undefined && { variant: extra.variant }),
         ...(gender !== undefined && { gender }),
         ...(extra.gmax && { gmax: true }),
-        label,
+        get label(): string {
+          return label()
+        },
         cat: form.cat,
         spritePath: (shiny) =>
           useSpeciesRender
@@ -235,19 +235,19 @@ function speciesSlots(species: SpeciesSummary, rules: DexRules): LivingSlot[] {
     }
 
     if (splitsByVariant(form, rules)) {
-      for (const v of form.variants ?? []) make(`:v${v.id}`, `${name} · ${v.name}`, { variant: v.id })
+      for (const v of form.variants ?? []) make(`:v${v.id}`, () => t('domain.slot.variant', { name: name(), variant: variantName(species, form, v.id) ?? v.name }), { variant: v.id })
     } else if (splitsByGender(species, form, rules)) {
       for (const gender of ['m', 'f'] as const) {
         // Where the genders are separate forms (Meowstic), each half is the form bound to that gender,
         // whose own name already says which one it is.
         const shown = species.forms.find((f) => f.gender === gender && (f === form || f.cat === 'gender'))
-        const label = shown && !generic ? shown.full : `${name} ${gender === 'm' ? '♂' : '♀'}`
+        const label = (): string => (shown && !generic ? formFullName(species, shown) : t(gender === 'm' ? 'domain.slot.male' : 'domain.slot.female', { name: name() }))
         make(`:${gender}`, label, { gender, shown })
       }
     } else {
       make('', name, {})
     }
-    if (rules.gmax && form.gmax) make(':gmax', `Gigantamax ${name}`, { gmax: true })
+    if (rules.gmax && form.gmax) make(':gmax', () => t('domain.slot.gmax', { name: name() }), { gmax: true })
   }
   return out
 }

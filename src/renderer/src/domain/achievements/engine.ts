@@ -7,6 +7,7 @@
  */
 
 import type { CatchEntry, DexRules } from '@shared/save-types'
+import { t, type MessageKey } from '@renderer/i18n/runtime'
 import type { Dex } from '@renderer/lib/data'
 import { progressFor } from '../progress'
 import { collectionFor } from '../slots'
@@ -78,23 +79,32 @@ export function newlyDone(states: readonly AchievementState[], unlocked: Readonl
 // ---------------------------------------------------------------- ranks
 
 /** The ladder, lowest first: name and the points at which the rank starts. */
-export const RANKS: ReadonlyArray<{ name: string; at: number }> = [
-  { name: 'Novice Collector', at: 0 },
-  { name: 'Route Rookie', at: 100 },
-  { name: 'Field Researcher', at: 300 },
-  { name: 'Seasoned Collector', at: 700 },
-  { name: 'Ace Curator', at: 1400 },
-  { name: 'Dex Veteran', at: 2500 },
-  { name: 'Champion Archivist', at: 4000 },
-  { name: 'Living Dex Master', at: 6000 }
-]
+const RANK_STARTS: readonly number[] = [0, 100, 300, 700, 1400, 2500, 4000, 6000]
+
+/** The ladder, lowest first: name (in the active language, read when shown) and the points at which the rank starts. */
+export const RANKS: ReadonlyArray<{ readonly name: string; at: number }> = RANK_STARTS.map((at, index) => ({
+  get name() {
+    return t(`achievements.rank.${index + 1}` as MessageKey)
+  },
+  at
+}))
 
 export function rankFor(points: number): AchievementRank {
   let index = 0
   for (let i = 0; i < RANKS.length; i++) if (points >= RANKS[i]!.at) index = i
   const rank = RANKS[index]!
   const next = RANKS[index + 1]
-  return { name: rank.name, index, at: rank.at, nextAt: next?.at ?? null, nextName: next?.name ?? null }
+  return {
+    get name() {
+      return rank.name
+    },
+    index,
+    at: rank.at,
+    nextAt: next?.at ?? null,
+    get nextName() {
+      return next?.name ?? null
+    }
+  }
 }
 
 /** 0..1 progress from the start of the current rank to the next one; 1 at the top. */

@@ -5,6 +5,7 @@
 
 import type { CatchEntry, DexRules, EntryKind } from '@shared/save-types'
 import type { SystemId } from '@shared/games'
+import { t } from '@renderer/i18n/runtime'
 import type { Dex } from '@renderer/lib/data'
 import type { Progress } from '../progress'
 import type { Collection } from '../slots'
@@ -14,7 +15,21 @@ export type AchievementTier = 'bronze' | 'silver' | 'gold' | 'platinum'
 
 /** Lowest first. */
 export const TIER_ORDER: readonly AchievementTier[] = ['bronze', 'silver', 'gold', 'platinum']
-export const TIER_LABELS: Readonly<Record<AchievementTier, string>> = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum' }
+/** The name of each tier in the active language, read when shown. */
+export const TIER_LABELS: Readonly<Record<AchievementTier, string>> = {
+  get bronze() {
+    return t('achievements.tier.bronze')
+  },
+  get silver() {
+    return t('achievements.tier.silver')
+  },
+  get gold() {
+    return t('achievements.tier.gold')
+  },
+  get platinum() {
+    return t('achievements.tier.platinum')
+  }
+}
 /** What an achievement of each tier is worth. */
 export const TIER_POINTS: Readonly<Record<AchievementTier, number>> = { bronze: 10, silver: 25, gold: 50, platinum: 100 }
 
@@ -31,8 +46,9 @@ export type AchievementGlyph =
 
 export interface AchievementCategory {
   id: AchievementCategoryId
-  name: string
-  description: string
+  /** Text in the active language, read when shown. */
+  readonly name: string
+  readonly description: string
   glyph: AchievementGlyph
 }
 
@@ -46,8 +62,8 @@ export interface SetItem {
   gmax?: boolean
   /** The item is "both a male and a female of this species". */
   genders?: boolean
-  /** Name to show for it. */
-  label: string
+  /** Name to show for it, in the active language (read when shown). */
+  readonly label: string
 }
 
 /** How a `SetItem` is checked against the entries. */
@@ -125,8 +141,9 @@ export interface AchievementProgress {
 export interface AchievementDef {
   /** Stable id; saved in the user's file. Never rename. */
   id: string
-  title: string
-  description: string
+  /** Its name and what it asks for, in the active language: read when shown, never kept. */
+  readonly title: string
+  readonly description: string
   category: AchievementCategoryId
   tier: AchievementTier
   /** Follows the tier (`TIER_POINTS`). */
@@ -137,7 +154,7 @@ export interface AchievementDef {
   /** Hidden until unlocked: the page shows "???" and `hint`. */
   secret?: boolean
   /** What a locked secret achievement says instead of its description. */
-  hint?: string
+  readonly hint?: string
   /** Progress toward the achievement; it is done when `current >= target`. A target of 0 means "not available with this dataset". */
   evaluate(ctx: AchievementContext): AchievementProgress
   /** The Pokémon this achievement draws from, when it is about a fixed set. */
@@ -161,7 +178,8 @@ export interface AchievementState {
 }
 
 export interface AchievementRank {
-  name: string
+  /** In the active language, read when shown. */
+  readonly name: string
   /** 0-based position on the ladder. */
   index: number
   /** Points at which this rank starts. */
@@ -169,7 +187,7 @@ export interface AchievementRank {
   /** Points needed for the next rank; null at the top. */
   nextAt: number | null
   /** Name of the next rank; null at the top. */
-  nextName: string | null
+  readonly nextName: string | null
 }
 
 export interface UnlockedAchievement {

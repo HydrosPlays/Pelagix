@@ -1,5 +1,5 @@
 import { cx } from '@renderer/components/ui'
-import { plural } from '@renderer/lib/format'
+import { useT } from '@renderer/i18n'
 import './CaughtMark.css'
 
 /** A small Poké Ball with a tick: this one is in the Living Dex. Decorative; pair it with text or a label. */
@@ -28,9 +28,10 @@ export interface CaughtMarkProps {
 
 /** The caught pill used on Pokédex tiles and search results: ball, tick and how many entries are logged. */
 export function CaughtMark({ entries, size = 'md', labelled = false, className }: CaughtMarkProps) {
-  const text = plural(entries, 'entry', 'entries')
+  const t = useT()
+  const text = t('pokedex.caught.entries', { count: entries })
   return (
-    <span className={cx('dex-caught', `dex-caught--${size}`, className)} title={text} role={labelled ? 'img' : undefined} aria-label={labelled ? `Caught, ${text}` : undefined}>
+    <span className={cx('dex-caught', `dex-caught--${size}`, className)} title={text} role={labelled ? 'img' : undefined} aria-label={labelled ? t('pokedex.caught.label', { count: entries }) : undefined}>
       <CaughtBall size={size === 'sm' ? 15 : 17} />
       <span className="dex-caught__count" aria-hidden={labelled || undefined}>
         {entries > 99 ? '99+' : entries}

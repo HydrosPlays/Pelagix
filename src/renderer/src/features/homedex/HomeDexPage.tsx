@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { GAME_BY_ID } from '@shared/games'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { CatchEntry } from '@shared/save-types'
 import { HomeMark, ShinyMark } from '@renderer/components/pokemon'
 import { Button, Chip, EmptyState, HudBrackets, NumberTicker, ProgressRing, SegmentedControl, cx, useScrollParent } from '@renderer/components/ui'
@@ -12,8 +11,10 @@ import { boxMetrics, boxName, buildBoxes, computeStats, generationSpans, layoutB
 import { SlotDrawer } from '@renderer/features/living/SlotDrawer'
 import { GameDexBar } from '@renderer/features/pokedex/GamePicker'
 import { useElementWidth } from '@renderer/features/living/windowing'
+import { rich, t, useT } from '@renderer/i18n'
+import { gameShortName } from '@renderer/i18n/terms'
 import { useDex } from '@renderer/lib/data'
-import { errorMessage, formatCount, plural, ratio } from '@renderer/lib/format'
+import { errorMessage, formatCount, ratio } from '@renderer/lib/format'
 import { navigate, paths } from '@renderer/shell/router'
 import { useSaveStore } from '@renderer/store/save'
 import { toast, useUiStore } from '@renderer/store/ui'
@@ -27,7 +28,7 @@ function setInHome(ids: readonly string[], on: boolean): number {
   try {
     return useSaveStore.getState().patchEntries(ids.map((id) => ({ id, patch: { inHome: on ? true : undefined } })))
   } catch (err) {
-    toast({ kind: 'error', title: 'That could not be saved', body: errorMessage(err) })
+    toast({ kind: 'error', title: t('homedex.saveFailed'), body: errorMessage(err) })
     return 0
   }
 }
@@ -43,17 +44,22 @@ interface HeroProps {
 
 /** The page header, in the Living Dex's own style: the ring, "N / M in HOME" and what is left to send. */
 function HomeDexHero({ mode, onMode, totals, rulesText, game }: HeroProps) {
+  const t = useT()
   const shiny = mode === 'shiny'
   const complete = totals.slots > 0 && totals.inHome === totals.slots
   const share = ratio(totals.inHome, totals.slots)
   const pct = totals.inHome <= 0 ? 0 : complete ? 100 : Math.min(99.9, Math.max(0.1, Math.round(share * 1000) / 10))
-  const unit = `${shiny ? 'shiny ' : ''}${game === undefined ? '' : `from ${game} `}in HOME`
-  const countText = `${formatCount(totals.inHome)} of ${formatCount(totals.slots)} ${unit}`
+  const unit = game === undefined ? t(shiny ? 'homedex.hero.unitShiny' : 'homedex.hero.unit') : t(shiny ? 'homedex.hero.unitShinyGame' : 'homedex.hero.unitGame', { game })
+  const countText =
+    game === undefined
+      ? t(shiny ? 'homedex.hero.countShiny' : 'homedex.hero.count', { inHome: totals.inHome, count: totals.slots })
+      : t(shiny ? 'homedex.hero.countShinyGame' : 'homedex.hero.countGame', { inHome: totals.inHome, count: totals.slots, game })
+  const bold = { b: (text: ReactNode) => <b>{text}</b> }
 
   return (
     <header className={cx('living-hero', shiny && 'is-shiny', complete && 'is-complete')}>
       <HudBrackets corners="diagonal" inset={8} size={16} />
-      <ProgressRing className="living-hero__ring" value={share} size={124} thickness={10} tone={shiny || complete ? 'gold' : 'accent'} label={shiny ? 'Shiny HOME Dex completion' : 'HOME Dex completion'} valueText={countText}>
+      <ProgressRing className="living-hero__ring" value={share} size={124} thickness={10} tone={shiny || complete ? 'gold' : 'accent'} label={shiny ? t('homedex.hero.ringShiny') : t('homedex.hero.ring')} valueText={countText}>
         <span className="living-hero__pct">
           <NumberTicker value={pct} decimals={pct > 0 && pct < 100 ? 1 : 0} />
           <span className="living-hero__pct-sign">%</span>
@@ -63,7 +69,7 @@ function HomeDexHero({ mode, onMode, totals, rulesText, game }: HeroProps) {
       <div className="living-hero__main">
         <h1 className="living-hero__title">
           {shiny ? <ShinyMark size={22} twinkle label="" /> : <HomeMark size={24} label="" />}
-          {shiny ? 'Shiny HOME Dex' : 'HOME Dex'}
+          {shiny ? t('homedex.hero.titleShiny') : t('homedex.hero.title')}
         </h1>
         <p className="living-hero__count" aria-label={countText}>
           <NumberTicker value={totals.inHome} className="living-hero__caught" />
@@ -71,13 +77,12 @@ function HomeDexHero({ mode, onMode, totals, rulesText, game }: HeroProps) {
           <span className="living-hero__unit">{unit}</span>
         </p>
         <p className="living-hero__second">
-          <span>
-            <b>{formatCount(totals.pending)}</b> not sent yet
-          </span>
+          <span>{rich('homedex.hero.pending', bold, { count: totals.pending })}</span>
           <span className="living-hero__dot" aria-hidden="true" />
           <span>
-            <b>{formatCount(totals.missing)}</b> {shiny ? 'without a shiny' : 'not caught'}
-            {game !== undefined && ` in ${game}`}
+            {game === undefined
+              ? rich(shiny ? 'homedex.hero.missingShiny' : 'homedex.hero.missing', bold, { count: totals.missing })
+              : rich(shiny ? 'homedex.hero.missingShinyGame' : 'homedex.hero.missingGame', bold, { count: totals.missing, game })}
           </span>
         </p>
         <p className="living-hero__rules">{rulesText}</p>
@@ -86,12 +91,12 @@ function HomeDexHero({ mode, onMode, totals, rulesText, game }: HeroProps) {
       <div className="living-hero__side">
         <SegmentedControl
           className="living-hero__mode"
-          label="HOME Dex mode"
+          label={t('homedex.hero.mode')}
           value={mode}
           onChange={onMode}
           options={[
-            { value: 'normal', label: 'HOME Dex', icon: 'box' },
-            { value: 'shiny', label: 'Shiny', icon: 'sparkle' }
+            { value: 'normal', label: t('homedex.hero.mode.normal'), icon: 'box' },
+            { value: 'shiny', label: t('common.shiny'), icon: 'sparkle' }
           ]}
         />
       </div>
@@ -104,11 +109,12 @@ function HomeDexHero({ mode, onMode, totals, rulesText, game }: HeroProps) {
  * HOME. A press marks a caught Pokémon; a slot with several entries or none opens the drawer.
  */
 export default function HomeDexPage() {
+  useT()
   const dex = useDex()
   // With a game chosen: that game's slots, and only the entries obtained in it (so nothing else is ever marked).
   const gameView = useGameView(dex)
   const { collection, game } = gameView
-  const gameName = game === null ? undefined : (GAME_BY_ID.get(game)?.short ?? game)
+  const gameName = game === null ? undefined : gameShortName(game)
   const scroller = useScrollParent()
   const shinyView = useUiStore((s) => s.dexView.shinyView)
   const setDexView = useUiStore((s) => s.setDexView)
@@ -194,14 +200,14 @@ export default function HomeDexPage() {
     toast({
       kind: 'success',
       icon: 'check',
-      title: `${boxName(box)} marked as in HOME`,
-      body: `${plural(marked, 'Pokémon', 'Pokémon')} marked. Undo takes the mark off again.`,
+      title: t('homedex.box.marked', { box: boxName(box) }),
+      body: t('homedex.box.marked.body', { count: marked }),
       durationMs: 10000,
       action: {
-        label: 'Undo',
+        label: t('homedex.box.undo'),
         onSelect: () => {
           const undone = setInHome(ids, false)
-          if (undone > 0) toast({ kind: 'info', icon: 'undo', title: `${boxName(box)} unmarked`, body: `${plural(undone, 'Pokémon', 'Pokémon')} no longer marked as in HOME.` })
+          if (undone > 0) toast({ kind: 'info', icon: 'undo', title: t('homedex.box.unmarked', { box: boxName(box) }), body: t('homedex.box.unmarked.body', { count: undone }) })
         }
       }
     })
@@ -259,7 +265,7 @@ export default function HomeDexPage() {
   if (!hasSlots) {
     return (
       <div className="page">
-        <EmptyState size="lg" icon="box" tone="neutral" title="No Pokémon to show" description="The Pokédex data holds no Pokémon, so there are no slots to fill yet." />
+        <EmptyState size="lg" icon="box" tone="neutral" title={t('homedex.empty.noSlots.title')} description={t('homedex.empty.noSlots.description')} />
       </div>
     )
   }
@@ -270,23 +276,23 @@ export default function HomeDexPage() {
 
   return (
     <div className={cx('page', 'living', 'hdex', shiny && 'is-shiny')}>
-      <HomeDexHero mode={mode} onMode={(next) => setDexView({ shinyView: next === 'shiny' })} totals={totals} rulesText={`${rulesLine(collection.rules, slots.length)}${gameName === undefined ? '' : ` obtainable in ${gameName}`}`} game={gameName} />
+      <HomeDexHero mode={mode} onMode={(next) => setDexView({ shinyView: next === 'shiny' })} totals={totals} rulesText={rulesLine(collection.rules, slots.length, gameName)} game={gameName} />
 
       <GameDexBar dex={dex} game={game} onGame={gameView.setGame} />
 
       {!nothingCaught && (
         <div className="hdex-bar">
-          <div className="hdex-filters" role="group" aria-label="Show">
+          <div className="hdex-filters" role="group" aria-label={t('homedex.filters.label')}>
             {HOME_FILTERS.map((f) => (
               <Chip key={f.id} tone={shiny ? 'gold' : 'accent'} selected={filter === f.id} onClick={() => setFilter(f.id)}>
-                {f.id === 'missing' && shiny ? 'No shiny' : f.label}
+                {f.id === 'missing' && shiny ? t('homedex.filters.noShiny') : f.label}
                 <span className="hdex-filters__count"> {formatCount(filterCount(totals, f.id))}</span>
               </Chip>
             ))}
           </div>
           <p className="hdex-hint">
             <HomeMark size={14} label="" />
-            Click a caught Pokémon to mark it as in Pokémon HOME, and again to take the mark off.
+            {t('homedex.hint')}
           </p>
         </div>
       )}
@@ -296,15 +302,11 @@ export default function HomeDexPage() {
           <EmptyState
             tone="accent"
             icon="gamepad"
-            title={slots.length === 0 ? `Nothing to collect in ${gameName}` : `Nothing caught in ${gameName} yet`}
-            description={
-              slots.length === 0
-                ? 'No Pokémon in your Living Dex can be obtained in this game without an event.'
-                : `Only Pokémon obtained in ${gameName} are counted here. Log a catch from that game and it appears, ready to be marked as sent.`
-            }
+            title={slots.length === 0 ? t('homedex.empty.game.title', { game: gameName }) : t('homedex.empty.gameNothing.title', { game: gameName })}
+            description={slots.length === 0 ? t('homedex.empty.game.description') : t('homedex.empty.gameNothing.description', { game: gameName })}
             action={
               <Button variant="subtle" icon="close" onClick={() => gameView.setGame(null)}>
-                Show every game
+                {t('pokedex.game.showAll')}
               </Button>
             }
           />
@@ -313,11 +315,11 @@ export default function HomeDexPage() {
             <EmptyState
               tone="gold"
               icon="sparkle"
-              title="No shiny Pokémon yet"
-              description="The Shiny HOME Dex counts shiny Pokémon only. Log a catch as shiny and it shows up here, ready to be marked as sent."
+              title={t('homedex.empty.noShiny.title')}
+              description={t('homedex.empty.noShiny.description')}
               action={
                 <Button variant="subtle" icon="box" onClick={() => setDexView({ shinyView: false })}>
-                  Show the regular HOME Dex
+                  {t('homedex.empty.noShiny.action')}
                 </Button>
               }
             />
@@ -325,11 +327,11 @@ export default function HomeDexPage() {
             <EmptyState
               tone="accent"
               icon="box"
-              title="Nothing to send yet"
-              description="The HOME Dex shows which of your Pokémon you have sent to Pokémon HOME. Log a catch first; it then appears here, and one click marks it as sent."
+              title={t('homedex.empty.nothing.title')}
+              description={t('homedex.empty.nothing.description')}
               action={
                 <Button variant="primary" icon="dex" onClick={() => navigate(paths.dex())}>
-                  Open the Pokédex
+                  {t('homedex.empty.nothing.action')}
                 </Button>
               }
             />
@@ -338,11 +340,11 @@ export default function HomeDexPage() {
           <EmptyState
             icon={filter === 'pending' ? 'check' : 'box'}
             tone={filter === 'missing' ? 'gold' : 'neutral'}
-            title={filter === 'home' ? 'Nothing in HOME yet' : filter === 'pending' ? 'Everything you caught is in HOME' : 'Nothing is missing'}
-            description={filter === 'home' ? 'Mark a caught Pokémon as sent and it is listed here.' : filter === 'pending' ? 'There is nothing left to send.' : 'Every slot is filled.'}
+            title={filter === 'home' ? t('homedex.empty.filter.home.title') : filter === 'pending' ? t('homedex.empty.filter.pending.title') : t('homedex.empty.filter.missing.title')}
+            description={filter === 'home' ? t('homedex.empty.filter.home.description') : filter === 'pending' ? t('homedex.empty.filter.pending.description') : t('homedex.empty.filter.missing.description')}
             action={
               <Button variant="subtle" icon="eye" onClick={() => setFilter('all')}>
-                Show every slot
+                {t('homedex.empty.filter.action')}
               </Button>
             }
           />

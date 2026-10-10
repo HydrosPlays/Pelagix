@@ -1,5 +1,6 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
 import type { IconName } from '@renderer/components/ui'
+import { t, type MessageKey } from '@renderer/i18n'
 import AchievementsPage from '@renderer/features/achievements/AchievementsPage'
 import HomePage from '@renderer/features/home/HomePage'
 import HomeDexPage from '@renderer/features/homedex/HomeDexPage'
@@ -16,7 +17,8 @@ export interface RouteDef {
   id: RouteId
   /** wouter pattern. */
   path: string
-  title: string
+  /** In the active language: read it when it is shown, do not keep it. */
+  readonly title: string
   component: ComponentType | LazyExoticComponent<ComponentType>
   /** Route shown as the parent crumb in the top bar. */
   parent?: RouteId
@@ -27,35 +29,71 @@ export interface RouteDef {
 // The component gallery only exists in development builds.
 const KitPage = import.meta.env.DEV ? lazy(() => import('@renderer/features/kit/KitPage')) : null
 
+const ROUTE_TITLES: Readonly<Record<RouteId, MessageKey>> = {
+  home: 'shell.route.home',
+  dex: 'shell.route.dex',
+  species: 'shell.route.species',
+  living: 'shell.route.living',
+  homedex: 'shell.route.homedex',
+  journal: 'shell.route.journal',
+  achievements: 'shell.route.achievements',
+  settings: 'shell.route.settings',
+  kit: 'shell.route.kit'
+}
+
+/**
+ * The name of a route in the active language. The tables below are built once, at module top
+ * level, where no text may be resolved (it would stay English for good): so `title` and `label`
+ * are getters that look the text up each time they are read.
+ */
+export function routeTitle(id: RouteId): string {
+  return t(ROUTE_TITLES[id])
+}
+
+const route = (def: Omit<RouteDef, 'title'>): RouteDef => ({
+  ...def,
+  get title() {
+    return routeTitle(def.id)
+  }
+})
+
 export const ROUTES: readonly RouteDef[] = [
-  { id: 'home', path: '/', title: 'Home', component: HomePage, nav: 'home' },
-  { id: 'dex', path: '/dex', title: 'Pokédex', component: PokedexPage, nav: 'dex' },
-  { id: 'species', path: '/dex/:id', title: 'Pokémon', component: SpeciesPage, parent: 'dex', nav: 'dex' },
-  { id: 'living', path: '/living', title: 'Living Dex', component: LivingDexPage, nav: 'living' },
-  { id: 'homedex', path: '/home-dex', title: 'HOME Dex', component: HomeDexPage, nav: 'homedex' },
-  { id: 'journal', path: '/journal', title: 'Journal', component: JournalPage, nav: 'journal' },
-  { id: 'achievements', path: '/achievements', title: 'Achievements', component: AchievementsPage, nav: 'achievements' },
-  { id: 'settings', path: '/settings', title: 'Settings', component: SettingsPage, nav: 'settings' },
-  ...(KitPage ? [{ id: 'kit', path: '/_kit', title: 'Component kit', component: KitPage, nav: 'kit' } satisfies RouteDef] : [])
+  route({ id: 'home', path: '/', component: HomePage, nav: 'home' }),
+  route({ id: 'dex', path: '/dex', component: PokedexPage, nav: 'dex' }),
+  route({ id: 'species', path: '/dex/:id', component: SpeciesPage, parent: 'dex', nav: 'dex' }),
+  route({ id: 'living', path: '/living', component: LivingDexPage, nav: 'living' }),
+  route({ id: 'homedex', path: '/home-dex', component: HomeDexPage, nav: 'homedex' }),
+  route({ id: 'journal', path: '/journal', component: JournalPage, nav: 'journal' }),
+  route({ id: 'achievements', path: '/achievements', component: AchievementsPage, nav: 'achievements' }),
+  route({ id: 'settings', path: '/settings', component: SettingsPage, nav: 'settings' }),
+  ...(KitPage ? [route({ id: 'kit', path: '/_kit', component: KitPage, nav: 'kit' })] : [])
 ]
 
 export const ROUTE_BY_ID: ReadonlyMap<RouteId, RouteDef> = new Map(ROUTES.map((r) => [r.id, r]))
 
 export interface NavItem {
   id: RouteId
-  label: string
+  /** In the active language: read it when it is shown, do not keep it. */
+  readonly label: string
   icon: IconName
   href: string
 }
 
+const navItem = (def: Omit<NavItem, 'label'>): NavItem => ({
+  ...def,
+  get label() {
+    return routeTitle(def.id)
+  }
+})
+
 export const NAV_ITEMS: readonly NavItem[] = [
-  { id: 'home', label: 'Home', icon: 'home', href: paths.home() },
-  { id: 'dex', label: 'Pokédex', icon: 'dex', href: paths.dex() },
-  { id: 'living', label: 'Living Dex', icon: 'grid', href: paths.living() },
-  { id: 'homedex', label: 'HOME Dex', icon: 'box', href: paths.homeDex() },
-  { id: 'journal', label: 'Journal', icon: 'journal', href: paths.journal() },
-  { id: 'achievements', label: 'Achievements', icon: 'trophy', href: paths.achievements() },
-  { id: 'settings', label: 'Settings', icon: 'settings', href: paths.settings() }
+  navItem({ id: 'home', icon: 'home', href: paths.home() }),
+  navItem({ id: 'dex', icon: 'dex', href: paths.dex() }),
+  navItem({ id: 'living', icon: 'grid', href: paths.living() }),
+  navItem({ id: 'homedex', icon: 'box', href: paths.homeDex() }),
+  navItem({ id: 'journal', icon: 'journal', href: paths.journal() }),
+  navItem({ id: 'achievements', icon: 'trophy', href: paths.achievements() }),
+  navItem({ id: 'settings', icon: 'settings', href: paths.settings() })
 ]
 
 /** The route a path belongs to, or null for an unknown path. */

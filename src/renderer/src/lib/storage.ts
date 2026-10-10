@@ -12,10 +12,12 @@
 import { ABILITY_BY_ID } from '@shared/abilities'
 import type { ExportResult, PelagixApi } from '@shared/api'
 import { BALL_BY_ID } from '@shared/balls'
+import { isLanguageId } from '@shared/languages'
 import {
   createEmptySave, DEFAULT_RULES, DEFAULT_SETTINGS, MAX_EV, MAX_IV, PID_PATTERN, SAVE_VERSION,
   type AppSettings, type CatchEntry, type DexRules, type EntryGender, type EntryKind, type SaveFile, type StatSpread
 } from '@shared/save-types'
+import { t } from '@renderer/i18n/runtime'
 import { isIsoDate, isIsoTimestamp, toIsoDate } from './format'
 import { newId } from './id'
 
@@ -62,11 +64,11 @@ export interface EntryCheck {
  */
 export function checkEntry(raw: unknown, now: string): EntryCheck {
   const reject = (reason: string): EntryCheck => ({ entry: null, repaired: false, reason })
-  if (!isObject(raw)) return reject('not an object')
+  if (!isObject(raw)) return reject(t('lib.storage.reason.notObject'))
   const { species, game } = raw
-  if (!isInt(species, 1, MAX_SPECIES_ID)) return reject('invalid species')
-  if (raw.form !== undefined && !isInt(raw.form, 0, MAX_FORM)) return reject('invalid form')
-  if (typeof game !== 'string' || !GAME_ID.test(game)) return reject('invalid game')
+  if (!isInt(species, 1, MAX_SPECIES_ID)) return reject(t('lib.storage.reason.species'))
+  if (raw.form !== undefined && !isInt(raw.form, 0, MAX_FORM)) return reject(t('lib.storage.reason.form'))
+  if (typeof game !== 'string' || !GAME_ID.test(game)) return reject(t('lib.storage.reason.game'))
 
   let repaired = false
   /** Reads an optional field: absent stays absent, an invalid value is discarded and counted as a repair. */
@@ -210,6 +212,8 @@ export function sanitizeSettings(raw: unknown): AppSettings {
   return {
     rules: sanitizeRules(src.rules),
     theme: src.theme === 'light' || src.theme === 'dark' ? src.theme : DEFAULT_SETTINGS.theme,
+    // Absent means "not chosen yet": an unknown value is dropped, not replaced by a default.
+    ...(isLanguageId(src.language) && { language: src.language }),
     reduceMotion: typeof src.reduceMotion === 'boolean' ? src.reduceMotion : DEFAULT_SETTINGS.reduceMotion,
     trainerName: typeof src.trainerName === 'string' ? src.trainerName.trim().slice(0, TRAINER_NAME_LIMIT) : DEFAULT_SETTINGS.trainerName
   }
@@ -260,13 +264,32 @@ export interface SaveParseReport {
   fromVersion: number | null
   /** Written by a newer Pelagix than this one: data this version does not know has been discarded. */
   newer: boolean
-  /** Human-readable notes about everything that was dropped, repaired or migrated. */
-  warnings: string[]
+  /**
+   * Human-readable notes about everything that was dropped, repaired or migrated. Worded when it is
+   * read (see `saveWarnings`), so it follows the language even though a save is parsed before the
+   * language is known. Spreading the report freezes the text: carry the report itself, or call `saveWarnings`.
+   */
+  readonly warnings: string[]
+}
+
+/** The notes of a parse report, in the active language. */
+export function saveWarnings(report: Pick<SaveParseReport, 'recognized' | 'dropped' | 'repaired' | 'fromVersion' | 'newer'>): string[] {
+  const warnings: string[] = []
+  if (!report.recognized) return warnings
+  const from = report.fromVersion ?? 0
+  if (report.newer) warnings.push(t('lib.storage.warn.newer', { version: String(from) }))
+  else if (from < SAVE_VERSION) warnings.push(t('lib.storage.warn.upgraded', { from: String(from), to: String(SAVE_VERSION) }))
+  if (report.dropped > 0) warnings.push(t('lib.storage.warn.dropped', { count: report.dropped }))
+  if (report.repaired > 0) warnings.push(t('lib.storage.warn.repaired', { count: report.repaired }))
+  return warnings
+}
+
+function withWarnings(report: Omit<SaveParseReport, 'warnings'>): SaveParseReport {
+  return Object.defineProperty(report as SaveParseReport, 'warnings', { enumerable: true, get: () => saveWarnings(report) })
 }
 
 /** Validates and repairs anything into a `SaveFile` and reports what had to be done. Never throws. */
 export function parseSaveReport(raw: unknown, now: string = new Date().toISOString()): SaveParseReport {
-  const warnings: string[] = []
   let source: Dict | null = null
   if (Array.isArray(raw)) {
     if (raw.some((e) => isObject(e) && 'species' in e)) source = { entries: raw }
@@ -275,19 +298,16 @@ export function parseSaveReport(raw: unknown, now: string = new Date().toISOStri
     if (Array.isArray(raw.entries) || (isObject(settings) && (isObject(settings.rules) || 'theme' in settings))) source = raw
   }
   if (!source) {
-    return { save: createEmptySave(now), recognized: false, total: 0, dropped: 0, repaired: 0, fromVersion: null, newer: false, warnings }
+    return withWarnings({ save: createEmptySave(now), recognized: false, total: 0, dropped: 0, repaired: 0, fromVersion: null, newer: false })
   }
 
   const fromVersion = isInt(source.version, 0, Number.MAX_SAFE_INTEGER) ? source.version : null
   const newer = fromVersion !== null && fromVersion > SAVE_VERSION
-  if (newer) {
-    warnings.push(`This save was written by a newer version of Pelagix (format ${fromVersion}); anything this version does not understand was left out.`)
-  } else {
+  if (!newer) {
     for (let v = fromVersion ?? 0; v < SAVE_VERSION; v++) {
       const migrate = MIGRATIONS[v]
       if (migrate) source = migrate(source, now)
     }
-    if ((fromVersion ?? 0) < SAVE_VERSION) warnings.push(`Save upgraded from format ${fromVersion ?? 0} to ${SAVE_VERSION}.`)
   }
 
   const createdAt = timestamp(source.createdAt) ?? now
@@ -308,8 +328,6 @@ export function parseSaveReport(raw: unknown, now: string = new Date().toISOStri
     entries.push(check.entry)
     if (check.repaired) repaired++
   }
-  if (dropped > 0) warnings.push(`${dropped} invalid or duplicate ${dropped === 1 ? 'entry was' : 'entries were'} skipped.`)
-  if (repaired > 0) warnings.push(`${repaired} ${repaired === 1 ? 'entry' : 'entries'} had invalid details removed.`)
 
   const achievements: Record<string, string> = {}
   if (isObject(source.achievements)) {
@@ -320,7 +338,7 @@ export function parseSaveReport(raw: unknown, now: string = new Date().toISOStri
   }
 
   const save: SaveFile = { version: SAVE_VERSION, entries, settings: sanitizeSettings(source.settings), achievements, createdAt, updatedAt }
-  return { save, recognized: true, total: rawEntries.length, dropped, repaired, fromVersion, newer, warnings }
+  return withWarnings({ save, recognized: true, total: rawEntries.length, dropped, repaired, fromVersion, newer })
 }
 
 /**
@@ -367,7 +385,7 @@ export function createStorageBackend(storage: Pick<Storage, 'getItem' | 'setItem
           return Promise.resolve(null)
         }
       } catch (err) {
-        return Promise.reject(new Error(`Could not read the save from browser storage: ${err instanceof Error ? err.message : String(err)}`))
+        return Promise.reject(new Error(t('lib.storage.browser.readFailed', { reason: err instanceof Error ? err.message : String(err) })))
       }
     },
     write(save) {
@@ -376,7 +394,7 @@ export function createStorageBackend(storage: Pick<Storage, 'getItem' | 'setItem
         return Promise.resolve()
       } catch (err) {
         const quota = err instanceof Error && /quota/i.test(`${err.name} ${err.message}`)
-        return Promise.reject(new Error(quota ? 'Browser storage is full; the save could not be written.' : `Could not write the save to browser storage: ${err instanceof Error ? err.message : String(err)}`))
+        return Promise.reject(new Error(quota ? t('lib.storage.browser.full') : t('lib.storage.browser.writeFailed', { reason: err instanceof Error ? err.message : String(err) })))
       }
     }
   }
@@ -477,14 +495,14 @@ export async function importSaveFromFile(): Promise<SaveParseReport | null> {
   } else {
     const file = await pickJsonFile()
     if (!file) return null
-    if (file.size > MAX_IMPORT_BYTES) throw new Error('That file is too large to be a Pelagix save.')
+    if (file.size > MAX_IMPORT_BYTES) throw new Error(t('lib.storage.import.tooLarge'))
     try {
       raw = JSON.parse((await file.text()).replace(/^﻿/, ''))
     } catch {
-      throw new Error('That file is not valid JSON.')
+      throw new Error(t('lib.storage.import.notJson'))
     }
   }
   const report = parseSaveReport(raw)
-  if (!report.recognized) throw new Error('That file is not a Pelagix save.')
+  if (!report.recognized) throw new Error(t('lib.storage.import.notSave'))
   return report
 }

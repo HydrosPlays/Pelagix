@@ -8,6 +8,8 @@ public sealed class LocationTable
     private readonly SortedDictionary<string, SortedDictionary<int, string>> _sets = new(StringComparer.Ordinal);
     private readonly Dictionary<(string Set, ushort Id, bool Egg), string> _cache = [];
     private readonly List<string> _unresolved = [];
+    /// <summary>How each named id was looked up, so the same lookup can be repeated in another language (localized.json).</summary>
+    private readonly SortedDictionary<string, SortedDictionary<int, (bool Egg, byte Generation, GameVersion Version)>> _lookups = new(StringComparer.Ordinal);
 
     public int Count => _sets.Sum(z => z.Value.Count);
     public IReadOnlyList<string> Unresolved => _unresolved;
@@ -30,7 +32,24 @@ public sealed class LocationTable
         if (names.TryGetValue(id, out var existing) && existing != name)
             throw Guard.Fail($"Location set {set} id {id} resolves to both \"{existing}\" and \"{name}\"; the set needs to be split.");
         names[id] = name;
+        if (!_lookups.TryGetValue(set, out var lookups))
+            _lookups[set] = lookups = [];
+        lookups[id] = (egg, generation, version);
         return name;
+    }
+
+    /// <summary>The same table as <see cref="ToJson"/>, read from another language's strings. Same sets, same ids.</summary>
+    public Obj Localize(GameStrings strings)
+    {
+        var root = new Obj();
+        foreach (var (set, lookups) in _lookups)
+        {
+            var table = new Obj();
+            foreach (var (id, (egg, generation, version)) in lookups)
+                table.Add(id.ToString(System.Globalization.CultureInfo.InvariantCulture), strings.GetLocationName(egg, (ushort)id, generation, generation, version) ?? string.Empty);
+            root.Add(set, table);
+        }
+        return root;
     }
 
     public Obj ToJson()

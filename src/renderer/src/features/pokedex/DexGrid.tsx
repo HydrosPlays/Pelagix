@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react'
 import { VirtualGrid, type VirtualGridHandle } from '@renderer/components/ui'
 import type { DexSection } from '@renderer/domain/gamedex'
+import { useT } from '@renderer/i18n'
 import { enterStagger } from '@renderer/lib/anim'
-import { formatCount } from '@renderer/lib/format'
 import type { DexDensity } from '@renderer/store/ui'
 import { dexMemory, rememberScroll } from './dex-store'
 import type { DexDisplay, DexTile } from './dex-query'
@@ -21,8 +21,6 @@ export interface DexGridProps {
   tiles: readonly DexTile[]
   /** The Pokédex sections `tiles` are arranged in, when a game is chosen and the list is in its default order. */
   sections?: readonly DexSection[]
-  /** What the tiles are, for the section counts: "Pokémon" or "forms". */
-  noun: string
   /** `viewKeyOf(tiles)`: changes exactly when the ordered result does. */
   viewKey: string
   display: DexDisplay
@@ -50,7 +48,8 @@ interface EntranceState {
  * - focus returns to the tile that was opened;
  * - the tiles in view play a staggered entrance on first paint and whenever the result changes.
  */
-export const DexGrid = memo(function DexGrid({ tiles, sections, noun, viewKey, display, density, shinyView, label, handleRef, onOpen, empty }: DexGridProps) {
+export const DexGrid = memo(function DexGrid({ tiles, sections, viewKey, display, density, shinyView, label, handleRef, onOpen, empty }: DexGridProps) {
+  const t = useT()
   const hostRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<VirtualGridHandle>(null)
   const viewKeyRef = useRef(viewKey)
@@ -197,12 +196,10 @@ export const DexGrid = memo(function DexGrid({ tiles, sections, noun, viewKey, d
     (index: number) => {
       const section = sections?.[index]
       return section ? (
-        <SectionHeading title={section.title}>
-          {formatCount(section.count)} {noun}
-        </SectionHeading>
+        <SectionHeading title={section.title}>{t(display === 'forms' ? 'pokedex.section.count.forms' : 'pokedex.section.count.species', { count: section.count })}</SectionHeading>
       ) : null
     },
-    [sections, noun]
+    [sections, display, t]
   )
 
   return (

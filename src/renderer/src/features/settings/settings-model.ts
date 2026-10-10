@@ -7,8 +7,10 @@
 import type { SpeciesSummary } from '@shared/dex-types'
 import type { CatchEntry, DexRules } from '@shared/save-types'
 import { isFormSlotted, matchRulePreset, RULE_KEYS, type RulePresetId } from '@renderer/domain/slots'
+import { activeLanguage, t } from '@renderer/i18n/runtime'
 import { formatCount } from '@renderer/lib/format'
 import type { SaveParseReport } from '@renderer/lib/storage'
+import { languageTag } from '@shared/languages'
 
 export type RuleKey = keyof DexRules
 
@@ -16,8 +18,9 @@ export type RuleKey = keyof DexRules
 
 export interface RuleGroup {
   id: 'box' | 'battle'
-  title: string
-  description: string
+  /** Text in the active language, read when shown. */
+  readonly title: string
+  readonly description: string
   keys: readonly RuleKey[]
 }
 
@@ -25,14 +28,22 @@ export interface RuleGroup {
 export const RULE_GROUPS: readonly RuleGroup[] = [
   {
     id: 'box',
-    title: 'Forms you can keep in a box',
-    description: 'Switch a kind of form on and every one of them gets a slot of its own.',
+    get title() {
+      return t('settings.rules.group.box.title')
+    },
+    get description() {
+      return t('settings.rules.group.box.description')
+    },
     keys: ['regional', 'genderForms', 'genderDiffs', 'cosmetic', 'changeable', 'heldItem', 'fusion', 'event', 'partner', 'alcremieSweets']
   },
   {
     id: 'battle',
-    title: 'Forms that only exist in battle',
-    description: 'They cannot be stored, so most Living Dexes leave them out. Switch them on if you want a slot for each one anyway.',
+    get title() {
+      return t('settings.rules.group.battle.title')
+    },
+    get description() {
+      return t('settings.rules.group.battle.description')
+    },
     keys: ['mega', 'battle', 'gmax']
   }
 ]
@@ -95,12 +106,19 @@ export function signed(n: number): string {
 
 /** Human file size: "0 KB", "412 KB", "38.2 MB", "1.25 GB". */
 export function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB'
+  if (!Number.isFinite(bytes) || bytes <= 0) return t('settings.size.kb', { value: '0' })
   const kb = bytes / 1024
-  if (kb < 1000) return `${Math.max(1, Math.round(kb))} KB`
+  if (kb < 1000) return t('settings.size.kb', { value: fixed(Math.max(1, Math.round(kb)), 0) })
   const mb = kb / 1024
-  if (mb < 1000) return `${mb < 10 ? mb.toFixed(2) : mb.toFixed(1)} MB`
-  return `${(mb / 1024).toFixed(2)} GB`
+  if (mb < 1000) return t('settings.size.mb', { value: fixed(mb, mb < 10 ? 2 : 1) })
+  return t('settings.size.gb', { value: fixed(mb / 1024, 2) })
+}
+
+/** A number with exactly `digits` decimals, with the decimal mark of the active language. */
+function fixed(value: number, digits: number): string {
+  const language = activeLanguage()
+  if (language === 'en') return value.toFixed(digits)
+  return new Intl.NumberFormat(languageTag(language), { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false }).format(value)
 }
 
 /** First seven characters of a commit hash; anything shorter comes back unchanged. */

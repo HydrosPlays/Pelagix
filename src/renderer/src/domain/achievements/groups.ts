@@ -137,15 +137,16 @@ export const ALCREMIE = 869
 
 // ---------------------------------------------------------------- generations
 
-/** Region a generation's new Pokémon are named after. */
-export const GENERATION_REGIONS: Readonly<Record<number, { key: string; name: string; where: string }>> = {
-  1: { key: 'kanto', name: 'Kanto', where: 'Kanto' },
-  2: { key: 'johto', name: 'Johto', where: 'Johto' },
-  3: { key: 'hoenn', name: 'Hoenn', where: 'Hoenn' },
-  4: { key: 'sinnoh', name: 'Sinnoh', where: 'Sinnoh' },
-  5: { key: 'unova', name: 'Unova', where: 'Unova' },
-  6: { key: 'kalos', name: 'Kalos', where: 'Kalos' },
-  7: { key: 'alola', name: 'Alola', where: 'Alola' },
-  8: { key: 'galar', name: 'Galar', where: 'Galar or Hisui' },
-  9: { key: 'paldea', name: 'Paldea', where: 'Paldea' }
+/** Region a generation's new Pokémon are named after: the stable key that is part of an achievement id. The words are in i18n/en/achievements.ts. */
+export const GENERATION_REGIONS: Readonly<Record<number, { key: string }>> = {
+  1: { key: 'kanto' },
+  2: { key: 'johto' },
+  3: { key: 'hoenn' },
+  4: { key: 'sinnoh' },
+  5: { key: 'unova' },
+  6: { key: 'kalos' },
+  7: { key: 'alola' },
+  // Galar's generation also holds the Pokémon first discovered in Hisui.
+  8: { key: 'galar' },
+  9: { key: 'paldea' }
 }

@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <sub>Windows 10 and 11 · version 0.6.0 · GPL-3.0 · an unofficial fan project</sub>
+  <sub>Windows 10 and 11 · version 0.7.0 · GPL-3.0 · an unofficial fan project</sub>
 </p>
 
 > The screenshots on this page come from version 0.1.0 running a generated demo collection
@@ -43,6 +43,7 @@
   - [Achievements](#achievements)
   - [Home dashboard](#home-dashboard)
   - [Settings](#settings)
+  - [Languages](#languages)
   - [Search and keyboard shortcuts](#search-and-keyboard-shortcuts)
   - [Updates](#updates)
 - [Supported games](#supported-games)
@@ -361,7 +362,8 @@ the first catch.
 
 - **Trainer**: your name, used in the greeting and as the default Original Trainer.
 - **Living Dex rules**: see [Forms and the Living Dex rules](#forms-and-the-living-dex-rules).
-- **Appearance**: dark or light theme, reduce motion, and Pokédex tile density. Pelagix also
+- **Appearance**: language (see [Languages](#languages)), dark or light theme, reduce motion,
+  and Pokédex tile density. Pelagix also
   follows your system's reduced-motion setting.
 - **Your data**: where the save is, **Export save**, **Import save**, **Import from a game save**
   and **Reset**. Importing
@@ -382,6 +384,32 @@ the first catch.
 - **About**: version, dataset details, keyboard shortcuts and credits.
 
 ![Eevee's page in the light theme: the render, Pokédex text, and the branching evolution family with all eight evolutions and how each is reached](docs/screenshots/15-light-theme.png)
+
+### Languages
+
+From version 0.7.0, Pelagix comes in the ten languages of the Pokémon games: Japanese, English,
+French, Italian, German, Spanish (Spain), Spanish (Latin America), Korean, Simplified Chinese
+and Traditional Chinese.
+
+- **Choosing**: the first time Pelagix starts, and once after updating from an older version, it
+  asks which language you want and pre-selects the language of Windows. You can change it at any
+  time in **Settings → Appearance → Language**; the change applies at once.
+- **Pokémon wording is the games' own**: the names of Pokémon and their forms, categories,
+  Pokédex entries, types, abilities, Poké Balls, game titles and most places are taken from the
+  games' text (through PKHeX and PokeAPI), not translated by hand.
+- **The interface is translated for this project** and has not been checked by native speakers,
+  so some wording may be awkward. Corrections are welcome: each language is a folder of plain
+  files in `src/renderer/src/i18n/`. Latin American Spanish shares the Spanish text and only
+  holds what differs.
+- **Your save is the same in every language.** What you log is stored the same way whatever the
+  language, so you can switch without changing your entries, and nicknames, trainer names and
+  notes stay exactly as you typed them or as they were in the imported game.
+- **Search** finds a Pokémon by its name in your language and by its English name.
+
+Still in English in every language: Pokédex entries of the newest Pokémon (National numbers 899
+to 1025, and from 723 in both Chinese scripts), the names of a few forms and places the sources
+do not have, the less common evolution methods, event titles, console names, release notes and
+the installer.
 
 ### Search and keyboard shortcuts
 
@@ -557,8 +585,8 @@ files:
 
 | File | What it is |
 | --- | --- |
-| `Pelagix-<version>-setup.exe` | The installer. It lets you choose the install folder, and from 0.2.0 on it updates itself from inside the app. About 119 MB. |
-| `Pelagix-<version>-portable.exe` | A single file that runs without installing. It tells you when a new version is out, and you download that yourself. About 119 MB. |
+| `Pelagix-<version>-setup.exe` | The installer. It lets you choose the install folder, and from 0.2.0 on it updates itself from inside the app. About 120 MB. |
+| `Pelagix-<version>-portable.exe` | A single file that runs without installing. It tells you when a new version is out, and you download that yourself. About 120 MB. |
 
 A release also carries `latest.yml` and a `.blockmap` file. The updater reads those; you do not
 need them. If you are on 0.1.0, which has no updater, download the newer file and run it: your
@@ -622,7 +650,7 @@ npm install
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Starts the app in Electron with hot reload. The first run downloads the Electron binary. |
-| `npm test` | Runs the unit tests (1,773 tests in 50 files). |
+| `npm test` | Runs the unit tests (1,845 tests in 56 files). |
 | `npm run dist` | Builds the save reader, type-checks, builds, and packages the installer, the portable executable and the updater's files into `dist/`. Needs the .NET 10 SDK and the `PKHeX/` tree. Nothing is uploaded. |
 
 The datasets and the game icons are part of the repository, so nothing else has to be generated

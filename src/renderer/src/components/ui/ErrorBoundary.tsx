@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { t } from '@renderer/i18n'
 import { errorMessage } from '@renderer/lib/format'
 import { Button } from './Button'
 import { EmptyState } from './EmptyState'
@@ -57,15 +58,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
         <EmptyState
           tone="danger"
           icon="warning"
-          title={this.props.title ?? 'Something went wrong here'}
-          description={<span className="u-selectable">{errorMessage(error, 'An unexpected error occurred.')}</span>}
+          title={this.props.title ?? t('components.error.title')}
+          description={<span className="u-selectable">{errorMessage(error, t('components.error.unexpected'))}</span>}
           action={
             <>
               <Button variant="primary" icon="refresh" onClick={this.reset}>
-                Try again
+                {t('components.error.tryAgain')}
               </Button>
               <Button variant="ghost" onClick={() => window.location.reload()}>
-                Reload app
+                {t('components.error.reload')}
               </Button>
             </>
           }

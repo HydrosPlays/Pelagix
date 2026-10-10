@@ -3,6 +3,8 @@
 import { BALL_BY_ID } from '@shared/balls'
 import { GAME_BY_ID, type SystemId } from '@shared/games'
 import type { CatchEntry, EntryKind } from '@shared/save-types'
+import { activeLanguage } from '@renderer/i18n/runtime'
+import { speciesName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
 import { entryDay } from '../progress'
 import type { DexFacts } from './facts'
@@ -23,7 +25,24 @@ function append<K>(map: Map<K, CatchEntry[]>, key: K, entry: CatchEntry): void {
   else map.set(key, [entry])
 }
 
+let localNames: { dex: Dex; language: string; names: ReadonlyMap<string, number> } | null = null
+
+/**
+ * Lower-cased species name -> national dex number in the active language, or null in English
+ * (`facts.speciesByName` has those). A nickname counts as another Pokémon's name in either.
+ */
+function namesInActiveLanguage(dex: Dex): ReadonlyMap<string, number> | null {
+  const language = activeLanguage()
+  if (language === 'en') return null
+  if (localNames?.dex === dex && localNames.language === language) return localNames.names
+  const names = new Map<string, number>()
+  for (const species of dex.speciesList) names.set(speciesName(species).trim().toLowerCase(), species.id)
+  localNames = { dex, language, names }
+  return names
+}
+
 export function buildEntryIndex(dex: Dex, facts: DexFacts, entries: readonly CatchEntry[]): EntryIndex {
+  const localised = namesInActiveLanguage(dex)
   const species = new Set<number>()
   const shinySpecies = new Set<number>()
   const forms = new Set<string>()
@@ -80,7 +99,8 @@ export function buildEntryIndex(dex: Dex, facts: DexFacts, entries: readonly Cat
       }
 
       if (entry.nickname) {
-        const named = facts.speciesByName.get(entry.nickname.trim().toLowerCase())
+        const nickname = entry.nickname.trim().toLowerCase()
+        const named = facts.speciesByName.get(nickname) ?? localised?.get(nickname)
         if (named !== undefined && named !== entry.species) misnamed++
       }
     }

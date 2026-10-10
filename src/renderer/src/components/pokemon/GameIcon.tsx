@@ -1,5 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { GAME_BY_ID, SYSTEM_BY_ID, type GameDef } from '@shared/games'
+import { t } from '@renderer/i18n'
+import { gameName, gameShortName } from '@renderer/i18n/terms'
 import { gameIconUrl } from '@renderer/lib/assets'
 import { cx } from '../ui/cx'
 import { Tooltip } from '../ui/Tooltip'
@@ -28,8 +30,8 @@ export interface GameIconProps {
 export function GameIcon({ game, size = 32, tooltip = true, alt, className }: GameIconProps) {
   const def = resolveGame(game)
   const [failed, setFailed] = useState(false)
-  const name = def?.name ?? (typeof game === 'string' ? game : 'Unknown game')
-  const short = def?.short ?? '?'
+  const name = def ? gameName(def.id) : typeof game === 'string' ? game : t('components.game.unknown')
+  const short = def ? gameShortName(def.id) : '?'
   const label = alt ?? name
   const style = { width: size, height: size, '--game-color': def?.color } as CSSProperties
 
@@ -65,7 +67,7 @@ const BADGE_ICON: Record<NonNullable<GameBadgeProps['size']>, number> = { sm: 20
 /** The standard way to show where an entry comes from: console glyph + game icon + game name. */
 export function GameBadge({ game, size = 'md', system = true, short, compact = false, className }: GameBadgeProps) {
   const def = resolveGame(game)
-  const name = def ? ((short ?? size === 'sm') ? def.short : def.name) : typeof game === 'string' ? game : 'Unknown game'
+  const name = def ? ((short ?? size === 'sm') ? gameShortName(def.id) : gameName(def.id)) : typeof game === 'string' ? game : t('components.game.unknown')
   const sys = def ? SYSTEM_BY_ID.get(def.system) : undefined
   const glyph = system && def ? <SystemIcon system={def.system} size={size === 'lg' ? 16 : size === 'sm' ? 14 : 16} label={compact ? undefined : ''} /> : null
 

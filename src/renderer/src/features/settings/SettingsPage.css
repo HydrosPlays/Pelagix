@@ -407,6 +407,11 @@
   flex: none;
 }
 
+/* Wide enough for the longest language name, so the control keeps its width whichever is chosen. */
+.settings-language {
+  width: 250px;
+}
+
 /* A Switch laid out as a row: keep its text column from running under the control. */
 .settings-switch-row.ui-check-row {
   align-items: center;

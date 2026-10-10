@@ -7,6 +7,8 @@ import { BALL_BY_ID, type BallDef } from '@shared/balls'
 import type { FormSummary, FormVariant, SpeciesSummary } from '@shared/dex-types'
 import { GAME_BY_ID, SYSTEM_BY_ID, type GameDef, type SystemDef } from '@shared/games'
 import type { CatchEntry } from '@shared/save-types'
+import { t } from '@renderer/i18n/runtime'
+import { formFullName, speciesName, variantName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
 import { resolveEntrySprite, type ResolvedSprite } from '@renderer/lib/sprites'
 import { entryDay } from './progress'
@@ -39,9 +41,9 @@ export function describeEntry(dex: Dex, entry: CatchEntry): EntryView {
   const variant = entry.variant === undefined ? undefined : form?.variants?.find((v) => v.id === entry.variant)
   const game = GAME_BY_ID.get(entry.game)
 
-  let name = form?.full ?? species?.name ?? `Pokémon #${entry.species}`
-  if (variant) name = `${name} · ${variant.name}`
-  if (entry.gmax && form?.gmax) name = `Gigantamax ${name}`
+  let name = species && form ? formFullName(species, form) : species ? speciesName(species) : t('domain.entry.unknownSpecies', { number: String(entry.species) })
+  if (species && form && variant) name = t('domain.slot.variant', { name, variant: variantName(species, form, variant.id) ?? variant.name })
+  if (entry.gmax && form?.gmax) name = t('domain.slot.gmax', { name })
 
   return {
     entry,

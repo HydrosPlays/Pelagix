@@ -4,13 +4,19 @@
  * depend on the loaded dataset); the dataset only decides targets when an achievement is evaluated.
  *
  * Ids are saved in the user's file. Never rename one; retire it and add a new id instead.
+ *
+ * The words are not here: the name and description of the achievement `id` are the messages
+ * "achievements.<id>.name" and "achievements.<id>.description" (and ".hint" for a secret one) of
+ * i18n/en/achievements.ts, read whenever `title`, `description` or `hint` is asked for.
  */
 
 import { BALLS, type BallFamily } from '@shared/balls'
 import type { RegionalVariant, SpeciesTag, TypeId } from '@shared/dex-types'
 import { GAMES, SYSTEM_BY_ID, type GameDef, type SystemId } from '@shared/games'
 import type { EntryKind } from '@shared/save-types'
-import { formatCount, listText } from '@renderer/lib/format'
+import { t, type MessageKey, type MessageParams } from '@renderer/i18n/runtime'
+import { ballName, gameGroupName, gameShortName } from '@renderer/i18n/terms'
+import { listText } from '@renderer/lib/format'
 import { formKey, variantKey } from './entry-index'
 import type { DexFacts } from './facts'
 import {
@@ -25,18 +31,32 @@ import {
 
 // ---------------------------------------------------------------- categories
 
+/** A category; its name and description are "achievements.category.<id>.name" and ".description". */
+function category(id: AchievementCategoryId, glyph: AchievementGlyph): AchievementCategory {
+  return {
+    id,
+    glyph,
+    get name() {
+      return t(`achievements.category.${id}.name`)
+    },
+    get description() {
+      return t(`achievements.category.${id}.description`)
+    }
+  }
+}
+
 export const ACHIEVEMENT_CATEGORIES: readonly AchievementCategory[] = [
-  { id: 'milestones', name: "Collector's Road", description: 'How far your Living Dex has come.', glyph: 'pokeball' },
-  { id: 'regions', name: 'World Tour', description: "Every region's Pokémon, from Kanto to Paldea.", glyph: 'compass' },
-  { id: 'types', name: 'Elemental Mastery', description: 'Collect every Pokémon of a type.', glyph: 'gem' },
-  { id: 'shiny', name: 'Starlight', description: 'Rewards for shiny hunting.', glyph: 'sparkle' },
-  { id: 'games', name: 'Cartridge Shelf', description: 'The games and systems your Pokémon come from.', glyph: 'cartridge' },
-  { id: 'balls', name: 'Ball Capsule', description: 'The balls you catch them in.', glyph: 'balls' },
-  { id: 'forms', name: 'Shapeshifters', description: 'Forms, patterns, genders and giant sizes.', glyph: 'shapes' },
-  { id: 'legends', name: 'Hall of Legends', description: 'Famous groups: first partners, legends, fossils and more.', glyph: 'crown' },
-  { id: 'journey', name: 'Field Notes', description: 'The ways you get your Pokémon.', glyph: 'grass' },
-  { id: 'dedication', name: 'Long Haul', description: 'Streaks, big days, families and old friends.', glyph: 'flame' },
-  { id: 'secrets', name: 'Hidden Grotto', description: 'Secret achievements. Play around and they turn up.', glyph: 'question' }
+  category('milestones', 'pokeball'),
+  category('regions', 'compass'),
+  category('types', 'gem'),
+  category('shiny', 'sparkle'),
+  category('games', 'cartridge'),
+  category('balls', 'balls'),
+  category('forms', 'shapes'),
+  category('legends', 'crown'),
+  category('journey', 'grass'),
+  category('dedication', 'flame'),
+  category('secrets', 'question')
 ]
 
 export const CATEGORY_BY_ID: ReadonlyMap<AchievementCategoryId, AchievementCategory> = new Map(ACHIEVEMENT_CATEGORIES.map((c) => [c.id, c]))
@@ -90,23 +110,38 @@ export function missingItems(ctx: AchievementContext, def: AchievementDef, limit
 
 // ---------------------------------------------------------------- builders
 
-type Draft = Omit<AchievementDef, 'points'>
 interface Common {
   id: string
-  title: string
-  description: string
   category: AchievementCategoryId
   tier: AchievementTier
   glyph: AchievementGlyph
   accent?: string
   secret?: boolean
-  hint?: string
+  /** Where its messages are when that is not "<id>": the version pairs share "pair.duo" and "pair.trio". */
+  text?: string
+  /** Values for the placeholders of its name and description, worked out when the text is read. */
+  params?: () => MessageParams
 }
+type Draft = Common & Pick<AchievementDef, 'evaluate' | 'pool' | 'test' | 'whole'>
 
 const defs: AchievementDef[] = []
 
 function add(draft: Draft): void {
-  defs.push({ ...draft, points: TIER_POINTS[draft.tier] })
+  const { text, params, ...rest } = draft
+  const stem = `achievements.${text ?? draft.id}`
+  const def: AchievementDef = {
+    ...rest,
+    points: TIER_POINTS[draft.tier],
+    get title() {
+      return t(`${stem}.name` as MessageKey, params?.())
+    },
+    get description() {
+      return t(`${stem}.description` as MessageKey, params?.())
+    }
+  }
+  // Only a secret has a hint; for the others the property does not exist at all.
+  if (draft.secret) Object.defineProperty(def, 'hint', { enumerable: true, get: () => t(`${stem}.hint` as MessageKey) })
+  defs.push(def)
 }
 
 /** Reaches `target` of a plain number. */
@@ -155,31 +190,29 @@ const kindCount = (ctx: AchievementContext, ...kinds: EntryKind[]): number => ki
 
 // ---------------------------------------------------------------- Collector's Road
 
-const SPECIES_MILESTONES: ReadonlyArray<[number, AchievementTier, string, string]> = [
-  [1, 'bronze', 'First Catch', 'Log your first Pokémon.'],
-  [10, 'bronze', 'Getting Started', 'Collect 10 different Pokémon.'],
-  [50, 'bronze', 'Budding Collector', 'Collect 50 different Pokémon.'],
-  [100, 'silver', 'Century Club', 'Collect 100 different Pokémon.'],
-  [151, 'silver', 'The Original Count', 'Collect 151 different Pokémon, as many as the very first Pokédex held.'],
-  [250, 'silver', 'Well Travelled', 'Collect 250 different Pokémon.'],
-  [386, 'gold', 'Three Regions Deep', 'Collect 386 different Pokémon.'],
-  [500, 'gold', 'Five Hundred Strong', 'Collect 500 different Pokémon.'],
-  [750, 'gold', 'Seasoned Curator', 'Collect 750 different Pokémon.'],
-  [1000, 'platinum', 'The Thousand', 'Collect 1,000 different Pokémon.']
+const SPECIES_MILESTONES: ReadonlyArray<[number, AchievementTier]> = [
+  [1, 'bronze'],
+  [10, 'bronze'],
+  [50, 'bronze'],
+  [100, 'silver'],
+  [151, 'silver'],
+  [250, 'silver'],
+  [386, 'gold'],
+  [500, 'gold'],
+  [750, 'gold'],
+  [1000, 'platinum']
 ]
 
-for (const [n, tier, title, description] of SPECIES_MILESTONES) {
-  milestone({ id: `species-${n}`, title, description, category: 'milestones', tier, glyph: 'pokeball' }, n, (ctx) => ctx.index.species.size)
+for (const [n, tier] of SPECIES_MILESTONES) {
+  milestone({ id: `species-${n}`, category: 'milestones', tier, glyph: 'pokeball' }, n, (ctx) => ctx.index.species.size)
 }
 collects(
-  { id: 'species-all', title: "Gotta Catch 'Em All", description: 'Collect every Pokémon species there is.', category: 'milestones', tier: 'platinum', glyph: 'pokeball' },
+  { id: 'species-all', category: 'milestones', tier: 'platinum', glyph: 'pokeball' },
   (facts) => facts.all
 )
 
 add({
   id: 'living-dex-half',
-  title: 'Half the Boxes',
-  description: 'Fill half of your Living Dex under your current rules.',
   category: 'milestones',
   tier: 'gold',
   glyph: 'boxes',
@@ -187,22 +220,20 @@ add({
 })
 add({
   id: 'living-dex-complete',
-  title: 'Living Dex Complete',
-  description: 'Fill every slot of your Living Dex under your current rules.',
   category: 'milestones',
   tier: 'platinum',
   glyph: 'boxes',
   evaluate: (ctx) => ({ current: ctx.collection.totals.caught, target: ctx.collection.totals.slots })
 })
 
-const ENTRY_MILESTONES: ReadonlyArray<[number, AchievementTier, string]> = [
-  [100, 'bronze', 'Busy Journal'],
-  [500, 'silver', 'Well-Kept Records'],
-  [1000, 'gold', 'Archivist'],
-  [2500, 'platinum', 'Grand Archive']
+const ENTRY_MILESTONES: ReadonlyArray<[number, AchievementTier]> = [
+  [100, 'bronze'],
+  [500, 'silver'],
+  [1000, 'gold'],
+  [2500, 'platinum']
 ]
-for (const [n, tier, title] of ENTRY_MILESTONES) {
-  counted({ id: `entries-${n}`, title, description: `Log ${formatCount(n)} entries.`, category: 'milestones', tier, glyph: 'journal' }, n, (ctx) => ctx.index.total)
+for (const [n, tier] of ENTRY_MILESTONES) {
+  counted({ id: `entries-${n}`, category: 'milestones', tier, glyph: 'journal' }, n, (ctx) => ctx.index.total)
 }
 
 // ---------------------------------------------------------------- World Tour
@@ -210,85 +241,66 @@ for (const [n, tier, title] of ENTRY_MILESTONES) {
 for (const [gen, region] of Object.entries(GENERATION_REGIONS)) {
   const pool = (facts: DexFacts): readonly SetItem[] => facts.byGeneration.get(Number(gen)) ?? NONE
   collects(
-    { id: `region-${region.key}-half`, title: `${region.name} Explorer`, description: `Collect half of the Pokémon first discovered in ${region.where}.`, category: 'regions', tier: 'silver', glyph: 'compass' },
+    { id: `region-${region.key}-half`, category: 'regions', tier: 'silver', glyph: 'compass' },
     pool,
     { want: 'half' }
   )
   collects(
-    { id: `region-${region.key}-all`, title: `${region.name} Champion`, description: `Collect every Pokémon first discovered in ${region.where}.`, category: 'regions', tier: 'gold', glyph: 'compass' },
+    { id: `region-${region.key}-all`, category: 'regions', tier: 'gold', glyph: 'compass' },
     pool
   )
 }
 
 // ---------------------------------------------------------------- Elemental Mastery
 
-const TYPE_TITLES: ReadonlyArray<[TypeId, string, string]> = [
-  ['normal', 'Normal', 'Everyday Heroes'],
-  ['fire', 'Fire', 'Playing with Fire'],
-  ['water', 'Water', 'Deep Blue'],
-  ['electric', 'Electric', 'High Voltage'],
-  ['grass', 'Grass', 'Green Thumb'],
-  ['ice', 'Ice', 'Cold Snap'],
-  ['fighting', 'Fighting', 'Black Belt'],
-  ['poison', 'Poison', 'Pick Your Poison'],
-  ['ground', 'Ground', 'Down to Earth'],
-  ['flying', 'Flying', 'Head in the Clouds'],
-  ['psychic', 'Psychic', 'Mind over Matter'],
-  ['bug', 'Bug', 'Bug Catcher'],
-  ['rock', 'Rock', 'Rock Solid'],
-  ['ghost', 'Ghost', 'Ghost Stories'],
-  ['dragon', 'Dragon', 'Dragon Tamer'],
-  ['dark', 'Dark', 'After Dark'],
-  ['steel', 'Steel', 'Nerves of Steel'],
-  ['fairy', 'Fairy', 'Fairy Tale']
-]
+const TYPES: readonly TypeId[] = ['normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy']
 
-for (const [type, name, title] of TYPE_TITLES) {
+for (const type of TYPES) {
   collects(
-    { id: `type-${type}-all`, title, description: `Collect every ${name}-type Pokémon.`, category: 'types', tier: 'gold', glyph: 'gem', accent: `var(--type-${type})` },
+    { id: `type-${type}-all`, category: 'types', tier: 'gold', glyph: 'gem', accent: `var(--type-${type})` },
     (facts) => facts.byType.get(type) ?? NONE
   )
 }
 
 // ---------------------------------------------------------------- Starlight
 
-const SHINY_MILESTONES: ReadonlyArray<[number, AchievementTier, string, string]> = [
-  [1, 'bronze', 'A Different Colour', 'Log your first shiny Pokémon.'],
-  [10, 'silver', 'Sparkle Seeker', 'Collect 10 different shiny Pokémon.'],
-  [25, 'silver', 'Shiny Hunter', 'Collect 25 different shiny Pokémon.'],
-  [50, 'gold', 'Star Chaser', 'Collect 50 different shiny Pokémon.'],
-  [100, 'gold', 'A Hundred Stars', 'Collect 100 different shiny Pokémon.'],
-  [250, 'platinum', 'Constellation', 'Collect 250 different shiny Pokémon.']
+const SHINY_MILESTONES: ReadonlyArray<[number, AchievementTier]> = [
+  [1, 'bronze'],
+  [10, 'silver'],
+  [25, 'silver'],
+  [50, 'gold'],
+  [100, 'gold'],
+  [250, 'platinum']
 ]
-for (const [n, tier, title, description] of SHINY_MILESTONES) {
-  milestone({ id: `shiny-${n}`, title, description, category: 'shiny', tier, glyph: 'sparkle' }, n, (ctx) => ctx.index.shinySpecies.size)
+for (const [n, tier] of SHINY_MILESTONES) {
+  milestone({ id: `shiny-${n}`, category: 'shiny', tier, glyph: 'sparkle' }, n, (ctx) => ctx.index.shinySpecies.size)
 }
 collects(
-  { id: 'shiny-starter', title: 'Rare Beginnings', description: 'Log a shiny first partner Pokémon or one of its evolutions.', category: 'shiny', tier: 'silver', glyph: 'sparkle' },
+  { id: 'shiny-starter', category: 'shiny', tier: 'silver', glyph: 'sparkle' },
   tagged('starter'),
   { test: 'shiny', want: 1 }
 )
 collects(
-  { id: 'shiny-legendary', title: 'Legend in a New Light', description: 'Log a shiny Legendary Pokémon.', category: 'shiny', tier: 'gold', glyph: 'sparkle' },
+  { id: 'shiny-legendary', category: 'shiny', tier: 'gold', glyph: 'sparkle' },
   tagged('legendary'),
   { test: 'shiny', want: 1 }
 )
 collects(
-  { id: 'shiny-mythical', title: 'Myth, Reimagined', description: 'Log a shiny Mythical Pokémon.', category: 'shiny', tier: 'gold', glyph: 'sparkle' },
+  { id: 'shiny-mythical', category: 'shiny', tier: 'gold', glyph: 'sparkle' },
   tagged('mythical'),
   { test: 'shiny', want: 1 }
 )
 counted(
-  { id: 'shiny-games-5', title: 'Sparkles Everywhere', description: 'Log shiny Pokémon from 5 different games.', category: 'shiny', tier: 'silver', glyph: 'sparkle' },
+  { id: 'shiny-games-5', category: 'shiny', tier: 'silver', glyph: 'sparkle' },
   5,
   (ctx) => ctx.index.shinyGames.size
 )
 flag(
-  { id: 'shiny-family', title: 'Matching Set', description: 'Log every member of one evolution family as a shiny.', category: 'shiny', tier: 'gold', glyph: 'sparkle' },
+  { id: 'shiny-family', category: 'shiny', tier: 'gold', glyph: 'sparkle' },
   (ctx) => ctx.index.shinyFamilies > 0
 )
 collects(
-  { id: 'shiny-all', title: 'Shiny Living Dex', description: 'Collect every Pokémon species as a shiny.', category: 'shiny', tier: 'platinum', glyph: 'sparkle' },
+  { id: 'shiny-all', category: 'shiny', tier: 'platinum', glyph: 'sparkle' },
   (facts) => facts.all,
   { test: 'shiny' }
 )
@@ -299,33 +311,33 @@ const MAIN_GAMES: readonly GameDef[] = GAMES.filter((game) => game.kind === 'mai
 const MAIN_SYSTEMS: readonly SystemId[] = [...new Set(MAIN_GAMES.map((game) => game.system))]
 const MAIN_GENERATIONS: readonly number[] = [...new Set(MAIN_GAMES.map((game) => game.generation))]
 
-const GAME_MILESTONES: ReadonlyArray<[number, AchievementTier, string]> = [
-  [3, 'bronze', 'Three Journeys'],
-  [10, 'silver', 'Seasoned Traveller'],
-  [20, 'gold', 'Globetrotter']
+const GAME_MILESTONES: ReadonlyArray<[number, AchievementTier]> = [
+  [3, 'bronze'],
+  [10, 'silver'],
+  [20, 'gold']
 ]
-for (const [n, tier, title] of GAME_MILESTONES) {
-  counted({ id: `games-${n}`, title, description: `Log catches from ${n} different main-series games.`, category: 'games', tier, glyph: 'cartridge' }, n, (ctx) => ctx.index.mainGames.size)
+for (const [n, tier] of GAME_MILESTONES) {
+  counted({ id: `games-${n}`, category: 'games', tier, glyph: 'cartridge' }, n, (ctx) => ctx.index.mainGames.size)
 }
 counted(
-  { id: 'games-all', title: 'Every Adventure', description: `Log a catch from all ${MAIN_GAMES.length} main-series games.`, category: 'games', tier: 'platinum', glyph: 'cartridge' },
+  { id: 'games-all', category: 'games', tier: 'platinum', glyph: 'cartridge', params: () => ({ count: MAIN_GAMES.length }) },
   MAIN_GAMES.length,
   (ctx) => ctx.index.mainGames.size
 )
 counted(
   {
     id: 'systems-all',
-    title: 'Hardware Collector',
-    description: `Log a catch from a game on each of these systems: ${listText(MAIN_SYSTEMS.map((id) => SYSTEM_BY_ID.get(id)?.name ?? id))}.`,
     category: 'games',
     tier: 'gold',
-    glyph: 'console'
+    glyph: 'console',
+    // Console names are the same in every language.
+    params: () => ({ systems: listText(MAIN_SYSTEMS.map((id) => SYSTEM_BY_ID.get(id)?.name ?? id)) })
   },
   MAIN_SYSTEMS.length,
   (ctx) => ctx.index.mainSystems.size
 )
 counted(
-  { id: 'generations-all', title: 'Nine Generations', description: 'Log a catch from the games of every generation.', category: 'games', tier: 'gold', glyph: 'console' },
+  { id: 'generations-all', category: 'games', tier: 'gold', glyph: 'console' },
   MAIN_GENERATIONS.length,
   (ctx) => ctx.index.mainGenerations.size
 )
@@ -348,136 +360,136 @@ for (const games of VERSION_SETS) {
   counted(
     {
       id: `pair-${first.group}`,
-      title: `${first.groupName} ${games.length > 2 ? 'Trio' : 'Duo'}`,
-      description: `Log a catch from ${games.length > 2 ? '' : 'both '}${listText(games.map((game) => game.short))}.`,
       category: 'games',
       tier: 'bronze',
       glyph: 'cartridge',
-      accent: first.color
+      accent: first.color,
+      text: games.length > 2 ? 'pair.trio' : 'pair.duo',
+      params: () => ({ group: gameGroupName(first.group), games: listText(games.map((game) => gameShortName(game.id))) })
     },
     games.length,
     (ctx) => ownedOf(ctx, games)
   )
 }
 counted(
-  { id: 'pairs-all', title: 'Both Sides of Every Story', description: 'Log a catch from every version of every paired release.', category: 'games', tier: 'gold', glyph: 'cartridge' },
+  { id: 'pairs-all', category: 'games', tier: 'gold', glyph: 'cartridge' },
   VERSION_SETS.length,
   (ctx) => VERSION_SETS.filter((games) => ownedOf(ctx, games) === games.length).length
 )
-counted({ id: 'game-50', title: 'Home Turf', description: 'Log 50 entries from a single game.', category: 'games', tier: 'silver', glyph: 'cartridge' }, 50, (ctx) => ctx.index.maxPerGame)
-counted({ id: 'game-150', title: 'Regional Expert', description: 'Log 150 entries from a single game.', category: 'games', tier: 'gold', glyph: 'cartridge' }, 150, (ctx) => ctx.index.maxPerGame)
-flag({ id: 'game-go', title: 'Out for a Walk', description: 'Log a catch from Pokémon GO.', category: 'games', tier: 'bronze', glyph: 'steps' }, (ctx) => ctx.index.byGame.has('go'))
+counted({ id: 'game-50', category: 'games', tier: 'silver', glyph: 'cartridge' }, 50, (ctx) => ctx.index.maxPerGame)
+counted({ id: 'game-150', category: 'games', tier: 'gold', glyph: 'cartridge' }, 150, (ctx) => ctx.index.maxPerGame)
+flag({ id: 'game-go', category: 'games', tier: 'bronze', glyph: 'steps' }, (ctx) => ctx.index.byGame.has('go'))
 counted(
-  { id: 'games-orre', title: 'Orre Regular', description: 'Log a catch from both Pokémon Colosseum and Pokémon XD.', category: 'games', tier: 'silver', glyph: 'moon' },
+  { id: 'games-orre', category: 'games', tier: 'silver', glyph: 'moon' },
   2,
   (ctx) => (ctx.index.byGame.has('colosseum') ? 1 : 0) + (ctx.index.byGame.has('xd') ? 1 : 0)
 )
 
 // ---------------------------------------------------------------- Ball Capsule
 
-const BALL_MILESTONES: ReadonlyArray<[number, AchievementTier, string]> = [
-  [5, 'bronze', 'Ball Sampler'],
-  [10, 'silver', 'Ball Enthusiast'],
-  [20, 'gold', 'Ball Connoisseur']
+const BALL_MILESTONES: ReadonlyArray<[number, AchievementTier]> = [
+  [5, 'bronze'],
+  [10, 'silver'],
+  [20, 'gold']
 ]
-for (const [n, tier, title] of BALL_MILESTONES) {
-  counted({ id: `balls-${n}`, title, description: `Use ${n} different kinds of ball.`, category: 'balls', tier, glyph: 'balls' }, n, (ctx) => ctx.index.byBall.size)
+for (const [n, tier] of BALL_MILESTONES) {
+  counted({ id: `balls-${n}`, category: 'balls', tier, glyph: 'balls' }, n, (ctx) => ctx.index.byBall.size)
 }
 counted(
-  { id: 'balls-all', title: 'One of Everything', description: `Use all ${BALLS.length} kinds of ball at least once.`, category: 'balls', tier: 'platinum', glyph: 'balls' },
+  { id: 'balls-all', category: 'balls', tier: 'platinum', glyph: 'balls', params: () => ({ count: BALLS.length }) },
   BALLS.length,
   (ctx) => ctx.index.byBall.size
 )
 
-const BALL_FAMILIES: ReadonlyArray<[BallFamily, string, string, string]> = [
-  ['apricorn', 'balls-apricorn', "Kurt's Finest", 'Use all seven Apricorn balls: Fast, Level, Lure, Heavy, Love, Friend and Moon.'],
-  ['hisui', 'balls-hisui', 'Hisuian Craftwork', 'Use every kind of ball crafted in Hisui.']
+const BALL_FAMILIES: ReadonlyArray<[BallFamily, string]> = [
+  ['apricorn', 'balls-apricorn'],
+  ['hisui', 'balls-hisui']
 ]
-for (const [family, id, title, description] of BALL_FAMILIES) {
+for (const [family, id] of BALL_FAMILIES) {
   const balls = BALLS.filter((ball) => ball.family === family)
-  counted({ id, title, description, category: 'balls', tier: 'gold', glyph: 'balls' }, balls.length, (ctx) => balls.filter((ball) => ctx.index.byBall.has(ball.id)).length)
+  counted({ id, category: 'balls', tier: 'gold', glyph: 'balls' }, balls.length, (ctx) => balls.filter((ball) => ctx.index.byBall.has(ball.id)).length)
 }
 
-const SINGLE_BALLS: ReadonlyArray<[string, AchievementTier, string]> = [
-  ['safari', 'bronze', 'Safari Souvenir'],
-  ['sport', 'silver', 'Contest Entry'],
-  ['dream', 'bronze', 'Sweet Dreams'],
-  ['beast', 'bronze', 'Beast Wrangler'],
-  ['master', 'bronze', 'No Chances Taken'],
-  ['cherish', 'bronze', 'Cherished Gift']
+const SINGLE_BALLS: ReadonlyArray<[string, AchievementTier]> = [
+  ['safari', 'bronze'],
+  ['sport', 'silver'],
+  ['dream', 'bronze'],
+  ['beast', 'bronze'],
+  ['master', 'bronze'],
+  ['cherish', 'bronze']
 ]
-for (const [slug, tier, title] of SINGLE_BALLS) {
+for (const [slug, tier] of SINGLE_BALLS) {
   const ball = BALLS.find((b) => b.slug === slug)
   if (!ball) continue
-  flag({ id: `ball-${slug}`, title, description: `Log a Pokémon in a ${ball.name}.`, category: 'balls', tier, glyph: 'pokeball' }, (ctx) => ctx.index.byBall.has(ball.id))
+  flag({ id: `ball-${slug}`, category: 'balls', tier, glyph: 'pokeball', params: () => ({ ball: ballName(ball.id) ?? ball.name }) }, (ctx) => ctx.index.byBall.has(ball.id))
 }
 
 // ---------------------------------------------------------------- Shapeshifters
 
-const FORM_SET_COPY: ReadonlyArray<[string, AchievementTier, string, string]> = [
-  ['unown', 'gold', 'The Whole Alphabet', 'Collect every Unown shape, from A to Z plus ! and ?.'],
-  ['vivillon', 'gold', 'Wings of the World', 'Collect every regional Vivillon pattern.'],
-  ['alcremie-creams', 'silver', 'Nine Creams', 'Collect Alcremie in every cream.'],
-  ['arceus', 'gold', 'Plates of Creation', 'Collect Arceus as every type.'],
-  ['silvally', 'gold', 'Memory Bank', 'Collect Silvally as every type.'],
-  ['rotom', 'silver', 'Appliance Department', 'Collect all five Rotom appliances.'],
-  ['deoxys', 'silver', 'Shape of Space', 'Collect all four Deoxys Formes.'],
-  ['furfrou', 'silver', 'Grooming Salon', 'Collect Furfrou in every trim.'],
-  ['flabebe', 'gold', 'Flower Garden', 'Collect Flabébé, Floette and Florges with every flower colour.'],
-  ['minior', 'silver', 'Meteor Shower', 'Collect Minior with every core colour.'],
-  ['oricorio', 'silver', 'Dance Card', 'Collect all four Oricorio styles.'],
-  ['seasons', 'silver', 'Four Seasons', 'Collect Deerling and Sawsbuck in every season.'],
-  ['cloaks', 'silver', 'Wardrobe Change', 'Collect Burmy and Wormadam in every cloak.'],
-  ['sizes', 'silver', 'Pumpkin Patch', 'Collect Pumpkaboo and Gourgeist in every size.'],
-  ['seas', 'bronze', 'East and West', 'Collect Shellos and Gastrodon from both seas.'],
-  ['lycanroc', 'bronze', 'Day and Night', 'Collect the Midday, Midnight and Dusk forms of Lycanroc.'],
-  ['squawkabilly', 'bronze', 'Birds of a Feather', 'Collect Squawkabilly in every plumage.'],
-  ['tatsugiri', 'bronze', 'Sushi Platter', 'Collect all three Tatsugiri forms.'],
-  ['ogerpon', 'silver', 'Masquerade', 'Collect Ogerpon wearing every mask.'],
-  ['genesect', 'silver', 'Drive Collection', 'Collect Genesect holding each of its four Drives.'],
-  ['therian', 'silver', 'Two Faces', 'Collect the Therian Formes of Tornadus, Thundurus, Landorus and Enamorus.'],
-  ['pikachu-caps', 'gold', 'Hat Collection', 'Collect every Pikachu wearing a cap.'],
-  ['fusions', 'gold', 'Better Together', 'Collect every fusion of Kyurem, Necrozma and Calyrex.']
+const FORM_SET_COPY: ReadonlyArray<[string, AchievementTier]> = [
+  ['unown', 'gold'],
+  ['vivillon', 'gold'],
+  ['alcremie-creams', 'silver'],
+  ['arceus', 'gold'],
+  ['silvally', 'gold'],
+  ['rotom', 'silver'],
+  ['deoxys', 'silver'],
+  ['furfrou', 'silver'],
+  ['flabebe', 'gold'],
+  ['minior', 'silver'],
+  ['oricorio', 'silver'],
+  ['seasons', 'silver'],
+  ['cloaks', 'silver'],
+  ['sizes', 'silver'],
+  ['seas', 'bronze'],
+  ['lycanroc', 'bronze'],
+  ['squawkabilly', 'bronze'],
+  ['tatsugiri', 'bronze'],
+  ['ogerpon', 'silver'],
+  ['genesect', 'silver'],
+  ['therian', 'silver'],
+  ['pikachu-caps', 'gold'],
+  ['fusions', 'gold']
 ]
-for (const [key, tier, title, description] of FORM_SET_COPY) {
-  collects({ id: `forms-${key}`, title, description, category: 'forms', tier, glyph: 'shapes' }, formSet(key), { test: 'form' })
+for (const [key, tier] of FORM_SET_COPY) {
+  collects({ id: `forms-${key}`, category: 'forms', tier, glyph: 'shapes' }, formSet(key), { test: 'form' })
   if (key !== 'alcremie-creams') continue
   collects(
-    { id: 'forms-alcremie-all', title: 'The Whole Patisserie', description: 'Collect Alcremie in every combination of cream and sweet.', category: 'forms', tier: 'platinum', glyph: 'shapes' },
+    { id: 'forms-alcremie-all', category: 'forms', tier: 'platinum', glyph: 'shapes' },
     (facts) => facts.alcremie,
     { test: 'variant' }
   )
 }
 
-const REGIONAL_COPY: ReadonlyArray<[RegionalVariant, string, AchievementTier, string, string]> = [
-  ['alola', 'alolan', 'gold', 'Island Variants', 'Collect every Alolan form.'],
-  ['galar', 'galarian', 'gold', 'Galarian Lineup', 'Collect every Galarian form.'],
-  ['hisui', 'hisuian', 'gold', 'Echoes of Hisui', 'Collect every Hisuian form.'],
-  ['paldea', 'paldean', 'silver', 'Paldean Breeds', 'Collect every Paldean form.']
+const REGIONAL_COPY: ReadonlyArray<[RegionalVariant, string, AchievementTier]> = [
+  ['alola', 'alolan', 'gold'],
+  ['galar', 'galarian', 'gold'],
+  ['hisui', 'hisuian', 'gold'],
+  ['paldea', 'paldean', 'silver']
 ]
-for (const [region, key, tier, title, description] of REGIONAL_COPY) {
-  collects({ id: `forms-${key}`, title, description, category: 'forms', tier, glyph: 'shapes' }, (facts) => facts.regional.get(region) ?? NONE, { test: 'form' })
+for (const [region, key, tier] of REGIONAL_COPY) {
+  collects({ id: `forms-${key}`, category: 'forms', tier, glyph: 'shapes' }, (facts) => facts.regional.get(region) ?? NONE, { test: 'form' })
 }
 
 collects(
-  { id: 'genders-10', title: 'His and Hers', description: 'Collect both a male and a female of 10 Pokémon whose genders look different.', category: 'forms', tier: 'silver', glyph: 'gender' },
+  { id: 'genders-10', category: 'forms', tier: 'silver', glyph: 'gender' },
   (facts) => facts.genderPairs,
   { test: 'genders', want: 10 }
 )
 collects(
-  { id: 'genders-all', title: 'Spot the Difference', description: 'Collect both a male and a female of every Pokémon whose genders look different.', category: 'forms', tier: 'platinum', glyph: 'gender' },
+  { id: 'genders-all', category: 'forms', tier: 'platinum', glyph: 'gender' },
   (facts) => facts.genderPairs,
   { test: 'genders' }
 )
 
-collects({ id: 'gmax-1', title: 'Going Big', description: 'Log a Gigantamax Pokémon.', category: 'forms', tier: 'bronze', glyph: 'gmax' }, (facts) => facts.gmax, { test: 'gmax', want: 1 })
-collects({ id: 'gmax-10', title: 'Max Power', description: 'Collect 10 different Gigantamax Pokémon.', category: 'forms', tier: 'silver', glyph: 'gmax' }, (facts) => facts.gmax, { test: 'gmax', want: 10 })
-collects({ id: 'gmax-all', title: 'Gallery of Giants', description: 'Collect every Gigantamax Pokémon.', category: 'forms', tier: 'gold', glyph: 'gmax' }, (facts) => facts.gmax, { test: 'gmax' })
+collects({ id: 'gmax-1', category: 'forms', tier: 'bronze', glyph: 'gmax' }, (facts) => facts.gmax, { test: 'gmax', want: 1 })
+collects({ id: 'gmax-10', category: 'forms', tier: 'silver', glyph: 'gmax' }, (facts) => facts.gmax, { test: 'gmax', want: 10 })
+collects({ id: 'gmax-all', category: 'forms', tier: 'gold', glyph: 'gmax' }, (facts) => facts.gmax, { test: 'gmax' })
 
-collects({ id: 'mega-1', title: 'Beyond Evolution', description: 'Log a Mega Evolution.', category: 'forms', tier: 'bronze', glyph: 'mega' }, (facts) => facts.megas, { test: 'form', want: 1 })
-collects({ id: 'mega-10', title: 'Stone Collector', description: 'Log 10 different Mega Evolutions.', category: 'forms', tier: 'silver', glyph: 'mega' }, (facts) => facts.megas, { test: 'form', want: 10 })
+collects({ id: 'mega-1', category: 'forms', tier: 'bronze', glyph: 'mega' }, (facts) => facts.megas, { test: 'form', want: 1 })
+collects({ id: 'mega-10', category: 'forms', tier: 'silver', glyph: 'mega' }, (facts) => facts.megas, { test: 'form', want: 10 })
 collects(
-  { id: 'mega-all', title: 'Mega Marathon', description: 'Log every Mega Evolution and Primal Reversion.', category: 'forms', tier: 'platinum', glyph: 'mega' },
+  { id: 'mega-all', category: 'forms', tier: 'platinum', glyph: 'mega' },
   (facts) => facts.megas,
   { test: 'form' }
 )
@@ -488,8 +500,6 @@ for (const [gen, region] of Object.entries(GENERATION_REGIONS)) {
   collects(
     {
       id: `starters-${region.key}`,
-      title: `${region.name} First Partners`,
-      description: `Collect all three first partner Pokémon of ${region.name}.`,
       category: 'legends',
       tier: 'bronze',
       glyph: 'sprout'
@@ -498,60 +508,60 @@ for (const [gen, region] of Object.entries(GENERATION_REGIONS)) {
   )
 }
 collects(
-  { id: 'starters-all', title: 'A Partner for Every Journey', description: 'Collect every first partner Pokémon.', category: 'legends', tier: 'silver', glyph: 'sprout' },
+  { id: 'starters-all', category: 'legends', tier: 'silver', glyph: 'sprout' },
   (facts) => facts.starters
 )
 collects(
-  { id: 'starter-lines-all', title: 'All Grown Up', description: 'Collect every first partner Pokémon and all of their evolutions.', category: 'legends', tier: 'gold', glyph: 'sprout' },
+  { id: 'starter-lines-all', category: 'legends', tier: 'gold', glyph: 'sprout' },
   tagged('starter')
 )
 collects(
-  { id: 'eeveelutions', title: 'Eevee and Friends', description: 'Collect Eevee and every one of its evolutions.', category: 'legends', tier: 'silver', glyph: 'tree' },
+  { id: 'eeveelutions', category: 'legends', tier: 'silver', glyph: 'tree' },
   (facts) => facts.eeveelutions
 )
 
-const LEGEND_GROUPS: ReadonlyArray<[string, readonly number[], AchievementTier, string, string]> = [
-  ['legend-birds', LEGENDARY_BIRDS, 'silver', 'Winged Mirages', 'Collect Articuno, Zapdos and Moltres.'],
-  ['legend-beasts', LEGENDARY_BEASTS, 'silver', 'Beasts of Johto', 'Collect Raikou, Entei and Suicune.'],
-  ['legend-tower-duo', TOWER_DUO, 'silver', 'Sea and Sky', 'Collect Lugia and Ho-Oh.'],
-  ['legend-titans', LEGENDARY_TITANS, 'gold', 'Ancient Titans', 'Collect Regirock, Regice, Registeel, Regigigas, Regieleki and Regidrago.'],
-  ['legend-eon-duo', EON_DUO, 'silver', 'Eon Flight', 'Collect Latias and Latios.'],
-  ['legend-weather-trio', WEATHER_TRIO, 'silver', 'Land, Sea and Sky', 'Collect Kyogre, Groudon and Rayquaza.'],
-  ['legend-lake-guardians', LAKE_GUARDIANS, 'silver', 'Lake Guardians', 'Collect Uxie, Mesprit and Azelf.'],
-  ['legend-creation-trio', CREATION_TRIO, 'silver', 'Time, Space and Beyond', 'Collect Dialga, Palkia and Giratina.'],
-  ['legend-swords-of-justice', SWORDS_OF_JUSTICE, 'silver', 'Swords of Justice', 'Collect Cobalion, Terrakion, Virizion and Keldeo.'],
-  ['legend-forces-of-nature', FORCES_OF_NATURE, 'silver', 'Forces of Nature', 'Collect Tornadus, Thundurus, Landorus and Enamorus.'],
-  ['legend-tao-trio', TAO_TRIO, 'silver', 'Truth and Ideals', 'Collect Reshiram, Zekrom and Kyurem.'],
-  ['legend-aura-trio', AURA_TRIO, 'silver', 'Life, Destruction and Order', 'Collect Xerneas, Yveltal and Zygarde.'],
-  ['legend-guardian-deities', GUARDIAN_DEITIES, 'silver', 'Island Guardians', 'Collect Tapu Koko, Tapu Lele, Tapu Bulu and Tapu Fini.'],
-  ['legend-light-trio', LIGHT_TRIO, 'silver', 'Sun, Moon and Prism', 'Collect Solgaleo, Lunala and Necrozma.'],
-  ['legend-hero-duo', HERO_DUO, 'silver', 'Heroes of Many Battles', 'Collect Zacian and Zamazenta.'],
-  ['legend-treasures-of-ruin', TREASURES_OF_RUIN, 'silver', 'Treasures of Ruin', 'Collect Wo-Chien, Chien-Pao, Ting-Lu and Chi-Yu.'],
-  ['legend-loyal-three', LOYAL_THREE, 'silver', 'The Loyal Three', 'Collect Okidogi, Munkidori and Fezandipiti.'],
-  ['legend-box-art', BOX_LEGENDARIES, 'gold', 'Cover Stars', 'Collect every Legendary Pokémon that has starred on a game box.']
+const LEGEND_GROUPS: ReadonlyArray<[string, readonly number[], AchievementTier]> = [
+  ['legend-birds', LEGENDARY_BIRDS, 'silver'],
+  ['legend-beasts', LEGENDARY_BEASTS, 'silver'],
+  ['legend-tower-duo', TOWER_DUO, 'silver'],
+  ['legend-titans', LEGENDARY_TITANS, 'gold'],
+  ['legend-eon-duo', EON_DUO, 'silver'],
+  ['legend-weather-trio', WEATHER_TRIO, 'silver'],
+  ['legend-lake-guardians', LAKE_GUARDIANS, 'silver'],
+  ['legend-creation-trio', CREATION_TRIO, 'silver'],
+  ['legend-swords-of-justice', SWORDS_OF_JUSTICE, 'silver'],
+  ['legend-forces-of-nature', FORCES_OF_NATURE, 'silver'],
+  ['legend-tao-trio', TAO_TRIO, 'silver'],
+  ['legend-aura-trio', AURA_TRIO, 'silver'],
+  ['legend-guardian-deities', GUARDIAN_DEITIES, 'silver'],
+  ['legend-light-trio', LIGHT_TRIO, 'silver'],
+  ['legend-hero-duo', HERO_DUO, 'silver'],
+  ['legend-treasures-of-ruin', TREASURES_OF_RUIN, 'silver'],
+  ['legend-loyal-three', LOYAL_THREE, 'silver'],
+  ['legend-box-art', BOX_LEGENDARIES, 'gold']
 ]
-for (const [id, ids, tier, title, description] of LEGEND_GROUPS) {
-  collects({ id, title, description, category: 'legends', tier, glyph: 'crown' }, picked(ids))
+for (const [id, ids, tier] of LEGEND_GROUPS) {
+  collects({ id, category: 'legends', tier, glyph: 'crown' }, picked(ids))
 }
 
-collects({ id: 'legendary-1', title: 'Brush with Legend', description: 'Log your first Legendary Pokémon.', category: 'legends', tier: 'bronze', glyph: 'crown' }, tagged('legendary'), { want: 1 })
-collects({ id: 'legendary-10', title: 'Legend Seeker', description: 'Collect 10 different Legendary Pokémon.', category: 'legends', tier: 'silver', glyph: 'crown' }, tagged('legendary'), { want: 10 })
-collects({ id: 'legendary-all', title: 'Every Legend', description: 'Collect every Legendary Pokémon.', category: 'legends', tier: 'platinum', glyph: 'crown' }, tagged('legendary'))
-collects({ id: 'mythical-1', title: 'Once Upon a Myth', description: 'Log your first Mythical Pokémon.', category: 'legends', tier: 'silver', glyph: 'star' }, tagged('mythical'), { want: 1 })
-collects({ id: 'mythical-all', title: 'Myths Made Real', description: 'Collect every Mythical Pokémon.', category: 'legends', tier: 'platinum', glyph: 'star' }, tagged('mythical'))
+collects({ id: 'legendary-1', category: 'legends', tier: 'bronze', glyph: 'crown' }, tagged('legendary'), { want: 1 })
+collects({ id: 'legendary-10', category: 'legends', tier: 'silver', glyph: 'crown' }, tagged('legendary'), { want: 10 })
+collects({ id: 'legendary-all', category: 'legends', tier: 'platinum', glyph: 'crown' }, tagged('legendary'))
+collects({ id: 'mythical-1', category: 'legends', tier: 'silver', glyph: 'star' }, tagged('mythical'), { want: 1 })
+collects({ id: 'mythical-all', category: 'legends', tier: 'platinum', glyph: 'star' }, tagged('mythical'))
 collects(
-  { id: 'pseudo-legendary-all', title: 'Six Hundred Club', description: 'Collect every pseudo-legendary Pokémon, from Dragonite to Baxcalibur.', category: 'legends', tier: 'gold', glyph: 'trophy' },
+  { id: 'pseudo-legendary-all', category: 'legends', tier: 'gold', glyph: 'trophy' },
   tagged('pseudo-legendary')
 )
-collects({ id: 'fossils-all', title: 'Museum Wing', description: 'Collect every Pokémon revived from a fossil.', category: 'legends', tier: 'gold', glyph: 'fossil' }, tagged('fossil'))
-collects({ id: 'babies-all', title: 'Nursery', description: 'Collect every baby Pokémon.', category: 'legends', tier: 'silver', glyph: 'egg' }, tagged('baby'))
-collects({ id: 'ultra-beasts-all', title: 'Beyond the Wormhole', description: 'Collect every Ultra Beast.', category: 'legends', tier: 'gold', glyph: 'portal' }, tagged('ultra-beast'))
+collects({ id: 'fossils-all', category: 'legends', tier: 'gold', glyph: 'fossil' }, tagged('fossil'))
+collects({ id: 'babies-all', category: 'legends', tier: 'silver', glyph: 'egg' }, tagged('baby'))
+collects({ id: 'ultra-beasts-all', category: 'legends', tier: 'gold', glyph: 'portal' }, tagged('ultra-beast'))
 collects(
-  { id: 'paradox-ancient', title: 'Echoes of the Past', description: 'Collect every ancient Paradox Pokémon.', category: 'legends', tier: 'gold', glyph: 'hourglass' },
+  { id: 'paradox-ancient', category: 'legends', tier: 'gold', glyph: 'hourglass' },
   picked(PARADOX_ANCIENT)
 )
 collects(
-  { id: 'paradox-future', title: 'Signals from the Future', description: 'Collect every future Paradox Pokémon.', category: 'legends', tier: 'gold', glyph: 'hourglass' },
+  { id: 'paradox-future', category: 'legends', tier: 'gold', glyph: 'hourglass' },
   picked(PARADOX_FUTURE)
 )
 
@@ -560,8 +570,6 @@ collects(
 interface WayStep {
   n: number
   tier: AchievementTier
-  title: string
-  description: string
 }
 interface Way {
   /** Id prefix; the threshold is appended. */
@@ -577,9 +585,9 @@ const WAYS: readonly Way[] = [
     glyph: 'grass',
     value: (ctx) => kindCount(ctx, 'wild'),
     steps: [
-      { n: 10, tier: 'bronze', title: 'Into the Tall Grass', description: 'Log 10 Pokémon caught in the wild.' },
-      { n: 100, tier: 'silver', title: 'Route Regular', description: 'Log 100 Pokémon caught in the wild.' },
-      { n: 500, tier: 'gold', title: 'Wild at Heart', description: 'Log 500 Pokémon caught in the wild.' }
+      { n: 10, tier: 'bronze' },
+      { n: 100, tier: 'silver' },
+      { n: 500, tier: 'gold' }
     ]
   },
   {
@@ -587,9 +595,9 @@ const WAYS: readonly Way[] = [
     glyph: 'evolve',
     value: (ctx) => kindCount(ctx, 'evolved'),
     steps: [
-      { n: 1, tier: 'bronze', title: "What? It's Evolving!", description: 'Log a Pokémon you evolved.' },
-      { n: 25, tier: 'silver', title: 'Growing Up Fast', description: 'Log 25 Pokémon you evolved.' },
-      { n: 100, tier: 'gold', title: 'Evolution Expert', description: 'Log 100 Pokémon you evolved.' }
+      { n: 1, tier: 'bronze' },
+      { n: 25, tier: 'silver' },
+      { n: 100, tier: 'gold' }
     ]
   },
   {
@@ -597,9 +605,9 @@ const WAYS: readonly Way[] = [
     glyph: 'egg',
     value: (ctx) => kindCount(ctx, 'bred'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'Fresh from the Egg', description: 'Log a Pokémon you hatched from an Egg.' },
-      { n: 25, tier: 'silver', title: 'Day Care Regular', description: 'Log 25 Pokémon you hatched from Eggs.' },
-      { n: 100, tier: 'gold', title: 'Master Breeder', description: 'Log 100 Pokémon you hatched from Eggs.' }
+      { n: 1, tier: 'bronze' },
+      { n: 25, tier: 'silver' },
+      { n: 100, tier: 'gold' }
     ]
   },
   {
@@ -607,8 +615,8 @@ const WAYS: readonly Way[] = [
     glyph: 'swap',
     value: (ctx) => kindCount(ctx, 'trade'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'Fair Trade', description: 'Log a Pokémon from an in-game trade.' },
-      { n: 10, tier: 'silver', title: 'Trading Post', description: 'Log 10 Pokémon from in-game trades.' }
+      { n: 1, tier: 'bronze' },
+      { n: 10, tier: 'silver' }
     ]
   },
   {
@@ -616,8 +624,8 @@ const WAYS: readonly Way[] = [
     glyph: 'gift',
     value: (ctx) => kindCount(ctx, 'gift', 'egg'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'A Gift for You', description: 'Log a Pokémon you were given in a game.' },
-      { n: 10, tier: 'silver', title: 'Well Looked After', description: 'Log 10 Pokémon you were given in a game.' }
+      { n: 1, tier: 'bronze' },
+      { n: 10, tier: 'silver' }
     ]
   },
   {
@@ -625,8 +633,8 @@ const WAYS: readonly Way[] = [
     glyph: 'duel',
     value: (ctx) => kindCount(ctx, 'static'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'Face to Face', description: 'Log a Pokémon from a static encounter.' },
-      { n: 25, tier: 'silver', title: 'Showdown Specialist', description: 'Log 25 Pokémon from static encounters.' }
+      { n: 1, tier: 'bronze' },
+      { n: 25, tier: 'silver' }
     ]
   },
   {
@@ -634,8 +642,8 @@ const WAYS: readonly Way[] = [
     glyph: 'den',
     value: (ctx) => kindCount(ctx, 'raid'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'Den Diver', description: 'Log a Pokémon from a Max Raid Battle.' },
-      { n: 25, tier: 'silver', title: 'Raid Regular', description: 'Log 25 Pokémon from Max Raid Battles.' }
+      { n: 1, tier: 'bronze' },
+      { n: 25, tier: 'silver' }
     ]
   },
   {
@@ -643,8 +651,8 @@ const WAYS: readonly Way[] = [
     glyph: 'crystal',
     value: (ctx) => kindCount(ctx, 'tera'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'Crystal Clear', description: 'Log a Pokémon from a Tera Raid Battle.' },
-      { n: 25, tier: 'silver', title: 'Tera Raider', description: 'Log 25 Pokémon from Tera Raid Battles.' }
+      { n: 1, tier: 'bronze' },
+      { n: 25, tier: 'silver' }
     ]
   },
   {
@@ -652,8 +660,8 @@ const WAYS: readonly Way[] = [
     glyph: 'swarm',
     value: (ctx) => kindCount(ctx, 'outbreak'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'Swarm Chaser', description: 'Log a Pokémon from a mass outbreak.' },
-      { n: 25, tier: 'silver', title: 'Outbreak Expert', description: 'Log 25 Pokémon from mass outbreaks.' }
+      { n: 1, tier: 'bronze' },
+      { n: 25, tier: 'silver' }
     ]
   },
   {
@@ -661,8 +669,8 @@ const WAYS: readonly Way[] = [
     glyph: 'moon',
     value: (ctx) => kindCount(ctx, 'shadow'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'Open Heart', description: 'Log a Shadow Pokémon from Colosseum or XD.' },
-      { n: 10, tier: 'silver', title: 'Snag Specialist', description: 'Log 10 Shadow Pokémon.' }
+      { n: 1, tier: 'bronze' },
+      { n: 10, tier: 'silver' }
     ]
   },
   {
@@ -670,24 +678,24 @@ const WAYS: readonly Way[] = [
     glyph: 'steps',
     value: (ctx) => kindCount(ctx, 'walker'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'Step Counter', description: 'Log a Pokémon from the Pokéwalker.' },
-      { n: 10, tier: 'silver', title: 'Long Stroll', description: 'Log 10 Pokémon from the Pokéwalker.' }
+      { n: 1, tier: 'bronze' },
+      { n: 10, tier: 'silver' }
     ]
   },
   {
     key: 'dream',
     glyph: 'cloud',
     value: (ctx) => kindCount(ctx, 'dream'),
-    steps: [{ n: 1, tier: 'bronze', title: 'Dream Catcher', description: 'Log a Pokémon from the Dream World.' }]
+    steps: [{ n: 1, tier: 'bronze' }]
   },
   {
     key: 'event',
     glyph: 'ticket',
     value: (ctx) => kindCount(ctx, 'event'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'Special Delivery', description: 'Log a Pokémon from an event.' },
-      { n: 10, tier: 'silver', title: 'Mystery Gift Regular', description: 'Log 10 Pokémon from events.' },
-      { n: 50, tier: 'gold', title: 'Event Historian', description: 'Log 50 Pokémon from events.' }
+      { n: 1, tier: 'bronze' },
+      { n: 10, tier: 'silver' },
+      { n: 50, tier: 'gold' }
     ]
   },
   {
@@ -695,8 +703,8 @@ const WAYS: readonly Way[] = [
     glyph: 'transfer',
     value: (ctx) => kindCount(ctx, 'transfer'),
     steps: [
-      { n: 1, tier: 'bronze', title: 'Moving Day', description: 'Log a Pokémon you transferred from another game.' },
-      { n: 25, tier: 'silver', title: 'Frequent Mover', description: 'Log 25 Pokémon you transferred from other games.' }
+      { n: 1, tier: 'bronze' },
+      { n: 25, tier: 'silver' }
     ]
   },
   {
@@ -704,9 +712,9 @@ const WAYS: readonly Way[] = [
     glyph: 'alpha',
     value: (ctx) => ctx.index.alpha,
     steps: [
-      { n: 1, tier: 'bronze', title: 'Seeing Red', description: 'Log an alpha Pokémon.' },
-      { n: 25, tier: 'silver', title: 'Alpha Tracker', description: 'Log 25 alpha Pokémon.' },
-      { n: 100, tier: 'gold', title: 'Leader of the Pack', description: 'Log 100 alpha Pokémon.' }
+      { n: 1, tier: 'bronze' },
+      { n: 25, tier: 'silver' },
+      { n: 100, tier: 'gold' }
     ]
   },
   {
@@ -714,59 +722,57 @@ const WAYS: readonly Way[] = [
     glyph: 'paths',
     value: (ctx) => ctx.index.byKind.size,
     steps: [
-      { n: 5, tier: 'silver', title: 'Many Roads', description: 'Get Pokémon in 5 different ways.' },
-      { n: 10, tier: 'gold', title: 'Every Trick in the Book', description: 'Get Pokémon in 10 different ways.' }
+      { n: 5, tier: 'silver' },
+      { n: 10, tier: 'gold' }
     ]
   },
   {
     key: 'nicknamed',
     glyph: 'tag',
     value: (ctx) => ctx.index.nicknamed,
-    steps: [{ n: 10, tier: 'bronze', title: 'Name Rater', description: 'Give nicknames to 10 of your entries.' }]
+    steps: [{ n: 10, tier: 'bronze' }]
   },
   {
     key: 'level-100',
     glyph: 'peak',
     value: (ctx) => ctx.index.level100,
     steps: [
-      { n: 1, tier: 'bronze', title: 'Peak Condition', description: 'Log a Pokémon at level 100.' },
-      { n: 10, tier: 'silver', title: 'Elite Squad', description: 'Log 10 Pokémon at level 100.' }
+      { n: 1, tier: 'bronze' },
+      { n: 10, tier: 'silver' }
     ]
   }
 ]
 
 for (const way of WAYS) {
   for (const step of way.steps) {
-    counted({ id: `${way.key}-${step.n}`, title: step.title, description: step.description, category: 'journey', tier: step.tier, glyph: way.glyph }, step.n, way.value)
+    counted({ id: `${way.key}-${step.n}`, category: 'journey', tier: step.tier, glyph: way.glyph }, step.n, way.value)
   }
 }
 
 // ---------------------------------------------------------------- Long Haul
 
-const DEDICATION: ReadonlyArray<[string, number, AchievementTier, AchievementGlyph, string, string, (ctx: AchievementContext) => number]> = [
-  ['same-species-3-games', 3, 'bronze', 'stack', 'Familiar Face', 'Log the same Pokémon from 3 different games.', (ctx) => ctx.index.maxGamesPerSpecies],
-  ['same-species-5-games', 5, 'silver', 'stack', 'Old Friend', 'Log the same Pokémon from 5 different games.', (ctx) => ctx.index.maxGamesPerSpecies],
-  ['same-species-10-games', 10, 'gold', 'stack', 'Constant Companion', 'Log the same Pokémon from 10 different games.', (ctx) => ctx.index.maxGamesPerSpecies],
-  ['families-5', 5, 'bronze', 'tree', 'Family Album', 'Complete 5 evolution families.', (ctx) => ctx.index.completeFamilies],
-  ['families-25', 25, 'silver', 'tree', 'Family Reunion', 'Complete 25 evolution families.', (ctx) => ctx.index.completeFamilies],
-  ['families-100', 100, 'gold', 'tree', 'Genealogist', 'Complete 100 evolution families.', (ctx) => ctx.index.completeFamilies],
-  ['streak-3', 3, 'bronze', 'flame', 'Three in a Row', 'Log a catch on 3 days in a row.', (ctx) => ctx.progress.streaks.longest],
-  ['streak-7', 7, 'silver', 'flame', 'Full Week', 'Log a catch on 7 days in a row.', (ctx) => ctx.progress.streaks.longest],
-  ['streak-14', 14, 'gold', 'flame', 'Fortnight', 'Log a catch on 14 days in a row.', (ctx) => ctx.progress.streaks.longest],
-  ['streak-30', 30, 'platinum', 'flame', 'Daily Ritual', 'Log a catch on 30 days in a row.', (ctx) => ctx.progress.streaks.longest],
-  ['day-10', 10, 'bronze', 'bolt', 'Productive Day', 'Log 10 catches dated the same day.', (ctx) => ctx.index.maxPerDay],
-  ['day-25', 25, 'silver', 'bolt', 'Catching Spree', 'Log 25 catches dated the same day.', (ctx) => ctx.index.maxPerDay],
-  ['day-50', 50, 'gold', 'bolt', 'Marathon Session', 'Log 50 catches dated the same day.', (ctx) => ctx.index.maxPerDay],
-  ['days-30', 30, 'silver', 'calendar', 'Regular Visitor', 'Log catches on 30 different days.', (ctx) => ctx.index.byDay.size],
-  ['days-100', 100, 'gold', 'calendar', 'Part of the Routine', 'Log catches on 100 different days.', (ctx) => ctx.index.byDay.size]
+const DEDICATION: ReadonlyArray<[string, number, AchievementTier, AchievementGlyph, (ctx: AchievementContext) => number]> = [
+  ['same-species-3-games', 3, 'bronze', 'stack', (ctx) => ctx.index.maxGamesPerSpecies],
+  ['same-species-5-games', 5, 'silver', 'stack', (ctx) => ctx.index.maxGamesPerSpecies],
+  ['same-species-10-games', 10, 'gold', 'stack', (ctx) => ctx.index.maxGamesPerSpecies],
+  ['families-5', 5, 'bronze', 'tree', (ctx) => ctx.index.completeFamilies],
+  ['families-25', 25, 'silver', 'tree', (ctx) => ctx.index.completeFamilies],
+  ['families-100', 100, 'gold', 'tree', (ctx) => ctx.index.completeFamilies],
+  ['streak-3', 3, 'bronze', 'flame', (ctx) => ctx.progress.streaks.longest],
+  ['streak-7', 7, 'silver', 'flame', (ctx) => ctx.progress.streaks.longest],
+  ['streak-14', 14, 'gold', 'flame', (ctx) => ctx.progress.streaks.longest],
+  ['streak-30', 30, 'platinum', 'flame', (ctx) => ctx.progress.streaks.longest],
+  ['day-10', 10, 'bronze', 'bolt', (ctx) => ctx.index.maxPerDay],
+  ['day-25', 25, 'silver', 'bolt', (ctx) => ctx.index.maxPerDay],
+  ['day-50', 50, 'gold', 'bolt', (ctx) => ctx.index.maxPerDay],
+  ['days-30', 30, 'silver', 'calendar', (ctx) => ctx.index.byDay.size],
+  ['days-100', 100, 'gold', 'calendar', (ctx) => ctx.index.byDay.size]
 ]
-for (const [id, n, tier, glyph, title, description, value] of DEDICATION) {
-  counted({ id, title, description, category: 'dedication', tier, glyph }, n, value)
+for (const [id, n, tier, glyph, value] of DEDICATION) {
+  counted({ id, category: 'dedication', tier, glyph }, n, value)
   if (id !== 'families-100') continue
   add({
     id: 'families-all',
-    title: 'Every Branch',
-    description: 'Complete every evolution family.',
     category: 'dedication',
     tier: 'platinum',
     glyph: 'tree',
@@ -788,7 +794,7 @@ function anyEntry(ctx: AchievementContext, species: readonly number[], test: (en
   return species.some((id) => ctx.index.bySpecies.get(id)?.some(test) === true)
 }
 
-function secret(common: Omit<Common, 'category' | 'secret'> & { hint: string }, species: readonly number[], evaluate: (ctx: AchievementContext) => AchievementProgress): void {
+function secret(common: Omit<Common, 'category' | 'secret'>, species: readonly number[], evaluate: (ctx: AchievementContext) => AchievementProgress): void {
   add({
     ...common,
     category: 'secrets',
@@ -801,42 +807,42 @@ function secret(common: Omit<Common, 'category' | 'secret'> & { hint: string }, 
 const yes = (value: boolean): AchievementProgress => ({ current: value ? 1 : 0, target: 1 })
 
 secret(
-  { id: 'secret-golden-magikarp', title: 'Solid Gold', description: 'Log a shiny Magikarp.', hint: 'Something fishy is worth its weight in gold.', tier: 'gold', glyph: 'sparkle' },
+  { id: 'secret-golden-magikarp', tier: 'gold', glyph: 'sparkle' },
   [MAGIKARP],
   (ctx) => yes(ctx.index.shinySpecies.has(MAGIKARP))
 )
 secret(
-  { id: 'secret-pikachu-ten-games', title: 'Partner in Every World', description: 'Log a Pikachu from 10 different games.', hint: 'One famous mouse, many journeys.', tier: 'gold', glyph: 'bolt' },
+  { id: 'secret-pikachu-ten-games', tier: 'gold', glyph: 'bolt' },
   [PIKACHU],
   (ctx) => ({ current: ctx.index.gamesBySpecies.get(PIKACHU)?.size ?? 0, target: 10 })
 )
 secret(
-  { id: 'secret-master-ball-common', title: 'Overkill', description: 'Use a Master Ball on a Pokémon from the very first route.', hint: 'Not every catch deserves the best ball.', tier: 'silver', glyph: 'pokeball' },
+  { id: 'secret-master-ball-common', tier: 'silver', glyph: 'pokeball' },
   EARLY_ROUTE_COMMONS,
   (ctx) => yes(anyEntry(ctx, EARLY_ROUTE_COMMONS, (entry) => entry.ball === MASTER_BALL))
 )
 secret(
-  { id: 'secret-moon-ball-clefairy', title: 'Fell from the Moon', description: 'Log a Cleffa, Clefairy or Clefable in a Moon Ball.', hint: 'Some Pokémon belong in one particular ball.', tier: 'silver', glyph: 'moon' },
+  { id: 'secret-moon-ball-clefairy', tier: 'silver', glyph: 'moon' },
   CLEFAIRY_LINE,
   (ctx) => yes(anyEntry(ctx, CLEFAIRY_LINE, (entry) => entry.ball === MOON_BALL))
 )
 secret(
-  { id: 'secret-heavy-sleeper', title: 'Heavy Sleeper', description: 'Log a Munchlax or Snorlax in a Heavy Ball.', hint: 'A big sleeper needs a sturdy ball.', tier: 'silver', glyph: 'balls' },
+  { id: 'secret-heavy-sleeper', tier: 'silver', glyph: 'balls' },
   SNORLAX_LINE,
   (ctx) => yes(anyEntry(ctx, SNORLAX_LINE, (entry) => entry.ball !== undefined && HEAVY_BALLS.includes(entry.ball)))
 )
 secret(
-  { id: 'secret-safari-rarity', title: 'Worth the Wait', description: 'Log a Chansey, Kangaskhan, Scyther, Pinsir, Tauros or Dratini in a Safari Ball.', hint: "The Safari Zone's rarest sights take patience.", tier: 'silver', glyph: 'grass' },
+  { id: 'secret-safari-rarity', tier: 'silver', glyph: 'grass' },
   SAFARI_ZONE_RARITIES,
   (ctx) => yes(anyEntry(ctx, SAFARI_ZONE_RARITIES, (entry) => entry.ball === SAFARI_BALL))
 )
 secret(
-  { id: 'secret-under-the-truck', title: 'Under the Truck', description: 'Log a Mew from Red, Green, Blue or Yellow.', hint: 'They said it was hiding next to the S.S. Anne.', tier: 'gold', glyph: 'star' },
+  { id: 'secret-under-the-truck', tier: 'gold', glyph: 'star' },
   [MEW],
   (ctx) => yes(anyEntry(ctx, [MEW], (entry) => GENERATION_ONE_GAMES.includes(entry.game)))
 )
 secret(
-  { id: 'secret-pokemon-day', title: 'Pokémon Day', description: 'Log a catch dated 27 February.', hint: 'Celebrate the day it all began.', tier: 'silver', glyph: 'calendar' },
+  { id: 'secret-pokemon-day', tier: 'silver', glyph: 'calendar' },
   [],
   (ctx) => {
     for (const day of ctx.index.byDay.keys()) if (day.endsWith(POKEMON_DAY)) return yes(true)
@@ -844,12 +850,12 @@ secret(
   }
 )
 secret(
-  { id: 'secret-identity-crisis', title: 'Identity Crisis', description: 'Nickname a Pokémon after a different Pokémon.', hint: 'Call it something it is not.', tier: 'silver', glyph: 'tag' },
+  { id: 'secret-identity-crisis', tier: 'silver', glyph: 'tag' },
   [],
   (ctx) => yes(ctx.index.misnamed > 0)
 )
 secret(
-  { id: 'secret-shiny-alpha', title: 'One in a Million', description: 'Log a Pokémon that is both shiny and an alpha.', hint: 'Big, red-eyed and sparkling.', tier: 'gold', glyph: 'alpha' },
+  { id: 'secret-shiny-alpha', tier: 'gold', glyph: 'alpha' },
   [],
   (ctx) => yes(ctx.index.shinyAlpha > 0)
 )

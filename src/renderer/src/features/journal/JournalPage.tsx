@@ -1,14 +1,15 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { BALL_BY_ID } from '@shared/balls'
-import { GAME_BY_ID, SYSTEM_BY_ID, type SystemId } from '@shared/games'
+import { SYSTEM_BY_ID, type SystemId } from '@shared/games'
 import type { CatchEntry, EntryKind } from '@shared/save-types'
 import { BallIcon, EntryRowHeader, GameIcon, ShinyMark, SystemIcon } from '@renderer/components/pokemon'
 import { Button, Checkbox, Chip, Dialog, EmptyState, IconButton, Kbd, NumberTicker, Select, TextField, Tooltip, cx, useEscapeLayer, useScrollParent } from '@renderer/components/ui'
 import { focusIsLost, whenPageReleased } from '@renderer/features/living/focus'
 import { useElementHeight, useElementWidth, useStuckFlag } from '@renderer/features/living/windowing'
+import { rich, useT, type MessageKey } from '@renderer/i18n'
+import { ballName, gameName, gameShortName } from '@renderer/i18n/terms'
 import { useDex } from '@renderer/lib/data'
 import { deleteEntryWithUndo, editEntry } from '@renderer/lib/entry-actions'
-import { errorMessage, formatCount, kindLabel, plural } from '@renderer/lib/format'
+import { errorMessage, kindLabel } from '@renderer/lib/format'
 import { navigate, paths } from '@renderer/shell/router'
 import { useEntries, useSaveStore } from '@renderer/store/save'
 import { toast, useUiStore } from '@renderer/store/ui'
@@ -56,12 +57,8 @@ let scrolledCapture: string | null = null
 
 const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)
 
-const DIRECTION_LABEL: Readonly<Record<JournalSort, Record<SortDirection, string>>> = {
-  caught: { desc: 'Newest catch first', asc: 'Oldest catch first' },
-  logged: { desc: 'Last logged first', asc: 'First logged first' },
-  dex: { asc: 'Lowest number first', desc: 'Highest number first' },
-  game: { asc: 'Oldest game first', desc: 'Newest game first' }
-}
+/** What a sort direction means for each sort ("Newest catch first"): the message to show. */
+const directionKey = (sort: JournalSort, direction: SortDirection): MessageKey => `journal.direction.${sort}.${direction}`
 
 /** Width one game icon takes in the summary strip (icon, padding, gap), and what the "+12" at the end needs. */
 const GAME_ICON_STEP = 36
@@ -79,6 +76,7 @@ function gamesThatFit(width: number, total: number): number {
  * A row opens the editor; selection mode deletes several at once with a single undo.
  */
 export default function JournalPage() {
+  const t = useT()
   const dex = useDex()
   const entries = useEntries()
   const scroller = useScrollParent()
@@ -234,7 +232,7 @@ export default function JournalPage() {
         if (entry) removed.push(entry)
       }
     } catch (err) {
-      toast({ kind: 'error', title: 'Some entries could not be deleted', body: errorMessage(err) })
+      toast({ kind: 'error', title: t('journal.delete.failed'), body: errorMessage(err) })
     }
     if (removed.length === 0) return
     const gone = new Set(removed.map((e) => e.id))
@@ -244,18 +242,18 @@ export default function JournalPage() {
     toast({
       kind: 'info',
       icon: 'trash',
-      title: `${plural(removed.length, 'entry', 'entries')} deleted`,
-      body: 'Undo puts every one of them back.',
+      title: t('journal.delete.done', { count: removed.length }),
+      body: t('journal.delete.doneBody'),
       durationMs: 10000,
       action: {
-        label: 'Undo',
+        label: t('common.undo'),
         onSelect: () => {
           try {
             const { added } = useSaveStore.getState().mergeEntries(removed)
-            if (added > 0) toast({ kind: 'success', icon: 'undo', title: `${plural(added, 'entry', 'entries')} restored` })
-            else toast({ kind: 'info', title: 'Nothing to restore', body: 'Those entries are already in your Journal.' })
+            if (added > 0) toast({ kind: 'success', icon: 'undo', title: t('journal.restore.done', { count: added }) })
+            else toast({ kind: 'info', title: t('journal.restore.nothing.title'), body: t('journal.restore.nothing.body') })
           } catch (err) {
-            toast({ kind: 'error', title: 'The entries could not be restored', body: errorMessage(err) })
+            toast({ kind: 'error', title: t('journal.restore.failed'), body: errorMessage(err) })
           }
         }
       }
@@ -266,7 +264,7 @@ export default function JournalPage() {
   // ---------------------------------------------------------------- filter options
 
   const gameOptions = useMemo<FilterOption<string>[]>(
-    () => facets.games.map((f) => ({ value: f.value, label: f.label, count: f.count, group: f.game ? gameGenLabel(f.game.generation) : 'Other', icon: f.game ? <GameIcon game={f.game} size={22} tooltip={false} alt="" /> : undefined })),
+    () => facets.games.map((f) => ({ value: f.value, label: f.label, count: f.count, group: f.game ? gameGenLabel(f.game.generation) : t('journal.filter.game.other'), icon: f.game ? <GameIcon game={f.game} size={22} tooltip={false} alt="" /> : undefined })),
     [facets]
   )
   const genOptions = useMemo<FilterOption<number>[]>(() => facets.gens.map((f) => ({ value: f.value, label: f.label, count: f.count })), [facets])
@@ -283,22 +281,22 @@ export default function JournalPage() {
       <div className="page journal">
         <header className="page-header">
           <div>
-            <h1 className="page-title">Journal</h1>
-            <p className="page-subtitle">Every catch you log, across all your games.</p>
+            <h1 className="page-title">{t('journal.page.title')}</h1>
+            <p className="page-subtitle">{t('journal.page.subtitleEmpty')}</p>
           </div>
         </header>
         <EmptyState
           size="lg"
           icon="journal"
-          title="Your Journal is empty"
-          description="Log a catch and it shows up here with its game, place, ball and date. Find a Pokémon to get started."
+          title={t('journal.empty.title')}
+          description={t('journal.empty.description')}
           action={
             <>
               <Button variant="primary" icon="dex" onClick={() => navigate(paths.dex())}>
-                Open the Pokédex
+                {t('journal.empty.openDex')}
               </Button>
               <Button variant="ghost" icon="search" onClick={() => useUiStore.getState().setCommandPalette(true)}>
-                Search for a Pokémon <Kbd keys={[IS_MAC ? '⌘' : 'Ctrl', 'K']} />
+                {rich('journal.empty.search', { key: () => <Kbd keys={[IS_MAC ? '⌘' : 'Ctrl', 'K']} /> })}
               </Button>
             </>
           }
@@ -310,18 +308,20 @@ export default function JournalPage() {
   const rangeText = rangeLabel(filters.from, filters.to)
   const shownGames = gamesThatFit(gamesWidth, summary.games.length)
   const moreGames = summary.games.length - shownGames
+  const directionText = t(directionKey(prefs.sort, prefs.direction))
+  const gamesCount = t('journal.summary.games', { count: summary.games.length })
 
   return (
     <div className="page journal">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Journal</h1>
-          <p className="page-subtitle">Every catch you have logged, across all your games.</p>
+          <h1 className="page-title">{t('journal.page.title')}</h1>
+          <p className="page-subtitle">{t('journal.page.subtitle')}</p>
         </div>
         <div className="journal-actions">
           <Select<JournalSort>
             wrapperClassName="journal-actions__sort"
-            ariaLabel="Sort and group by"
+            ariaLabel={t('journal.sort.label')}
             icon="sort"
             value={prefs.sort}
             options={JOURNAL_SORTS.map((sort) => ({ value: sort, label: SORT_LABELS[sort] }))}
@@ -330,27 +330,27 @@ export default function JournalPage() {
           <IconButton
             variant="subtle"
             icon={prefs.direction === 'desc' ? 'arrow-down' : 'arrow-up'}
-            label={`${DIRECTION_LABEL[prefs.sort][prefs.direction]}. Reverse the order`}
-            tooltip={DIRECTION_LABEL[prefs.sort][prefs.direction]}
+            label={t('journal.direction.reverse', { order: directionText })}
+            tooltip={directionText}
             onClick={() => setPrefs({ sort: prefs.sort, direction: prefs.direction === 'desc' ? 'asc' : 'desc' })}
           />
           <Button ref={selectButton} variant={selecting ? 'primary' : 'subtle'} icon="check" aria-pressed={selecting} onClick={() => (selecting ? leaveSelection() : setSelecting(true))}>
-            {selecting ? 'Done' : 'Select'}
+            {selecting ? t('common.done') : t('journal.select.start')}
           </Button>
         </div>
       </header>
 
-      <section className="journal-summary" aria-label="Journal summary">
+      <section className="journal-summary" aria-label={t('journal.summary.label')}>
         <div className="journal-stat">
-          <span className="u-eyebrow">Entries</span>
+          <span className="u-eyebrow">{t('journal.summary.entries')}</span>
           <NumberTicker value={summary.entries} className="journal-stat__value" />
         </div>
         <div className="journal-stat">
-          <span className="u-eyebrow">Pokémon</span>
+          <span className="u-eyebrow">{t('journal.summary.pokemon')}</span>
           <NumberTicker value={summary.pokemon} className="journal-stat__value" />
         </div>
         <div className="journal-stat journal-stat--shiny">
-          <span className="u-eyebrow">Shiny</span>
+          <span className="u-eyebrow">{t('common.shiny')}</span>
           <span className="journal-stat__value">
             <ShinyMark size={18} label="" />
             <NumberTicker value={summary.shiny} />
@@ -358,30 +358,29 @@ export default function JournalPage() {
         </div>
         <div className="journal-stat journal-stat--wide">
           <span className="u-eyebrow">
-            {plural(summary.games.length, 'game')}
-            {summary.unknownGames > 0 && ` · ${formatCount(summary.unknownGames)} from an unknown game`}
+            {summary.unknownGames > 0 ? t('journal.summary.gamesUnknown', { games: gamesCount, count: summary.unknownGames }) : gamesCount}
           </span>
           <div ref={gamesRef} className="journal-icons">
             {summary.games.slice(0, shownGames).map(({ game, count }) => (
-              <Tooltip key={game.id} content={`${game.name} · ${plural(count, 'entry', 'entries')}`}>
-                <button type="button" className={cx('journal-icons__item', filters.games.includes(game.id) && 'is-on')} aria-pressed={filters.games.includes(game.id)} aria-label={`Filter by ${game.name}, ${plural(count, 'entry', 'entries')}`} onClick={() => setFilters({ games: toggleIn(filters.games, game.id) })}>
+              <Tooltip key={game.id} content={t('journal.summary.iconTip', { name: gameName(game.id), count })}>
+                <button type="button" className={cx('journal-icons__item', filters.games.includes(game.id) && 'is-on')} aria-pressed={filters.games.includes(game.id)} aria-label={t('journal.summary.filterBy', { name: gameName(game.id), count })} onClick={() => setFilters({ games: toggleIn(filters.games, game.id) })}>
                   <GameIcon game={game} size={28} tooltip={false} alt="" />
                 </button>
               </Tooltip>
             ))}
             {moreGames > 0 && (
-              <Tooltip content={`${plural(moreGames, 'more game')}: ${summary.games.slice(shownGames).map((g) => g.game.short).join(', ')}`}>
+              <Tooltip content={t('journal.summary.moreGames', { count: moreGames, names: summary.games.slice(shownGames).map((g) => gameShortName(g.game.id)).join(t('journal.summary.separator')) })}>
                 <span className="journal-icons__more">+{moreGames}</span>
               </Tooltip>
             )}
           </div>
         </div>
         <div className="journal-stat journal-stat--systems">
-          <span className="u-eyebrow">{plural(summary.systems.length, 'system')}</span>
+          <span className="u-eyebrow">{t('journal.summary.systems', { count: summary.systems.length })}</span>
           <div className="journal-icons">
             {summary.systems.map(({ system, name, count }) => (
-              <Tooltip key={system} content={`${name} · ${plural(count, 'entry', 'entries')}`}>
-                <button type="button" className={cx('journal-icons__item journal-icons__item--system', filters.systems.includes(system) && 'is-on')} aria-pressed={filters.systems.includes(system)} aria-label={`Filter by ${name}, ${plural(count, 'entry', 'entries')}`} onClick={() => setFilters({ systems: toggleIn(filters.systems, system) })}>
+              <Tooltip key={system} content={t('journal.summary.iconTip', { name, count })}>
+                <button type="button" className={cx('journal-icons__item journal-icons__item--system', filters.systems.includes(system) && 'is-on')} aria-pressed={filters.systems.includes(system)} aria-label={t('journal.summary.filterBy', { name, count })} onClick={() => setFilters({ systems: toggleIn(filters.systems, system) })}>
                   <SystemIcon system={system} size={20} label="" />
                 </button>
               </Tooltip>
@@ -391,87 +390,86 @@ export default function JournalPage() {
       </section>
 
       <div ref={barRef} className="journal-bar">
-        <div className="journal-bar__filters" role="search" aria-label="Filter the Journal">
-          <TextField wrapperClassName="journal-bar__text" icon="search" clearable value={filters.text} placeholder="Name, nickname, place, notes, OT…" aria-label="Search entries" onChange={(value) => setFilters({ text: value })} />
-          <FilterMenu label="Game" options={gameOptions} selected={filters.games} searchable={gameOptions.length > 8} onChange={(games) => setFilters({ games })} />
-          <FilterMenu label="Generation" options={genOptions} selected={filters.gens} onChange={(gens) => setFilters({ gens })} />
-          <FilterMenu label="System" options={systemOptions} selected={filters.systems} onChange={(systems) => setFilters({ systems })} />
-          <FilterMenu label="Ball" options={ballOptions} selected={filters.balls} searchable={ballOptions.length > 8} onChange={(balls) => setFilters({ balls })} />
-          <FilterMenu label="Obtained" options={kindOptions} selected={filters.kinds} onChange={(kinds) => setFilters({ kinds })} />
+        <div className="journal-bar__filters" role="search" aria-label={t('journal.filter.label')}>
+          <TextField wrapperClassName="journal-bar__text" icon="search" clearable value={filters.text} placeholder={t('journal.filter.text.placeholder')} aria-label={t('journal.filter.text.label')} onChange={(value) => setFilters({ text: value })} />
+          <FilterMenu label={t('journal.filter.game')} searchLabel={t('journal.filter.game.search')} options={gameOptions} selected={filters.games} searchable={gameOptions.length > 8} onChange={(games) => setFilters({ games })} />
+          <FilterMenu label={t('journal.filter.generation')} options={genOptions} selected={filters.gens} onChange={(gens) => setFilters({ gens })} />
+          <FilterMenu label={t('journal.filter.system')} options={systemOptions} selected={filters.systems} onChange={(systems) => setFilters({ systems })} />
+          <FilterMenu label={t('journal.filter.ball')} searchLabel={t('journal.filter.ball.search')} options={ballOptions} selected={filters.balls} searchable={ballOptions.length > 8} onChange={(balls) => setFilters({ balls })} />
+          <FilterMenu label={t('journal.filter.kind')} options={kindOptions} selected={filters.kinds} onChange={(kinds) => setFilters({ kinds })} />
           <DateMenu from={filters.from} to={filters.to} onChange={(range) => setFilters(range)} />
           <Chip icon="sparkle" tone="gold" selected={filters.shinyOnly} onClick={() => setFilters({ shinyOnly: !filters.shinyOnly })}>
-            Shiny
+            {t('journal.filter.shiny')}
           </Chip>
         </div>
 
         {selecting ? (
-          <div className="journal-bar__status journal-bar__status--select" role="toolbar" aria-label="Selection">
+          <div className="journal-bar__status journal-bar__status--select" role="toolbar" aria-label={t('journal.select.toolbar')}>
             <Checkbox
               checked={allPicked}
               indeterminate={picked.length > 0 && !allPicked}
-              label={allPicked ? 'Deselect all' : `Select all ${formatCount(listing.order.length)}`}
+              label={allPicked ? t('journal.select.none') : t('journal.select.all', { count: listing.order.length })}
               onChange={(on) => {
                 setSelected(on ? new Set(listing.order) : new Set())
                 anchor.current = null
               }}
             />
             <span className="journal-bar__picked" aria-live="polite">
-              <b>{formatCount(picked.length)}</b> selected
+              {rich('journal.select.picked', { b: (count) => <b>{count}</b> }, { count: picked.length })}
             </span>
-            <span className="journal-bar__hint">Shift-click selects a range</span>
+            <span className="journal-bar__hint">{t('journal.select.hint')}</span>
             <Button ref={deleteButton} size="sm" variant="danger" icon="trash" disabled={picked.length === 0} onClick={() => setConfirming(true)}>
-              Delete
+              {t('common.delete')}
             </Button>
             <Button size="sm" variant="ghost" onClick={leaveSelection}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           </div>
         ) : (
           <div className="journal-bar__status">
             <span className="journal-bar__counts" aria-live="polite">
-              {countsLine(listed)}
-              {filterCount > 0 && <span className="journal-bar__of"> of {formatCount(items.length)}</span>}
+              {filterCount > 0 ? rich('journal.counts.of', { of: (text) => <span className="journal-bar__of">{text}</span> }, { counts: countsLine(listed), total: items.length }) : countsLine(listed)}
             </span>
             {filterCount > 0 && (
               <div className="journal-chips">
-                {filters.text.trim() !== '' && <Chip size="sm" icon="search" onRemove={() => setFilters({ text: '' })} removeLabel="Remove the text filter">{`“${filters.text.trim()}”`}</Chip>}
+                {filters.text.trim() !== '' && <Chip size="sm" icon="search" onRemove={() => setFilters({ text: '' })} removeLabel={t('journal.chips.removeText')}>{t('journal.chips.text', { text: filters.text.trim() })}</Chip>}
                 {filters.games.map((id) => (
-                  <Chip key={id} size="sm" tone="accent" onRemove={() => setFilters({ games: filters.games.filter((g) => g !== id) })} removeLabel={`Remove ${GAME_BY_ID.get(id)?.name ?? 'Unknown game'}`}>
-                    {id === UNKNOWN_GAME ? 'Unknown game' : (GAME_BY_ID.get(id)?.short ?? id)}
+                  <Chip key={id} size="sm" tone="accent" onRemove={() => setFilters({ games: filters.games.filter((g) => g !== id) })} removeLabel={t('journal.chips.remove', { name: id === UNKNOWN_GAME ? t('components.game.unknown') : gameName(id) })}>
+                    {id === UNKNOWN_GAME ? t('components.game.unknown') : gameShortName(id)}
                   </Chip>
                 ))}
                 {filters.gens.map((gen) => (
-                  <Chip key={gen} size="sm" tone="accent" onRemove={() => setFilters({ gens: filters.gens.filter((g) => g !== gen) })} removeLabel={`Remove ${gameGenLabel(gen)}`}>
+                  <Chip key={gen} size="sm" tone="accent" onRemove={() => setFilters({ gens: filters.gens.filter((g) => g !== gen) })} removeLabel={t('journal.chips.remove', { name: gameGenLabel(gen) })}>
                     {gameGenLabel(gen)}
                   </Chip>
                 ))}
                 {filters.systems.map((id) => (
-                  <Chip key={id} size="sm" tone="accent" onRemove={() => setFilters({ systems: filters.systems.filter((s) => s !== id) })} removeLabel={`Remove ${SYSTEM_BY_ID.get(id)?.name ?? id}`}>
+                  <Chip key={id} size="sm" tone="accent" onRemove={() => setFilters({ systems: filters.systems.filter((s) => s !== id) })} removeLabel={t('journal.chips.remove', { name: SYSTEM_BY_ID.get(id)?.name ?? id })}>
                     {SYSTEM_BY_ID.get(id)?.short ?? id}
                   </Chip>
                 ))}
                 {filters.balls.map((id) => (
-                  <Chip key={id} size="sm" tone="accent" onRemove={() => setFilters({ balls: filters.balls.filter((b) => b !== id) })} removeLabel={`Remove ${BALL_BY_ID.get(id)?.name ?? 'Unknown ball'}`}>
-                    {BALL_BY_ID.get(id)?.name ?? 'Unknown ball'}
+                  <Chip key={id} size="sm" tone="accent" onRemove={() => setFilters({ balls: filters.balls.filter((b) => b !== id) })} removeLabel={t('journal.chips.remove', { name: ballName(id) ?? t('components.ball.unknown') })}>
+                    {ballName(id) ?? t('components.ball.unknown')}
                   </Chip>
                 ))}
                 {filters.kinds.map((kind) => (
-                  <Chip key={kind} size="sm" tone="accent" onRemove={() => setFilters({ kinds: filters.kinds.filter((k) => k !== kind) })} removeLabel={`Remove ${kindLabel(kind)}`}>
+                  <Chip key={kind} size="sm" tone="accent" onRemove={() => setFilters({ kinds: filters.kinds.filter((k) => k !== kind) })} removeLabel={t('journal.chips.remove', { name: kindLabel(kind) })}>
                     {kindLabel(kind)}
                   </Chip>
                 ))}
                 {rangeText !== '' && (
-                  <Chip size="sm" tone="accent" icon="calendar" onRemove={() => setFilters({ from: '', to: '' })} removeLabel="Remove the date range">
+                  <Chip size="sm" tone="accent" icon="calendar" onRemove={() => setFilters({ from: '', to: '' })} removeLabel={t('journal.chips.removeDates')}>
                     {rangeText}
                   </Chip>
                 )}
                 {filters.shinyOnly && (
-                  <Chip size="sm" tone="gold" icon="sparkle" onRemove={() => setFilters({ shinyOnly: false })} removeLabel="Remove the shiny filter">
-                    Shiny only
+                  <Chip size="sm" tone="gold" icon="sparkle" onRemove={() => setFilters({ shinyOnly: false })} removeLabel={t('journal.chips.removeShiny')}>
+                    {t('journal.chips.shinyOnly')}
                   </Chip>
                 )}
                 <button type="button" className="journal-chips__clear" onClick={clearFilters}>
-                  Clear all
+                  {t('journal.chips.clearAll')}
                 </button>
               </div>
             )}
@@ -485,11 +483,11 @@ export default function JournalPage() {
         <EmptyState
           icon="filter"
           tone="neutral"
-          title="No entries match"
-          description="Nothing in your Journal fits these filters. Loosen one of them, or start over."
+          title={t('journal.noMatch.title')}
+          description={t('journal.noMatch.description')}
           action={
             <Button variant="subtle" icon="close" onClick={clearFilters}>
-              Clear all filters
+              {t('journal.noMatch.clear')}
             </Button>
           }
         />
@@ -501,15 +499,15 @@ export default function JournalPage() {
         open={confirming}
         onClose={closeConfirm}
         size="sm"
-        title={`Delete ${plural(picked.length, 'entry', 'entries')}?`}
-        description="They leave your Journal and your Living Dex. You can undo this right afterwards."
+        title={t('journal.delete.title', { count: picked.length })}
+        description={t('journal.delete.description')}
         footer={
           <>
             <Button variant="ghost" data-autofocus onClick={closeConfirm}>
-              Keep them
+              {t('journal.select.keep')}
             </Button>
             <Button variant="danger" icon="trash" onClick={deleteSelected}>
-              Delete
+              {t('common.delete')}
             </Button>
           </>
         }

@@ -3,6 +3,7 @@ import type { TypeId } from '@shared/dex-types'
 import type { CatchEntry } from '@shared/save-types'
 import { BallIcon, EntryCard, Sprite, SpriteStage, typeColor } from '@renderer/components/pokemon'
 import { cx } from '@renderer/components/ui'
+import { useT } from '@renderer/i18n'
 import { animate, burst, motionOK, type JSAnimation } from '@renderer/lib/anim'
 
 /** Length of the capture animation, ms. */
@@ -31,6 +32,7 @@ export interface CapturePreviewProps {
  * card exactly as it will look. On save the ball flies in, takes the Pokémon, wobbles and clicks shut.
  */
 export function CapturePreview({ entry, spritePath, types, noGame, ref }: CapturePreviewProps) {
+  const t = useT()
   const stageRef = useRef<HTMLDivElement>(null)
   const spriteRef = useRef<HTMLDivElement>(null)
   const ballRef = useRef<HTMLDivElement>(null)
@@ -95,7 +97,7 @@ export function CapturePreview({ entry, spritePath, types, noGame, ref }: Captur
 
   return (
     <div className="ee-preview">
-      <div className="u-eyebrow">Preview</div>
+      <div className="u-eyebrow">{t('entry.preview.eyebrow')}</div>
       <div ref={stageRef} className="ee-cap">
         <SpriteStage glow={types[0] ? typeColor(types[0]) : undefined} glow2={types[1] ? typeColor(types[1]) : undefined} brackets={false} className={cx('ee-cap__stage', entry.shiny && 'is-shiny')}>
           <div ref={spriteRef} className="ee-cap__sprite">

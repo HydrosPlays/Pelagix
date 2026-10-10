@@ -4,26 +4,29 @@
  */
 
 import type { BallProgress, GameProgress, GenerationProgress, Progress, SystemProgress, TimelinePoint, TypeProgress } from '@renderer/domain/progress'
-import { formatCount, formatMonth, percent, pluralWord } from '@renderer/lib/format'
+import { activeLanguage, t, type MessageKey } from '@renderer/i18n/runtime'
+import { formatMonth, percent } from '@renderer/lib/format'
+import { languageTag } from '@shared/languages'
 
 // ---------------------------------------------------------------- generations
 
 /** The region each generation introduced. Generation VIII is Galar (Hisui's new species count there too). */
-const GENERATION_REGIONS: Readonly<Record<number, string>> = {
-  1: 'Kanto',
-  2: 'Johto',
-  3: 'Hoenn',
-  4: 'Sinnoh',
-  5: 'Unova',
-  6: 'Kalos',
-  7: 'Alola',
-  8: 'Galar',
-  9: 'Paldea'
+const GENERATION_REGIONS: Readonly<Record<number, MessageKey>> = {
+  1: 'home.region.1',
+  2: 'home.region.2',
+  3: 'home.region.3',
+  4: 'home.region.4',
+  5: 'home.region.5',
+  6: 'home.region.6',
+  7: 'home.region.7',
+  8: 'home.region.8',
+  9: 'home.region.9'
 }
 
 /** "Kanto" for 1; a generation the app has no region name for reads "Generation 10". */
 export function regionOfGeneration(gen: number): string {
-  return GENERATION_REGIONS[gen] ?? `Generation ${gen}`
+  const key = GENERATION_REGIONS[gen]
+  return key ? t(key) : t('home.region.unknown', { gen: String(gen) })
 }
 
 const ROMAN: ReadonlyArray<readonly [number, string]> = [
@@ -67,26 +70,25 @@ export function closestGeneration(generations: readonly GenerationProgress[]): G
 /** "Good morning, Hydro" by the local hour; without a name the trainer is simply "Trainer". */
 export function greeting(trainerName: string, now: Date = new Date()): string {
   const hour = now.getHours()
-  const part = hour >= 5 && hour < 12 ? 'Good morning' : hour >= 12 && hour < 18 ? 'Good afternoon' : 'Good evening'
+  const key: MessageKey = hour >= 5 && hour < 12 ? 'home.greeting.morning' : hour >= 12 && hour < 18 ? 'home.greeting.afternoon' : 'home.greeting.evening'
   const name = trainerName.trim()
-  return `${part}, ${name === '' ? 'Trainer' : name}`
+  return t(key, { name: name === '' ? t('home.greeting.trainer') : name })
 }
 
 /** One or two short sentences under the greeting: where the user stands and what would move them on. */
 export function nextStep(progress: Pick<Progress, 'totals' | 'byGeneration' | 'streaks'>): string {
   const { caught, slots } = progress.totals
   const left = Math.max(0, slots - caught)
-  if (slots > 0 && left === 0) return 'Every slot is filled. Your Living Dex is complete!'
+  if (slots > 0 && left === 0) return t('home.next.complete')
 
   const { current, caughtToday } = progress.streaks
-  if (current >= 2 && !caughtToday) return `You are on a ${current}-day streak. Log a catch today to keep it going.`
+  if (current >= 2 && !caughtToday) return t('home.next.streak', { count: current })
 
-  const togo = `${formatCount(left)} still to catch.`
   const close = closestGeneration(progress.byGeneration)
   // Pointing at a region only helps once it is within reach: at least half of it caught.
-  if (!close || close.caught * 2 < close.slots) return togo
+  if (!close || close.caught * 2 < close.slots) return t('home.next.left', { left })
   const missing = close.slots - close.caught
-  return `${togo} ${regionOfGeneration(close.gen)} is closest: ${formatCount(missing)} more to finish it.`
+  return t('home.next.leftClosest', { left, region: regionOfGeneration(close.gen), missing })
 }
 
 /**
@@ -139,6 +141,13 @@ export interface MonthBar {
   current: boolean
 }
 
+/** "Oct": the month alone, short. Other languages have their own short form, which is not always three letters. */
+function monthLabel(period: string): string {
+  const language = activeLanguage()
+  if (language === 'en') return formatMonth(period).slice(0, 3)
+  return new Intl.DateTimeFormat(languageTag(language), { month: 'short' }).format(new Date(Number(period.slice(0, 4)), Number(period.slice(5, 7)) - 1, 1))
+}
+
 const monthIndex = (period: string): number => Number(period.slice(0, 4)) * 12 + (Number(period.slice(5, 7)) - 1)
 const monthOf = (index: number): string => `${String(Math.floor(index / 12)).padStart(4, '0')}-${String((index % 12) + 1).padStart(2, '0')}`
 
@@ -163,7 +172,7 @@ export function recentMonths(byMonth: readonly TimelinePoint[], today: string, c
     const point = points.get(period)
     out.push({
       period,
-      label: formatMonth(period).slice(0, 3),
+      label: monthLabel(period),
       title: formatMonth(period, true),
       entries: point?.entries ?? 0,
       shiny: point?.shiny ?? 0,
@@ -179,19 +188,18 @@ export function monthRangeText(months: readonly MonthBar[]): string {
   const first = months[0]
   const last = months[months.length - 1]
   if (!first || !last) return ''
-  return first.period === last.period ? formatMonth(first.period) : `${formatMonth(first.period)} – ${formatMonth(last.period)}`
+  return first.period === last.period ? formatMonth(first.period) : t('home.activity.range', { from: formatMonth(first.period), to: formatMonth(last.period) })
 }
 
 /** One sentence that says what the chart shows, for screen readers and the caption under it. */
 export function timelineSummary(months: readonly MonthBar[]): string {
   const total = months.reduce((n, m) => n + m.entries, 0)
-  if (total === 0) return 'No catches in these months.'
+  if (total === 0) return t('home.activity.summary.none')
   const busiest = months.reduce((best, m) => (m.entries > best.entries ? m : best))
-  const head = `${formatCount(total)} ${pluralWord(total, 'catch', 'catches')}`
-  return months.filter((m) => m.entries > 0).length > 1 ? `${head}. Busiest month: ${busiest.title} (${formatCount(busiest.entries)}).` : `${head}, all in ${busiest.title}.`
+  return months.filter((m) => m.entries > 0).length > 1 ? t('home.activity.summary.busiest', { count: total, month: busiest.title, entries: busiest.entries }) : t('home.activity.summary.single', { count: total, month: busiest.title })
 }
 
 /** "3 days", "1 day". */
 export function daysText(days: number): string {
-  return `${formatCount(days)} ${pluralWord(days, 'day')}`
+  return t('home.activity.days', { count: days })
 }

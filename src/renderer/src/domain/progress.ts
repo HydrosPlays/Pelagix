@@ -10,11 +10,12 @@
 import { useMemo } from 'react'
 import { BALLS, type BallDef } from '@shared/balls'
 import type { FormCategory, SpeciesTag, TypeId } from '@shared/dex-types'
-import { GAME_BY_ID, GAMES, GENERATION_NAMES, SYSTEMS, type GameDef, type SystemDef, type SystemId } from '@shared/games'
+import { GAME_BY_ID, GAMES, SYSTEMS, type GameDef, type SystemDef, type SystemId } from '@shared/games'
 import type { CatchEntry, EntryKind } from '@shared/save-types'
 import { useDex, type Dex } from '@renderer/lib/data'
 import { addDays, dayDiff, ENTRY_KINDS, isIsoDate, ratio, toIsoDate, todayIso } from '@renderer/lib/format'
 import { useEntries } from '@renderer/store/save'
+import { generationName } from './generation'
 import { useCollection, type Collection, type CollectionTotals, type LivingSlot } from './slots'
 
 // ---------------------------------------------------------------- types
@@ -30,8 +31,8 @@ export interface SlotTally {
 
 export interface GenerationProgress extends SlotTally {
   gen: number
-  /** "Generation I". */
-  name: string
+  /** "Generation I", in the active language (read on each use). */
+  readonly name: string
   species: number
   speciesCaught: number
 }
@@ -396,7 +397,10 @@ export function computeProgress(dex: Dex, save: { readonly entries: readonly Cat
   const gens = [...new Set([...genSpecies.keys(), ...genSlots.keys()])].sort((a, b) => a - b)
   const byGeneration: GenerationProgress[] = gens.map((gen) => ({
     gen,
-    name: GENERATION_NAMES[gen] ?? `Generation ${gen}`,
+    // A getter: the result is cached and outlives a language switch.
+    get name(): string {
+      return generationName(gen)
+    },
     ...(genSlots.get(gen) ?? tally()),
     species: genSpecies.get(gen)?.species ?? 0,
     speciesCaught: genSpecies.get(gen)?.speciesCaught ?? 0

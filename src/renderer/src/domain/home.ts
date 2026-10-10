@@ -9,6 +9,7 @@
  */
 
 import type { CatchEntry } from '@shared/save-types'
+import { t, type MessageKey } from '@renderer/i18n/runtime'
 import type { Collection, LivingSlot } from './slots'
 
 /** `home`: an entry that fills the slot is in HOME. `pending`: caught, none sent yet. `missing`: not caught. */
@@ -109,17 +110,20 @@ export function boxMarkTargets(collection: Slots, slots: readonly Pick<LivingSlo
 
 /** One line on where a slot stands, as it is announced and shown in the tooltip. */
 export function homeStatus(state: HomeState, shiny: boolean): string {
-  if (state === 'home') return shiny ? 'Shiny in Pokémon HOME' : 'In Pokémon HOME'
-  if (state === 'pending') return shiny ? 'Shiny caught · not sent to HOME yet' : 'Caught · not sent to HOME yet'
-  return shiny ? 'No shiny yet' : 'Not caught yet'
+  if (state === 'home') return shiny ? t('domain.home.status.homeShiny') : t('domain.home.status.home')
+  if (state === 'pending') return shiny ? t('domain.home.status.pendingShiny') : t('domain.home.status.pending')
+  return shiny ? t('domain.home.status.missingShiny') : t('domain.home.status.missing')
 }
 
-export const HOME_FILTERS: ReadonlyArray<{ id: HomeFilter; label: string }> = [
-  { id: 'all', label: 'All' },
-  { id: 'home', label: 'In HOME' },
-  { id: 'pending', label: 'Not sent yet' },
-  { id: 'missing', label: 'Not caught' }
-]
+const FILTER_LABELS = { all: 'common.all', home: 'domain.home.filter.home', pending: 'domain.home.filter.pending', missing: 'domain.home.filter.missing' } as const satisfies Record<HomeFilter, MessageKey>
+
+/** The filters in order. `label` is read from the text table on each use. */
+export const HOME_FILTERS: ReadonlyArray<{ readonly id: HomeFilter; readonly label: string }> = (Object.keys(FILTER_LABELS) as HomeFilter[]).map((id) => ({
+  id,
+  get label(): string {
+    return t(FILTER_LABELS[id])
+  }
+}))
 
 /** How many slots a filter shows. */
 export function filterCount(totals: HomeTotals, filter: HomeFilter): number {

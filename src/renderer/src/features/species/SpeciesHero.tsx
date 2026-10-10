@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import type { FormSummary, SpeciesSummary } from '@shared/dex-types'
 import { Sprite, SpriteStage, typeColor } from '@renderer/components/pokemon'
 import { cx, Icon, Tooltip, type IconName } from '@renderer/components/ui'
+import { useT } from '@renderer/i18n'
+import { formFullName, variantName } from '@renderer/i18n/terms'
 import { burst, popIn, safeAnimate } from '@renderer/lib/anim'
 import { resolveFormSprite } from '@renderer/lib/sprites'
 import { rovingRadioKeyDown } from './hooks'
@@ -58,6 +60,7 @@ function ViewToggle({ pressed, onChange, icon, children, gold, unavailable, desc
  * it shows: shiny, female, Gigantamax and (Alcremie) the sweet. Only the ones that apply appear.
  */
 export function SpeciesHero({ species, form, view, shinyWanted, onShiny, onFemale, onGmax, onVariant, celebration }: SpeciesHeroProps) {
+  const t = useT()
   const stageRef = useRef<HTMLDivElement>(null)
   const spriteRef = useRef<HTMLDivElement>(null)
   const stampRef = useRef<HTMLDivElement>(null)
@@ -70,7 +73,13 @@ export function SpeciesHero({ species, form, view, shinyWanted, onShiny, onFemal
   // Gigantamax renders always have a shiny version; a sweet has its own flag.
   const shinyExists = view.gmax && form.gmax !== undefined ? true : variant ? variant.shiny : form.shiny
   const femaleApplies = form.female && !(view.gmax && form.gmax !== undefined) && !variant
-  const name = `${view.shiny ? 'Shiny ' : ''}${view.gmax && form.gmax !== undefined ? 'Gigantamax ' : ''}${form.full}${variant ? ` with ${variant.name}` : ''}${view.female && femaleApplies ? ' (female)' : ''}`
+  const nameOf = (v: { id: number; name: string }): string => variantName(species, form, v.id) ?? v.name
+  // "Shiny Gigantamax Pikachu", "Alcremie with Star Sweet (female)": each message wraps the name so far.
+  let name = formFullName(species, form)
+  if (view.gmax && form.gmax !== undefined) name = t('domain.slot.gmax', { name })
+  if (variant) name = t('species.hero.alt.variant', { name, variant: nameOf(variant) })
+  if (view.female && femaleApplies) name = t('species.hero.alt.female', { name })
+  if (view.shiny) name = t('species.hero.alt.shiny', { name })
 
   // A pop each time the picture changes, but not on the first paint (the page entrance covers that).
   const lookKey = `${form.f}|${resolved.path}`
@@ -104,9 +113,10 @@ export function SpeciesHero({ species, form, view, shinyWanted, onShiny, onFemal
     if (stamp) popIn(stampRef.current, { from: 1.7 })
   }, [stamp])
 
-  const shinyUnavailable = shinyExists ? undefined : variant ? 'There is no shiny render of this sweet.' : 'There is no shiny render of this form.'
+  const shinyUnavailable = shinyExists ? undefined : variant ? t('species.hero.noShiny.sweet') : t('species.hero.noShiny.form')
   const types = form.types
-  const variantLabel = variants.length > 0 && variants.every((v) => v.name.endsWith('Sweet')) ? 'Sweet' : 'Variant'
+  // Decided on the English names of the datasets.
+  const variantLabel = variants.length > 0 && variants.every((v) => v.name.endsWith('Sweet')) ? t('species.hero.sweet') : t('species.hero.variant')
 
   return (
     <div className="sp-hero__stagecol">
@@ -117,33 +127,33 @@ export function SpeciesHero({ species, form, view, shinyWanted, onShiny, onFemal
           </div>
         </SpriteStage>
         {resolved.approx && (
-          <Tooltip content="Pokémon HOME has no render of this exact form, so the closest one is shown." placement="bottom">
+          <Tooltip content={t('species.hero.approx.hint')} placement="bottom">
             <span className="sp-stage__approx">
               <Icon name="info" size={13} />
-              Closest render
+              {t('species.hero.approx')}
             </span>
           </Tooltip>
         )}
         {stamp && (
           <div ref={stampRef} className={cx('sp-stamp', stamp.shiny && 'sp-stamp--gold')} role="status">
             <Icon name="check" size={16} strokeWidth={2.6} />
-            Registered
+            {t('species.hero.registered')}
           </div>
         )}
       </div>
 
-      <div className="sp-toggles" role="group" aria-label="Render options">
+      <div className="sp-toggles" role="group" aria-label={t('species.hero.options')}>
         <ViewToggle pressed={shinyWanted} onChange={onShiny} icon="sparkle" gold unavailable={shinyUnavailable} describedBy={noteId}>
-          Shiny
+          {t('common.shiny')}
         </ViewToggle>
         {femaleApplies && (
           <ViewToggle pressed={view.female} onChange={onFemale} icon="female">
-            Female
+            {t('common.female')}
           </ViewToggle>
         )}
         {form.gmax !== undefined && (
           <ViewToggle pressed={view.gmax} onChange={onGmax} icon="expand">
-            Gigantamax
+            {t('species.hero.gmax')}
           </ViewToggle>
         )}
       </div>
@@ -157,14 +167,14 @@ export function SpeciesHero({ species, form, view, shinyWanted, onShiny, onFemal
         <div className="sp-variants">
           <div className="sp-variants__label">
             <span className="u-eyebrow">{variantLabel}</span>
-            <span className="sp-variants__name">{variant?.name ?? variants[0]?.name}</span>
+            <span className="sp-variants__name">{variant ? nameOf(variant) : variants[0] ? nameOf(variants[0]) : undefined}</span>
           </div>
           <div className="sp-variants__list" role="radiogroup" aria-label={variantLabel} onKeyDown={rovingRadioKeyDown}>
             {variants.map((v, index) => {
               const selected = variant ? v.id === variant.id : index === 0
               return (
-                <Tooltip key={v.id} content={v.name}>
-                  <button type="button" role="radio" aria-checked={selected} aria-label={v.name} tabIndex={selected ? 0 : -1} className={cx('sp-variant', selected && 'is-selected')} onClick={() => onVariant(v.id)}>
+                <Tooltip key={v.id} content={nameOf(v)}>
+                  <button type="button" role="radio" aria-checked={selected} aria-label={nameOf(v)} tabIndex={selected ? 0 : -1} className={cx('sp-variant', selected && 'is-selected')} onClick={() => onVariant(v.id)}>
                     <Sprite species={species} form={form} variant={v.id} shiny={view.shiny} size={36} />
                   </button>
                 </Tooltip>

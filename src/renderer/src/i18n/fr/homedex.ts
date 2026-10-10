@@ -1,0 +1,56 @@
+import type { Translation } from '../en'
+
+const messages: Translation<'homedex'> = {
+  'hero.title': 'HOME Dex',
+  'hero.titleShiny': 'HOME Dex chromatique',
+  'hero.ring': 'Progression du HOME Dex',
+  'hero.ringShiny': 'Progression du HOME Dex chromatique',
+  'hero.count': { one: '{inHome} sur {count} dans HOME', many: '{inHome} sur {count} dans HOME', other: '{inHome} sur {count} dans HOME' },
+  'hero.countShiny': { one: '{inHome} sur {count} chromatique dans HOME', many: '{inHome} sur {count} chromatiques dans HOME', other: '{inHome} sur {count} chromatiques dans HOME' },
+  'hero.countGame': { one: '{inHome} sur {count} ({game}) dans HOME', many: '{inHome} sur {count} ({game}) dans HOME', other: '{inHome} sur {count} ({game}) dans HOME' },
+  'hero.countShinyGame': { one: '{inHome} sur {count} chromatique ({game}) dans HOME', many: '{inHome} sur {count} chromatiques ({game}) dans HOME', other: '{inHome} sur {count} chromatiques ({game}) dans HOME' },
+  'hero.unit': 'dans HOME',
+  'hero.unitShiny': 'chromatiques dans HOME',
+  'hero.unitGame': '({game}) dans HOME',
+  'hero.unitShinyGame': 'chromatiques ({game}) dans HOME',
+  'hero.pending': { one: '<b>{count}</b> pas encore envoyé', many: '<b>{count}</b> pas encore envoyés', other: '<b>{count}</b> pas encore envoyés' },
+  'hero.missing': { one: '<b>{count}</b> non capturé', many: '<b>{count}</b> non capturés', other: '<b>{count}</b> non capturés' },
+  'hero.missingGame': { one: '<b>{count}</b> non capturé dans {game}', many: '<b>{count}</b> non capturés dans {game}', other: '<b>{count}</b> non capturés dans {game}' },
+  'hero.missingShiny': { one: '<b>{count}</b> sans chromatique', many: '<b>{count}</b> sans chromatique', other: '<b>{count}</b> sans chromatique' },
+  'hero.missingShinyGame': { one: '<b>{count}</b> sans chromatique dans {game}', many: '<b>{count}</b> sans chromatique dans {game}', other: '<b>{count}</b> sans chromatique dans {game}' },
+  'hero.mode': 'Mode du HOME Dex',
+  'hero.mode.normal': 'HOME Dex',
+
+  'filters.label': 'Afficher',
+  'filters.noShiny': 'Sans chromatique',
+  'hint': 'Cliquez sur un Pokémon capturé pour le marquer comme présent dans Pokémon HOME, et à nouveau pour retirer la marque.',
+
+  'saveFailed': 'Impossible d’enregistrer',
+  'box.marked': '{box} marquée comme dans HOME',
+  'box.marked.body': { one: '{count} Pokémon marqué. Annuler retire la marque.', many: '{count} Pokémon marqués. Annuler retire les marques.', other: '{count} Pokémon marqués. Annuler retire les marques.' },
+  'box.undo': 'Annuler',
+  'box.unmarked': 'Marques retirées : {box}',
+  'box.unmarked.body': { one: '{count} Pokémon n’est plus marqué comme dans HOME.', many: '{count} Pokémon ne sont plus marqués comme dans HOME.', other: '{count} Pokémon ne sont plus marqués comme dans HOME.' },
+
+  'empty.noSlots.title': 'Aucun Pokémon à afficher',
+  'empty.noSlots.description': 'Les données du Pokédex ne contiennent aucun Pokémon : il n’y a donc pas encore d’emplacement à remplir.',
+  'empty.game.title': 'Rien à collectionner dans {game}',
+  'empty.game.description': 'Aucun Pokémon de votre Living Dex ne peut être obtenu dans ce jeu sans événement.',
+  'empty.gameNothing.title': 'Encore rien de capturé dans {game}',
+  'empty.gameNothing.description': 'Seuls les Pokémon obtenus dans {game} sont comptés ici. Enregistrez une capture de ce jeu et elle apparaîtra, prête à être marquée comme envoyée.',
+  'empty.noShiny.title': 'Pas encore de Pokémon chromatique',
+  'empty.noShiny.description': 'Le HOME Dex chromatique ne compte que les Pokémon chromatiques. Enregistrez une capture chromatique et elle apparaîtra ici, prête à être marquée comme envoyée.',
+  'empty.noShiny.action': 'Afficher le HOME Dex normal',
+  'empty.nothing.title': 'Rien à envoyer pour l’instant',
+  'empty.nothing.description': 'Le HOME Dex montre lesquels de vos Pokémon vous avez envoyés dans Pokémon HOME. Enregistrez d’abord une capture : elle apparaît ensuite ici, et un clic la marque comme envoyée.',
+  'empty.nothing.action': 'Ouvrir le Pokédex',
+  'empty.filter.home.title': 'Encore rien dans HOME',
+  'empty.filter.home.description': 'Marquez un Pokémon capturé comme envoyé et il figurera ici.',
+  'empty.filter.pending.title': 'Toutes vos captures sont dans HOME',
+  'empty.filter.pending.description': 'Il ne reste rien à envoyer.',
+  'empty.filter.missing.title': 'Il ne manque rien',
+  'empty.filter.missing.description': 'Tous les emplacements sont remplis.',
+  'empty.filter.action': 'Afficher tous les emplacements'
+}
+
+export default messages

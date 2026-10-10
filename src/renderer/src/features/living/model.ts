@@ -5,9 +5,11 @@
  */
 
 import type { CatchEntry, DexRules } from '@shared/save-types'
+import { t, type MessageKey } from '@renderer/i18n/runtime'
+import { gameShortName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
-import { dexNo, formatCount, plural } from '@renderer/lib/format'
-import { sectionsOf } from '@renderer/domain/gamedex'
+import { dexNo } from '@renderer/lib/format'
+import { gameOfSection, OTHER_SECTION, pokedexName, sectionsOf, type DexSection } from '@renderer/domain/gamedex'
 import { matchRulePreset, RULE_KEYS, RULE_PRESETS, type Collection, type LivingSlot } from '@renderer/domain/slots'
 import { offsetsOf } from './rows'
 
@@ -42,8 +44,10 @@ export interface BoxModel {
   no: number
   /** Index of its section in `sectionsOf(slots)`; -1 when the slots have no sections. */
   section: number
-  /** Heading of that section. */
-  sectionTitle?: string
+  /** Heading of that section, in the active language (read on each use). */
+  readonly sectionTitle?: string
+  /** That section. */
+  sectionRef?: DexSection
   /** In a section: places of its first and last slot there, from 1 (the section runs in the game's Pokédex order, not National order). */
   positions?: readonly [number, number]
 }
@@ -59,21 +63,25 @@ export function buildBoxes(slots: readonly LivingSlot[]): BoxModel[] {
   if (!boxes) {
     boxes = []
     const sections = sectionsOf(slots)
-    const spans: ReadonlyArray<{ title?: string; start: number; count: number }> = sections.length > 0 ? sections : [{ start: 0, count: slots.length }]
+    const spans: ReadonlyArray<{ start: number; count: number }> = sections.length > 0 ? sections : [{ start: 0, count: slots.length }]
     for (const [s, span] of spans.entries()) {
+      const section = sections[s]
       for (let start = span.start; start < span.start + span.count; start += BOX_SIZE) {
         const own = slots.slice(start, Math.min(start + BOX_SIZE, span.start + span.count))
         const from = start - span.start
-        boxes.push({
+        const box: BoxModel = {
           index: boxes.length,
           start,
           slots: own,
           firstDex: own[0]?.species ?? 0,
           lastDex: own[own.length - 1]?.species ?? 0,
           no: from / BOX_SIZE + 1,
-          section: sections.length > 0 ? s : -1,
-          ...(span.title !== undefined && { sectionTitle: span.title, positions: [from + 1, from + own.length] as const })
-        })
+          section: section ? s : -1,
+          ...(section && { sectionRef: section, positions: [from + 1, from + own.length] as const })
+        }
+        // A getter: the boxes are cached and outlive a language switch.
+        if (section) Object.defineProperty(box, 'sectionTitle', { enumerable: true, get: () => section.title })
+        boxes.push(box)
       }
     }
     boxCache.set(slots, boxes)
@@ -96,10 +104,29 @@ export function boxIndexAt(boxes: readonly Pick<BoxModel, 'start' | 'slots'>[], 
   return -1
 }
 
+/** The three wordings of a sentence that names a box: on its own, in a Pokédex section, in the "other Pokémon" section. */
+export interface BoxTextKeys {
+  /** Placeholder {number}. */
+  plain: MessageKey
+  /** Placeholders {number} and {dex}. */
+  dex: MessageKey
+  /** Placeholders {number} and {game}. */
+  other: MessageKey
+}
+
+/** A text that names a box, in the wording that fits where the box is. */
+export function boxText(box: Pick<BoxModel, 'no' | 'sectionTitle' | 'sectionRef'>, keys: BoxTextKeys): string {
+  const section = box.sectionRef
+  if (section?.id === OTHER_SECTION) return t(keys.other, { number: box.no, game: gameShortName(gameOfSection(section) ?? '') })
+  if (section) return t(keys.dex, { number: box.no, dex: pokedexName(section.id) })
+  return box.sectionTitle === undefined ? t(keys.plain, { number: box.no }) : t(keys.dex, { number: box.no, dex: box.sectionTitle })
+}
+
+const BOX_NAME: BoxTextKeys = { plain: 'living.box.name', dex: 'living.box.nameOfDex', other: 'living.box.nameOfOther' }
+
 /** "Box 3", or "Box 3 of the Isle of Armor Pokédex" where the boxes are numbered per section. */
-export function boxName(box: Pick<BoxModel, 'no' | 'sectionTitle'>): string {
-  if (box.sectionTitle === undefined) return `Box ${box.no}`
-  return `Box ${box.no} of ${box.sectionTitle.startsWith('Other ') ? box.sectionTitle.replace('Other ', 'the other ') : `the ${box.sectionTitle}`}`
+export function boxName(box: Pick<BoxModel, 'no' | 'sectionTitle' | 'sectionRef'>): string {
+  return boxText(box, BOX_NAME)
 }
 
 const indexCache = new WeakMap<readonly LivingSlot[], Map<string, number>>()
@@ -271,11 +298,11 @@ export function slotMarker(slot: Pick<LivingSlot, 'gmax' | 'variant' | 'gender'>
 /** One line on where a slot stands: "Caught · 3 entries", "Not caught yet", "No shiny yet · 2 regular entries". */
 export function slotStatus(info: SlotInfo, mode: LivingMode): string {
   if (mode === 'shiny') {
-    if (info.filled) return info.count > 1 ? `Shiny caught · ${plural(info.count, 'shiny entry', 'shiny entries')}` : 'Shiny caught'
-    return info.total > 0 ? `No shiny yet · ${plural(info.total, 'regular entry', 'regular entries')}` : 'No shiny yet'
+    if (info.filled) return info.count > 1 ? t('living.status.shinyCaughtCount', { count: info.count }) : t('living.status.shinyCaught')
+    return info.total > 0 ? t('living.status.noShinyRegular', { count: info.total }) : t('living.status.noShiny')
   }
-  if (!info.filled) return 'Not caught yet'
-  return info.count > 1 ? `Caught · ${plural(info.count, 'entry', 'entries')}` : 'Caught'
+  if (!info.filled) return t('living.status.missing')
+  return info.count > 1 ? t('living.status.caughtCount', { count: info.count }) : t('living.status.caught')
 }
 
 // ---------------------------------------------------------------- rules line
@@ -288,12 +315,13 @@ export function rulesKey(rules: DexRules): string {
 /** "Forms preset", "Completionist preset", or "Custom rules" for a mix of the user's own. */
 export function rulesLabel(rules: DexRules): string {
   const preset = matchRulePreset(rules)
-  return preset ? `${RULE_PRESETS[preset].label} preset` : 'Custom rules'
+  return preset ? t('living.rules.preset', { preset: RULE_PRESETS[preset].label }) : t('living.rules.custom')
 }
 
-/** "Forms preset · 1,367 slots". */
-export function rulesLine(rules: DexRules, slots: number): string {
-  return `${rulesLabel(rules)} · ${formatCount(slots)} ${slots === 1 ? 'slot' : 'slots'}`
+/** "Forms preset · 1,367 slots"; with the short name of a game, "... slots obtainable in Sword". */
+export function rulesLine(rules: DexRules, slots: number, game?: string): string {
+  if (game !== undefined) return t('living.rules.lineInGame', { rules: rulesLabel(rules), count: slots, game })
+  return t('living.rules.line', { rules: rulesLabel(rules), count: slots })
 }
 
 // ---------------------------------------------------------------- layout

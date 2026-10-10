@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Icon, Tooltip, cx } from '@renderer/components/ui'
+import { useLanguage } from '@renderer/i18n'
 import { indicatorInfo, type IndicatorInfo } from './model'
 import { useUpdateStore } from './store'
 import './updates.css'
@@ -37,7 +38,8 @@ export function UpdateIndicatorView({ info, collapsed, onOpen }: UpdateIndicator
  */
 export function UpdateIndicator({ collapsed }: { collapsed: boolean }) {
   const state = useUpdateStore((s) => s.state)
-  const info = useMemo(() => indicatorInfo(state), [state])
+  const language = useLanguage()
+  const info = useMemo(() => indicatorInfo(state), [state, language])
   if (info === null) return null
   return <UpdateIndicatorView info={info} collapsed={collapsed} onOpen={useUpdateStore.getState().openOffer} />
 }

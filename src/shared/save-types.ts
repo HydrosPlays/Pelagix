@@ -6,6 +6,7 @@
  */
 
 import type { EncounterKind } from './dex-types'
+import type { LanguageId } from './languages'
 
 export const SAVE_VERSION = 1
 
@@ -104,6 +105,11 @@ export type ThemeId = 'dark' | 'light'
 export interface AppSettings {
   rules: DexRules
   theme: ThemeId
+  /**
+   * Language of the interface and of the Pokémon terms. Absent until the user has chosen one
+   * (the app asks once). It belongs to this computer: importing a save or resetting keeps it.
+   */
+  language?: LanguageId
   reduceMotion: boolean
   /** Shown on the trainer card and pre-filled as OT when logging. */
   trainerName: string

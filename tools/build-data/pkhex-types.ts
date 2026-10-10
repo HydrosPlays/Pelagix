@@ -207,3 +207,19 @@ export interface PkStrings {
 }
 
 export type PkLocations = Record<string, Record<string, string>>
+
+/** localized.json: one entry per language id, every table indexed like its English counterpart. */
+export interface PkLocalizedLanguage {
+  species: string[]
+  types: string[]
+  abilities: string[]
+  balls: string[]
+  games: Record<string, string>
+  items: string[]
+  moves: string[]
+  /** Species -> primary name of every form index (forms.json `names[0].n` in this language). */
+  forms: Record<string, string[]>
+  locations: PkLocations
+}
+
+export type PkLocalized = Record<string, PkLocalizedLanguage>

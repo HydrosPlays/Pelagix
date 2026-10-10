@@ -4,6 +4,7 @@
  */
 
 import type { UpdateError, WhatsNew } from '@shared/api'
+import { t } from '@renderer/i18n'
 import { toast } from '@renderer/store/ui'
 import { openWebPage } from './links'
 import { errorWording, releaseUrl } from './model'
@@ -13,10 +14,10 @@ export function toastUpdated(whatsNew: Pick<WhatsNew, 'version' | 'url'>): void 
   const url = releaseUrl(whatsNew.url)
   toast({
     kind: 'success',
-    title: `Pelagix was updated to version ${whatsNew.version}`,
-    body: 'What changed is on the release page.',
+    title: t('updates.toast.updated.title', { version: whatsNew.version }),
+    body: t('updates.toast.updated.body'),
     icon: 'gift',
-    action: { label: 'Open it', onSelect: () => openWebPage(url) }
+    action: { label: t('updates.toast.open'), onSelect: () => openWebPage(url) }
   })
 }
 
@@ -24,16 +25,16 @@ export function toastUpdated(whatsNew: Pick<WhatsNew, 'version' | 'url'>): void 
 export function toastReady(version: string, onRestart: () => void): void {
   toast({
     kind: 'success',
-    title: `Pelagix ${version} is ready to install`,
+    title: t('updates.offer.title.ready', { version }),
     // Says what installs it: nothing happens by itself, and nothing when the app is simply closed.
-    body: 'Choose Restart to install it: Pelagix closes and reopens by itself.',
+    body: t('updates.toast.ready.body'),
     icon: 'download',
     durationMs: 12_000,
-    action: { label: 'Restart', onSelect: onRestart }
+    action: { label: t('updates.toast.ready.action'), onSelect: onRestart }
   })
 }
 
 /** A download broke while the changelog window was closed. */
 export function toastDownloadFailed(version: string, error: Pick<UpdateError, 'kind' | 'during'>, onShow: () => void): void {
-  toast({ kind: 'error', title: `Pelagix ${version} could not be downloaded`, body: errorWording(error).text, action: { label: 'Show', onSelect: onShow } })
+  toast({ kind: 'error', title: t('updates.toast.failed.title', { version }), body: errorWording(error).text, action: { label: t('updates.toast.failed.action'), onSelect: onShow } })
 }

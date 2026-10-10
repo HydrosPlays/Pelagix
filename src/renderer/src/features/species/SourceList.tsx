@@ -1,10 +1,12 @@
 import { useId, useMemo, useState, type ReactNode } from 'react'
-import { BALL_BY_ID } from '@shared/balls'
 import type { EvolveSource, FormSummary, SpeciesDetail, SpeciesSummary } from '@shared/dex-types'
 import type { GameDef } from '@shared/games'
+import { languageTag } from '@shared/languages'
 import { BallIcon, GameIcon, GenderIcon, Sprite } from '@renderer/components/pokemon'
 import { Button, cx, Icon, Skeleton, Tag } from '@renderer/components/ui'
 import { rowGender, sourcesByGame, type GameSources, type SourcePreset } from '@renderer/domain/encounters'
+import { activeLanguage, useT } from '@renderer/i18n'
+import { ballName, evolutionText, formFullName, gameName, gameShortName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
 import { levelRange } from '@renderer/lib/format'
 import { normalizeText } from '@renderer/lib/search'
@@ -18,6 +20,7 @@ import {
   evolvePreset,
   filterBlocks,
   initialBlockCount,
+  monName,
   rowPreset,
   SECTION_INFO,
   SECTION_ORDER,
@@ -67,13 +70,20 @@ export interface SourceListProps extends Omit<Context, 'depth' | 'trail' | 'even
   emptyState?: ReactNode
 }
 
-const joinOr = (items: readonly string[]): string => (items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} or ${items[items.length - 1]}`)
+/** "A", "A or B", "A, B or C": a list of alternatives the way the language joins one. */
+function joinOr(items: readonly string[]): string {
+  if (items.length <= 1) return items[0] ?? ''
+  const language = activeLanguage()
+  if (language !== 'en') return new Intl.ListFormat(languageTag(language), { style: 'long', type: 'disjunction' }).format(items)
+  return `${items.slice(0, -1).join(', ')} or ${items[items.length - 1]}`
+}
 
 function LogButton({ label, onClick }: { label: string; onClick: () => void }) {
+  const t = useT()
   return (
     <button type="button" className="sp-log" aria-label={label} onClick={onClick}>
       <Icon name="pokeball" size={14} />
-      <span>Log</span>
+      <span>{t('species.source.log')}</span>
     </button>
   )
 }
@@ -81,6 +91,7 @@ function LogButton({ label, onClick }: { label: string; onClick: () => void }) {
 // ---------------------------------------------------------------- section frame
 
 function SectionFrame({ id, count, depth, defaultOpen = true, children }: { id: SectionId; count: number; depth: number; defaultOpen?: boolean; children: ReactNode }) {
+  useT()
   const [open, setOpen] = useState(defaultOpen)
   const bodyId = useId()
   const info = SECTION_INFO[id]
@@ -93,7 +104,7 @@ function SectionFrame({ id, count, depth, defaultOpen = true, children }: { id: 
             <Icon name={info.icon} size={15} />
           </span>
           <span className="sp-sec__title">{info.title}</span>
-          <span className="sp-sec__count" aria-label={`${count} ${count === 1 ? info.one : info.many}`}>
+          <span className="sp-sec__count" aria-label={info.count(count)}>
             {count}
           </span>
           <Icon name="chevron-down" size={16} className="sp-sec__chev" />
@@ -111,6 +122,7 @@ function SectionFrame({ id, count, depth, defaultOpen = true, children }: { id: 
 // ---------------------------------------------------------------- encounter rows
 
 function RowTags({ item }: { item: SourceRow }) {
+  const t = useT()
   const { row } = item
   const gender = rowGender(row)
   const via = row.via
@@ -119,8 +131,8 @@ function RowTags({ item }: { item: SourceRow }) {
   return (
     <div className="sp-src__tags">
       {item.alpha && (
-        <Tag tone="catch" title="An Alpha Pokémon">
-          Alpha
+        <Tag tone="catch" title={t('species.source.alpha.hint')}>
+          {t('species.source.alpha')}
         </Tag>
       )}
       {item.conditions.map((condition) => (
@@ -129,18 +141,18 @@ function RowTags({ item }: { item: SourceRow }) {
         </Tag>
       ))}
       {row.s === 'locked' && (
-        <Tag tone="warning" icon="lock" title="This one can never be shiny">
-          Shiny locked
+        <Tag tone="warning" icon="lock" title={t('species.source.shinyLocked.hint')}>
+          {t('species.source.shinyLocked')}
         </Tag>
       )}
       {row.s === 'forced' && (
-        <Tag tone="gold" icon="sparkle" title="This one is always shiny">
-          Always shiny
+        <Tag tone="gold" icon="sparkle" title={t('species.source.shinyForced.hint')}>
+          {t('species.source.shinyForced')}
         </Tag>
       )}
       {row.b !== undefined && (
-        <Tag icon={<BallIcon ball={row.b} size={13} label="" />} title="Always comes in this ball">
-          {BALL_BY_ID.get(row.b)?.name ?? 'Fixed ball'}
+        <Tag icon={<BallIcon ball={row.b} size={13} label="" />} title={t('species.source.ball.hint')}>
+          {ballName(row.b) ?? t('species.source.ball.unknown')}
         </Tag>
       )}
       {(gender === 'm' || gender === 'f') && (
@@ -150,24 +162,24 @@ function RowTags({ item }: { item: SourceRow }) {
               <GenderIcon gender={gender} size={11} />
             </span>
           }
-          title="Its gender is fixed"
+          title={t('species.source.gender.hint')}
         >
-          {gender === 'm' ? 'Male only' : 'Female only'}
+          {gender === 'm' ? t('species.source.gender.male') : t('species.source.gender.female')}
         </Tag>
       )}
       {row.rf === 1 && (
-        <Tag tone="accent" title="The game picks the form at random or by your save's region">
-          Random form
+        <Tag tone="accent" title={t('species.source.randomForm.hint')}>
+          {t('species.source.randomForm')}
         </Tag>
       )}
       {via && (
-        <Tag icon={viaGame ? <GameIcon game={viaGame} size={13} tooltip={false} alt="" /> : 'external'} title={`Delivered through ${viaLabel(via)}`}>
-          via {viaLabel(via)}
+        <Tag icon={viaGame ? <GameIcon game={viaGame} size={13} tooltip={false} alt="" /> : 'external'} title={t('species.source.via.hint', { product: viaLabel(via) })}>
+          {t('species.source.via', { product: viaLabel(via) })}
         </Tag>
       )}
       {row.x?.ot !== undefined && (
-        <Tag variant="outline" title="Original Trainer">
-          OT {row.x.ot}
+        <Tag variant="outline" title={t('species.source.ot.hint')}>
+          {t('species.source.ot', { trainer: row.x.ot })}
         </Tag>
       )}
       {dates !== undefined && (
@@ -181,10 +193,15 @@ function RowTags({ item }: { item: SourceRow }) {
 }
 
 function RowView({ item, first, context }: { item: SourceRow; first: boolean; context: Context }) {
+  const t = useT()
   const { game, subject, target, onLog } = context
   const level = levelRange(item.row.lv)
   const nested = target.origin !== undefined
-  const label = `Log ${target.form.full}${nested ? `, caught as ${subject.form.full}` : ''}: ${item.title}${item.location !== undefined ? ` at ${item.location}` : ''} in ${game.name}`
+  const names = { name: formFullName(target.species, target.form), origin: formFullName(subject.species, subject.form), source: item.title, place: item.location ?? '', game: gameName(game.id) }
+  const label =
+    item.location !== undefined
+      ? t(nested ? 'species.source.logRowAsAt' : 'species.source.logRowAt', names)
+      : t(nested ? 'species.source.logRowAs' : 'species.source.logRow', names)
   return (
     <li className={cx('sp-src', item.location === undefined && 'sp-src--loose')}>
       {item.location !== undefined && (
@@ -219,6 +236,7 @@ function RowView({ item, first, context }: { item: SourceRow; first: boolean; co
 }
 
 function RowSectionView({ section, blocks, searching, context }: { section: RowSection; blocks: SourceBlock[]; searching: boolean; context: Context }) {
+  const t = useT()
   const [all, setAll] = useState(false)
   const initial = searching ? Math.min(blocks.length, 30) : initialBlockCount(blocks, context.depth === 0 ? 10 : 6)
   const shown = all ? blocks : blocks.slice(0, initial)
@@ -238,7 +256,7 @@ function RowSectionView({ section, blocks, searching, context }: { section: RowS
       {(hidden > 0 || (all && blocks.length > initial)) && (
         <div className="sp-sec__more">
           <Button size="sm" variant="ghost" icon={all ? 'chevron-up' : 'chevron-down'} aria-expanded={all} onClick={() => setAll(!all)}>
-            {all ? 'Show fewer' : `Show ${hidden} more`}
+            {all ? t('species.showFewer') : t('species.source.showMore', { count: hidden })}
           </Button>
         </div>
       )}
@@ -250,6 +268,7 @@ function RowSectionView({ section, blocks, searching, context }: { section: RowS
 
 /** The sources of an earlier stage, loaded on demand and listed inline. */
 function NestedSources({ from, context }: { from: [number, number]; context: Context }) {
+  const t = useT()
   const { dex, game, target, trail, depth, onLog, onOpenSpecies } = context
   const species = dex.species(from[0])
   const form = dex.form(from[0], from[1])
@@ -257,10 +276,11 @@ function NestedSources({ from, context }: { from: [number, number]; context: Con
   const sources = useMemo(() => (detail.data && form ? sourcesByGame(dex, detail.data, form).find((s) => s.game.id === game.id) : undefined), [dex, detail.data, form, game.id])
 
   if (!species || !form) return null
+  const fullName = formFullName(species, form)
   if (detail.loading) {
     return (
       <div className="sp-nested" aria-busy="true">
-        <span className="u-sr-only">Loading where to find {form.full}</span>
+        <span className="u-sr-only">{t('species.where.loading', { name: fullName })}</span>
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} height={36} radius={8} />
         ))}
@@ -270,9 +290,9 @@ function NestedSources({ from, context }: { from: [number, number]; context: Con
   if (!detail.data) {
     return (
       <div className="sp-nested sp-nested--note" role="alert">
-        <span>The details of {form.full} could not be loaded.</span>
+        <span>{t('species.source.nested.error', { name: fullName })}</span>
         <Button size="sm" icon="refresh" onClick={detail.retry}>
-          Try again
+          {t('species.retry')}
         </Button>
       </div>
     )
@@ -281,11 +301,9 @@ function NestedSources({ from, context }: { from: [number, number]; context: Con
   if (empty) {
     return (
       <div className="sp-nested sp-nested--note">
-        <span>
-          {form.full} cannot be obtained in {game.name} either, so it has to be brought in from another game.
-        </span>
+        <span>{t('species.source.nested.none', { name: fullName, game: gameName(game.id) })}</span>
         <Button size="sm" variant="ghost" iconEnd="arrow-right" onClick={() => onOpenSpecies(species.id, form.f)}>
-          Open {form.full}
+          {t('species.source.open', { name: fullName })}
         </Button>
       </div>
     )
@@ -293,11 +311,9 @@ function NestedSources({ from, context }: { from: [number, number]; context: Con
   return (
     <div className="sp-nested">
       <div className="sp-nested__head">
-        <span>
-          {form.full} in {game.name}
-        </span>
+        <span>{t('species.source.nested.title', { name: fullName, game: gameName(game.id) })}</span>
         <Button size="sm" variant="ghost" iconEnd="arrow-right" onClick={() => onOpenSpecies(species.id, form.f)}>
-          Open its page
+          {t('species.source.nested.open')}
         </Button>
       </div>
       <SourceList
@@ -316,30 +332,31 @@ function NestedSources({ from, context }: { from: [number, number]; context: Con
 }
 
 function EvolveItem({ source, change, context }: { source: EvolveSource; change: boolean; context: Context }) {
+  const t = useT()
   const { dex, game, target, depth, trail, onLog, onOpenSpecies } = context
   const [open, setOpen] = useState(false)
   const panelId = useId()
   const fromSpecies = dex.species(source.from[0])
   const fromForm = dex.form(source.from[0], source.from[1])
-  const name = fromForm?.full ?? fromSpecies?.name ?? `Pokémon #${source.from[0]}`
+  const name = monName(dex, source.from[0], source.from[1])
   const canExpand = depth < MAX_DEPTH && fromSpecies !== undefined && fromForm !== undefined && !trail.includes(`${source.from[0]}-${source.from[1]}`)
   return (
     <li className="sp-evo">
       <div className="sp-evo__row">
-        <button type="button" className="sp-evo__mon" aria-label={`Open ${name}`} title={`Open ${name}`} onClick={() => onOpenSpecies(source.from[0], source.from[1])}>
+        <button type="button" className="sp-evo__mon" aria-label={t('species.source.open', { name })} title={t('species.source.open', { name })} onClick={() => onOpenSpecies(source.from[0], source.from[1])}>
           <Sprite species={source.from[0]} form={source.from[1]} size={44} />
         </button>
         <div className="sp-evo__text">
-          <span className="sp-evo__title">{change ? `Change from ${name}` : `Evolve ${name}`}</span>
-          <span className="sp-evo__how">{change ? changeText(source.how) : source.how}</span>
+          <span className="sp-evo__title">{change ? t('species.source.change', { name }) : t('species.source.evolve', { name })}</span>
+          <span className="sp-evo__how">{change ? changeText(source.how) : evolutionText(source.how)}</span>
         </div>
         <div className="sp-evo__actions">
           {canExpand && (
             <Button size="sm" variant="ghost" iconEnd={open ? 'chevron-up' : 'chevron-down'} aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={() => setOpen(!open)}>
-              Where to find {name} in {game.short}
+              {t('species.source.whereFrom', { name, game: gameShortName(game.id) })}
             </Button>
           )}
-          {depth === 0 && <LogButton label={`Log ${target.form.full}: ${change ? 'changed' : 'evolved'} from ${name} in ${game.name}`} onClick={() => onLog(evolvePreset(target, game, source))} />}
+          {depth === 0 && <LogButton label={t(change ? 'species.source.logChanged' : 'species.source.logEvolved', { name: formFullName(target.species, target.form), from: name, game: gameName(game.id) })} onClick={() => onLog(evolvePreset(target, game, source))} />}
         </div>
       </div>
       {open && canExpand && (
@@ -352,10 +369,11 @@ function EvolveItem({ source, change, context }: { source: EvolveSource; change:
 }
 
 function BreedItem({ context }: { context: Context }) {
+  const t = useT()
   const { dex, game, subject, target, onLog, onOpenSpecies } = context
   const parents = useMemo(() => breedParents(dex, subject.detail.family, subject.species.id, subject.form.f, game.id), [dex, subject, game.id])
-  const names = parents.map((p) => dex.form(p.s, p.f)?.full ?? dex.species(p.s)?.name ?? `Pokémon #${p.s}`)
-  const shownNames = names.length > 4 ? [...names.slice(0, 3), `${names.length - 3} more`] : names
+  const names = parents.map((p) => monName(dex, p.s, p.f))
+  const shownNames = names.length > 4 ? [...names.slice(0, 3), t('species.source.breed.more', { count: names.length - 3 })] : names
   const nested = target.origin !== undefined
   return (
     <li className="sp-evo">
@@ -364,20 +382,20 @@ function BreedItem({ context }: { context: Context }) {
           <Icon name="egg" size={22} />
         </span>
         <div className="sp-evo__text">
-          <span className="sp-evo__title">Hatch from an Egg</span>
-          <span className="sp-evo__how">{names.length > 0 ? `Breed ${joinOr(shownNames)}. A Ditto works as the partner.` : 'Breed a member of its family.'}</span>
+          <span className="sp-evo__title">{t('species.source.breed.title')}</span>
+          <span className="sp-evo__how">{names.length > 0 ? t('species.source.breed.parents', { parents: joinOr(shownNames) }) : t('species.source.breed.family')}</span>
         </div>
         <div className="sp-evo__actions">
           {parents.length > 0 && (
             <span className="sp-evo__parents">
               {parents.slice(0, 4).map((p, i) => (
-                <button key={`${p.s}-${p.f}`} type="button" className="sp-evo__parent" aria-label={`Open ${names[i]}`} title={names[i]} onClick={() => onOpenSpecies(p.s, p.f)}>
+                <button key={`${p.s}-${p.f}`} type="button" className="sp-evo__parent" aria-label={t('species.source.open', { name: names[i] ?? '' })} title={names[i]} onClick={() => onOpenSpecies(p.s, p.f)}>
                   <Sprite species={p.s} form={p.f} size={30} />
                 </button>
               ))}
             </span>
           )}
-          <LogButton label={`Log ${target.form.full}: hatched${nested ? ` as ${subject.form.full}` : ''} from an Egg in ${game.name}`} onClick={() => onLog(breedPreset(target, game))} />
+          <LogButton label={t(nested ? 'species.source.logHatchedAs' : 'species.source.logHatched', { name: formFullName(target.species, target.form), origin: formFullName(subject.species, subject.form), game: gameName(game.id) })} onClick={() => onLog(breedPreset(target, game))} />
         </div>
       </div>
     </li>
@@ -392,6 +410,7 @@ function BreedItem({ context }: { context: Context }) {
  * action; an evolution can open the sources of the Pokémon it starts from inline.
  */
 export function SourceList({ sources, depth = 0, trail = [], eventsOpen = false, query = '', only, emptyState, ...rest }: SourceListProps) {
+  const t = useT()
   const context: Context = { ...rest, depth, trail, eventsOpen }
   const { subject, dex } = context
   const view = useMemo(() => buildSourceView(subject.detail, sources, subject.species.id), [subject.detail, sources, subject.species.id])
@@ -400,8 +419,16 @@ export function SourceList({ sources, depth = 0, trail = [], eventsOpen = false,
   const wants = (id: SectionId): boolean => !only || only.size === 0 || only.has(id)
   const matchesEvolve = (source: EvolveSource): boolean => {
     if (!searching) return true
-    const name = dex.form(source.from[0], source.from[1])?.full ?? dex.species(source.from[0])?.name ?? ''
-    return normalizeText(`${name} ${source.how}`).includes(needle)
+    // Found by the name and the text shown, and by their English originals.
+    const english = dex.form(source.from[0], source.from[1])?.full ?? dex.species(source.from[0])?.name ?? ''
+    const shown = english === '' ? '' : monName(dex, source.from[0], source.from[1])
+    return normalizeText([...new Set([shown, evolutionText(source.how), english, source.how])].join(' ')).includes(needle)
+  }
+
+  // "hatch from an egg breed", and the same in English when another language is shown.
+  const breedWords = (): string => {
+    const shown = normalizeText(`${t('species.source.breed.title')} ${SECTION_INFO.breed.title}`)
+    return activeLanguage() === 'en' ? shown : `${shown} hatch from an egg breed`
   }
 
   const parts: ReactNode[] = []
@@ -422,7 +449,7 @@ export function SourceList({ sources, depth = 0, trail = [], eventsOpen = false,
       continue
     }
     if (id === 'breed') {
-      if (!view.breed || (searching && !'hatch from an egg breed'.includes(needle))) continue
+      if (!view.breed || (searching && !breedWords().includes(needle))) continue
       parts.push(
         <SectionFrame key={id} id={id} count={1} depth={depth}>
           <ul className="sp-evos">

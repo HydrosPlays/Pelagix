@@ -8,7 +8,7 @@ import type { PkLocations } from './pkhex-types.ts'
 import { fail } from './util.ts'
 
 /** Placeholder names that never describe where a Pokémon is found. */
-const PSEUDO_NAME = new RegExp(
+export const PSEUDO_NAME = new RegExp(
   [
     '^\\(.*\\)$', // (Can't Tell), (Event), (Gift Egg), (In-game Trade), (Fateful Encounter)
     'Link [Tt]rade',
@@ -30,12 +30,12 @@ const REAL_SPECIAL: ReadonlySet<string> = new Set([
 ])
 
 /** Proper labels for a few names that are a mode rather than a place. */
-const RELABEL: Readonly<Record<string, string>> = {
+export const RELABEL: Readonly<Record<string, string>> = {
   'Gen6:Friend Safari': 'Kiloude City'
 }
 
 /** Game tags PKHeX appends to tell same-named places of different games apart. */
-const GAME_TAG = / \((Kanto|RSE|FRLG|E|RS|D\/P\/Pt|HG\/SS|B\/W|B2\/W2|X\/Y|OR\/AS)\)$/
+export const GAME_TAG = / \((Kanto|RSE|FRLG|E|RS|D\/P\/Pt|HG\/SS|B\/W|B2\/W2|X\/Y|OR\/AS)\)$/
 
 function resolveSlashName(name: string, gameId: string): string {
   // "Battle Tower (RS) / Battle Frontier (E)", "Cold Storage/PWT"
@@ -45,7 +45,7 @@ function resolveSlashName(name: string, gameId: string): string {
 }
 
 /** XD's three Poké Spots, which PKHeX's location table only calls "Rock", "Oasis" and "Cave". */
-const XD_POKE_SPOT: Readonly<Record<string, string>> = { Rock: 'Rock Poké Spot', Oasis: 'Oasis Poké Spot', Cave: 'Cave Poké Spot' }
+export const XD_POKE_SPOT: Readonly<Record<string, string>> = { Rock: 'Rock Poké Spot', Oasis: 'Oasis Poké Spot', Cave: 'Cave Poké Spot' }
 
 function resolveCxd(name: string, gameId: string): string | undefined {
   const withoutId = name.replace(/ \[\d+\]$/, '')

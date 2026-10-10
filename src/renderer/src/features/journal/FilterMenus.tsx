@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Badge, Button, DateField, Icon, Portal, cx, useEscapeLayer, useFloating, useOutsidePress, type IconName } from '@renderer/components/ui'
-import { addDays, todayIso } from '@renderer/lib/format'
+import { useT } from '@renderer/i18n'
+import { addDays, formatCount, todayIso } from '@renderer/lib/format'
 import { normalizeText } from '@renderer/lib/search'
 
 // ---------------------------------------------------------------- the popover shell
@@ -23,6 +24,7 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [tabindex]:not
  * a click elsewhere close it; Tab past either end closes it and returns to the button.
  */
 function FilterPopover({ label, icon, count, popup, children }: FilterPopoverProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -74,7 +76,7 @@ function FilterPopover({ label, icon, count, popup, children }: FilterPopoverPro
       >
         {icon && <Icon name={icon} size={15} />}
         <span>{label}</span>
-        {count > 0 && <Badge count={count} label={`${count} selected`} />}
+        {count > 0 && <Badge count={count} label={t('journal.filter.selected', { count })} />}
         <Icon name="chevron-down" size={14} className="journal-filter__chevron" />
       </button>
       {open && (
@@ -108,10 +110,13 @@ export interface FilterMenuProps<T extends string | number> {
   onChange: (next: T[]) => void
   /** Adds a search box above the list (long lists). */
   searchable?: boolean
+  /** Placeholder and accessible name of that search box ("Search game"). Default: `label`. */
+  searchLabel?: string
 }
 
 /** Multi-select filter: a list of ticks, in a popover. Arrows move, Enter or Space toggles. */
-export function FilterMenu<T extends string | number>({ label, icon, options, selected, onChange, searchable = false }: FilterMenuProps<T>) {
+export function FilterMenu<T extends string | number>({ label, icon, options, selected, onChange, searchable = false, searchLabel = label }: FilterMenuProps<T>) {
+  const t = useT()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
@@ -156,8 +161,8 @@ export function FilterMenu<T extends string | number>({ label, icon, options, se
               <input
                 type="text"
                 value={query}
-                placeholder={`Search ${label.toLowerCase()}`}
-                aria-label={`Search ${label.toLowerCase()}`}
+                placeholder={searchLabel}
+                aria-label={searchLabel}
                 aria-controls={`${baseId}-list`}
                 aria-activedescendant={shown.length > 0 ? `${baseId}-opt-${at}` : undefined}
                 autoComplete="off"
@@ -181,7 +186,7 @@ export function FilterMenu<T extends string | number>({ label, icon, options, se
             data-autofocus={searchable ? undefined : true}
             className="journal-pop__list"
           >
-            {shown.length === 0 && <div className="journal-pop__none">Nothing matches</div>}
+            {shown.length === 0 && <div className="journal-pop__none">{t('journal.filter.nothing')}</div>}
             {shown.map((option, i) => {
               const on = picked.has(option.value)
               const heading = option.group !== undefined && option.group !== shown[i - 1]?.group ? option.group : undefined
@@ -202,7 +207,7 @@ export function FilterMenu<T extends string | number>({ label, icon, options, se
                     </span>
                     {option.icon !== undefined && <span className="journal-pop__icon">{option.icon}</span>}
                     <span className="journal-pop__label">{option.label}</span>
-                    {option.count !== undefined && <span className="journal-pop__count">{option.count.toLocaleString('en-US')}</span>}
+                    {option.count !== undefined && <span className="journal-pop__count">{formatCount(option.count)}</span>}
                   </div>
                 </div>
               )
@@ -210,9 +215,9 @@ export function FilterMenu<T extends string | number>({ label, icon, options, se
           </div>
           {selected.length > 0 && (
             <div className="journal-pop__foot">
-              <span>{selected.length} selected</span>
+              <span>{t('journal.filter.selected', { count: selected.length })}</span>
               <Button size="sm" variant="ghost" onClick={() => onChange([])}>
-                Clear
+                {t('common.clear')}
               </Button>
             </div>
           )}
@@ -232,22 +237,23 @@ export interface DateMenuProps {
 
 /** Catch-date range: two date fields and a few one-click ranges. */
 export function DateMenu({ from, to, onChange }: DateMenuProps) {
+  const t = useT()
   const today = todayIso()
   const year = today.slice(0, 4)
   const presets: Array<{ label: string; from: string; to: string }> = [
-    { label: 'Last 7 days', from: addDays(today, -6), to: today },
-    { label: 'Last 30 days', from: addDays(today, -29), to: today },
-    { label: 'This year', from: `${year}-01-01`, to: today },
-    { label: 'Last year', from: `${Number(year) - 1}-01-01`, to: `${Number(year) - 1}-12-31` }
+    { label: t('journal.filter.date.last7'), from: addDays(today, -6), to: today },
+    { label: t('journal.filter.date.last30'), from: addDays(today, -29), to: today },
+    { label: t('journal.filter.date.thisYear'), from: `${year}-01-01`, to: today },
+    { label: t('journal.filter.date.lastYear'), from: `${Number(year) - 1}-01-01`, to: `${Number(year) - 1}-12-31` }
   ]
   const active = from !== '' || to !== ''
   return (
-    <FilterPopover label="Date" icon="calendar" count={active ? 1 : 0} popup="dialog">
+    <FilterPopover label={t('journal.filter.date')} icon="calendar" count={active ? 1 : 0} popup="dialog">
       {(close) => (
-        <div className="journal-pop__dates" role="group" aria-label="Date caught">
+        <div className="journal-pop__dates" role="group" aria-label={t('journal.filter.date.group')}>
           <div className="journal-pop__range">
-            <DateField label="From" value={from} max={to || undefined} data-autofocus onChange={(value) => onChange({ from: value, to })} />
-            <DateField label="To" value={to} min={from || undefined} onChange={(value) => onChange({ from, to: value })} />
+            <DateField label={t('journal.filter.date.from')} value={from} max={to || undefined} data-autofocus onChange={(value) => onChange({ from: value, to })} />
+            <DateField label={t('journal.filter.date.to')} value={to} min={from || undefined} onChange={(value) => onChange({ from, to: value })} />
           </div>
           <div className="journal-pop__presets">
             {presets.map((preset) => (
@@ -265,9 +271,9 @@ export function DateMenu({ from, to, onChange }: DateMenuProps) {
             ))}
           </div>
           <div className="journal-pop__foot">
-            <span>Filters by the day it was caught</span>
+            <span>{t('journal.filter.date.hint')}</span>
             <Button size="sm" variant="ghost" disabled={!active} onClick={() => onChange({ from: '', to: '' })}>
-              Clear
+              {t('common.clear')}
             </Button>
           </div>
         </div>

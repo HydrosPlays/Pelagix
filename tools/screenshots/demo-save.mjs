@@ -608,7 +608,8 @@ export function buildDemoSave({ dataDir = DATA_DIR, theme = 'dark' } = {}) {
   return {
     version: SAVE_VERSION,
     entries: out,
-    settings: { rules: { ...DEFAULT_RULES }, theme, reduceMotion: false, trainerName: DEMO_TRAINER },
+    // PELAGIX_SHOT_LANGUAGE captures another language (for example ja); shots that click by an English label are skipped by hand with --only.
+    settings: { rules: { ...DEFAULT_RULES }, theme, language: process.env.PELAGIX_SHOT_LANGUAGE || 'en', reduceMotion: false, trainerName: DEMO_TRAINER },
     achievements: {},
     createdAt: localTime(FIRST_DAY, 10 * 60 + 40),
     updatedAt: last.updatedAt

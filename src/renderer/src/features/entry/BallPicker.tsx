@@ -3,6 +3,8 @@ import { BALL_BY_ID, BALLS, type BallDef } from '@shared/balls'
 import { BallIcon } from '@renderer/components/pokemon'
 import { Button, cx, Tooltip } from '@renderer/components/ui'
 import { rovingRadioKeyDown } from '@renderer/features/species/hooks'
+import { useT } from '@renderer/i18n'
+import { ballName } from '@renderer/i18n/terms'
 
 export interface BallPickerProps {
   /** Balls that can be used in the chosen game; empty when there is no such list (no game yet, HOME ...). */
@@ -16,9 +18,10 @@ export interface BallPickerProps {
 }
 
 function BallButton({ ball, selected, tabbable, onPick }: { ball: BallDef; selected: boolean; tabbable: boolean; onPick: () => void }) {
+  const name = ballName(ball.id) ?? ball.name
   return (
-    <Tooltip content={ball.name} delay={250}>
-      <button type="button" role="radio" aria-checked={selected} aria-label={ball.name} tabIndex={tabbable ? 0 : -1} className={cx('ee-ball', selected && 'is-selected')} onClick={onPick}>
+    <Tooltip content={name} delay={250}>
+      <button type="button" role="radio" aria-checked={selected} aria-label={name} tabIndex={tabbable ? 0 : -1} className={cx('ee-ball', selected && 'is-selected')} onClick={onPick}>
         <BallIcon ball={ball} size={26} label="" />
       </button>
     </Tooltip>
@@ -27,6 +30,7 @@ function BallButton({ ball, selected, tabbable, onPick }: { ball: BallDef; selec
 
 /** Visual ball choice: the balls of the chosen game first, everything else behind "Show all balls". */
 export function BallPicker({ legal, value, onChange, forced, gameName }: BallPickerProps) {
+  const t = useT()
   const labelId = useId()
   const [all, setAll] = useState(false)
   const hasLegal = legal.length > 0
@@ -41,18 +45,18 @@ export function BallPicker({ legal, value, onChange, forced, gameName }: BallPic
   // One tab stop for the group: the chosen ball, else the first.
   const tabStop = selected && shown.includes(selected) ? selected.id : shown[0]?.id
   const canExpand = hasLegal && legal.length < BALLS.length
-  const note = forcedBall ? `This source always comes in a ${forcedBall.name}.` : hasLegal && gameName !== undefined ? `Showing the balls you can use in ${gameName}.` : undefined
+  const note = forcedBall ? t('entry.ball.forced', { ball: ballName(forcedBall.id) ?? forcedBall.name }) : hasLegal && gameName !== undefined ? t('entry.ball.legal', { game: gameName }) : undefined
 
   return (
     <div className="ee-balls">
       <div className="ee-balls__head">
         <span id={labelId} className="ui-field__label">
-          Ball
+          {t('entry.ball.label')}
         </span>
-        <span className={cx('ee-balls__value', !selected && 'is-empty')}>{selected ? selected.name : 'Not set'}</span>
+        <span className={cx('ee-balls__value', !selected && 'is-empty')}>{selected ? (ballName(selected.id) ?? selected.name) : t('entry.notSet')}</span>
         {value !== null && (
           <button type="button" className="ee-link" onClick={() => onChange(null)}>
-            Clear
+            {t('common.clear')}
           </button>
         )}
       </div>
@@ -70,7 +74,7 @@ export function BallPicker({ legal, value, onChange, forced, gameName }: BallPic
           {note !== undefined && <span className="ee-note">{note}</span>}
           {canExpand && (
             <Button size="sm" variant="ghost" icon={all ? 'chevron-up' : 'chevron-down'} aria-expanded={all} onClick={() => setAll(!all)}>
-              {all ? 'Show fewer balls' : 'Show all balls'}
+              {all ? t('entry.ball.showFewer') : t('entry.ball.showAll')}
             </Button>
           )}
         </div>

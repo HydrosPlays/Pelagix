@@ -3,10 +3,11 @@ import { Link, useLocation } from 'wouter'
 import { Icon, Leds, Lens, NumberTicker, ProgressRing, Tooltip, cx } from '@renderer/components/ui'
 import { useCollection } from '@renderer/domain/slots'
 import { UpdateIndicator } from '@renderer/features/updates/UpdateIndicator'
+import { useT } from '@renderer/i18n'
 import { isDev } from '@renderer/lib/env'
 import { formatCount, percent, ratio } from '@renderer/lib/format'
 import { paths } from './router'
-import { matchRoute, NAV_ITEMS } from './routes'
+import { matchRoute, NAV_ITEMS, routeTitle } from './routes'
 import './NavRail.css'
 
 /** Must match the breakpoint in AppShell.css. */
@@ -28,17 +29,18 @@ export function useRailCollapsed(): boolean {
 }
 
 function ProgressReadout({ collapsed }: { collapsed: boolean }) {
+  const t = useT()
   const { totals } = useCollection()
   const done = ratio(totals.caught, totals.slots)
-  const text = `${formatCount(totals.caught)} of ${formatCount(totals.slots)} caught`
+  const text = t('shell.nav.progress.count', { caught: totals.caught, total: totals.slots })
   return (
-    <Tooltip content={`Living Dex: ${text} (${percent(totals.caught, totals.slots)})`} placement="right" disabled={!collapsed}>
-      <Link href={paths.living()} className="shell-rail__progress" aria-label={`Living Dex progress: ${text}`}>
-        <ProgressRing value={done} size={42} thickness={4} tone={done >= 1 ? 'gold' : 'accent'} label="Living Dex completion" valueText={text}>
+    <Tooltip content={t('shell.nav.progress.tooltip', { count: text, percent: percent(totals.caught, totals.slots) })} placement="right" disabled={!collapsed}>
+      <Link href={paths.living()} className="shell-rail__progress" aria-label={t('shell.nav.progress.label', { count: text })}>
+        <ProgressRing value={done} size={42} thickness={4} tone={done >= 1 ? 'gold' : 'accent'} label={t('shell.nav.progress.ring')} valueText={text}>
           <span className="shell-rail__pct">{percent(totals.caught, totals.slots, 0)}</span>
         </ProgressRing>
         <span className="shell-rail__progress-text">
-          <span className="u-eyebrow">Living Dex</span>
+          <span className="u-eyebrow">{t('shell.nav.progress.eyebrow')}</span>
           <span className="shell-rail__count">
             <NumberTicker value={totals.caught} className="shell-rail__caught" />
             <span className="shell-rail__total"> / {formatCount(totals.slots)}</span>
@@ -50,17 +52,19 @@ function ProgressReadout({ collapsed }: { collapsed: boolean }) {
 }
 
 export function NavRail() {
+  const t = useT()
   const [location] = useLocation()
   const collapsed = useRailCollapsed()
+  const kit = routeTitle('kit')
   const activeNav = matchRoute(location)?.nav ?? null
 
   return (
-    <nav className="shell-rail" aria-label="Main">
+    <nav className="shell-rail" aria-label={t('shell.nav.label')}>
       <div className="shell-rail__brand">
         <Lens size={36} />
         <div className="shell-rail__brand-text">
           <span className="shell-rail__wordmark">Pelagix</span>
-          <span className="shell-rail__tagline">Living Dex</span>
+          <span className="shell-rail__tagline">{t('shell.nav.tagline')}</span>
         </div>
         <Leds className="shell-rail__leds" />
       </div>
@@ -85,10 +89,10 @@ export function NavRail() {
         {/* Only there while a newer version is on offer. */}
         <UpdateIndicator collapsed={collapsed} />
         {isDev && (
-          <Tooltip content="Component kit" placement="right" disabled={!collapsed}>
-            <Link href={paths.kit()} className={cx('shell-rail__link', 'shell-rail__link--minor', activeNav === 'kit' && 'is-active')} aria-current={activeNav === 'kit' ? 'page' : undefined} aria-label={collapsed ? 'Component kit' : undefined}>
+          <Tooltip content={kit} placement="right" disabled={!collapsed}>
+            <Link href={paths.kit()} className={cx('shell-rail__link', 'shell-rail__link--minor', activeNav === 'kit' && 'is-active')} aria-current={activeNav === 'kit' ? 'page' : undefined} aria-label={collapsed ? kit : undefined}>
               <Icon name="layers" size={18} />
-              <span className="shell-rail__label">Component kit</span>
+              <span className="shell-rail__label">{kit}</span>
             </Link>
           </Tooltip>
         )}

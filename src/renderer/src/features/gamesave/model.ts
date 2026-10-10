@@ -11,21 +11,18 @@ import type { CatchEntry, DexRules, EntryKind } from '@shared/save-types'
 import type { IconName } from '@renderer/components/ui'
 import { collectionFor, slotKeyFor } from '@renderer/domain/slots'
 import { draftToInput, settleDraft, TEXT_LIMITS, type Draft } from '@renderer/features/entry/draft'
+import { t, type MessageKey } from '@renderer/i18n/runtime'
+import { formFullName, gameName, gameShortName, speciesName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
-import { isIsoDate, kindLabel, plural } from '@renderer/lib/format'
+import { englishKindLabel, isIsoDate, labelTable } from '@renderer/lib/format'
 import type { EntryCompletion, EntryInput, EntryPatch } from '@renderer/store/save'
 
 // ---------------------------------------------------------------- wording
 
-/** One plain sentence per way reading a save can fail. */
-export const FAILURE_TEXT: Readonly<Record<GameSaveFailure, string>> = {
-  'not-a-save': 'That file is not a save of a Pokémon game that Pelagix can read.',
-  'too-large': 'That file is too large to be a game save.',
-  unreadable: 'That file could not be opened. Another program may be using it.',
-  'reader-missing': 'The part of Pelagix that reads game saves is missing. Installing Pelagix again puts it back.',
-  'reader-failed': 'Something went wrong while reading that save.',
-  'timed-out': 'Reading that save took too long and was stopped.'
-}
+const FAILURES: readonly GameSaveFailure[] = ['not-a-save', 'too-large', 'unreadable', 'reader-missing', 'reader-failed', 'timed-out']
+
+/** One plain sentence per way reading a save can fail, read in the active language whenever it is asked for. */
+export const FAILURE_TEXT: Readonly<Record<GameSaveFailure, string>> = labelTable(FAILURES, (reason) => t(`gamesave.failure.${reason}` as MessageKey))
 
 export function failureText(reason: unknown): string {
   return (typeof reason === 'string' && Object.hasOwn(FAILURE_TEXT, reason) ? FAILURE_TEXT[reason as GameSaveFailure] : undefined) ?? FAILURE_TEXT['reader-failed']
@@ -88,12 +85,13 @@ export function originGames(pokemon: Pick<GameSavePokemon, 'version' | 'encounte
 /** "Pokémon Red", "Pokémon Red / Green / Blue", or what PKHeX calls the save when the app has no such game. */
 export function saveGameName(contents: Pick<GameSaveContents, 'save'>): string {
   const games = gamesOfVersion(contents.save.version)
-  if (games.length === 0) return `a Generation ${contents.save.generation} game`
-  return games.length === 1 ? games[0]!.name : `Pokémon ${games.map((g) => g.short).join(' / ')}`
+  if (games.length === 0) return t('gamesave.source.save.unknownGame', { generation: String(contents.save.generation) })
+  return games.length === 1 ? gameName(games[0]!.id) : t('gamesave.source.save.games', { names: games.map((g) => gameShortName(g.id)).join(' / ') })
 }
 
 // ---------------------------------------------------------------- entries
 
+/** Written into the entry, so it stays English like every stored method; shown through `methodLabel()`. */
 const BRED_METHOD = 'Hatched from an Egg'
 
 /**
@@ -134,7 +132,7 @@ export function entryFromPokemon(dex: Dex, pokemon: GameSavePokemon, gameId: str
     variant: pokemon.formArgument,
     game: gameId,
     kind: evolved ? 'evolved' : first,
-    method: evolved ? (hatched ? BRED_METHOD : kindLabel(first)) : hatched ? BRED_METHOD : '',
+    method: evolved ? (hatched ? BRED_METHOD : englishKindLabel(first)) : hatched ? BRED_METHOD : '',
     location,
     origin,
     ball: BALL_BY_ID.has(pokemon.ball) ? pokemon.ball : null,
@@ -189,12 +187,10 @@ export function byFingerprint(existing: readonly CatchEntry[]): Map<string, Catc
 
 export type RowStatus = 'new' | 'imported' | 'egg' | 'unsupported'
 
-export const STATUS_LABELS: Readonly<Record<RowStatus, string>> = {
-  new: 'New',
-  imported: 'Already imported',
-  egg: 'Egg',
-  unsupported: 'Cannot be imported'
-}
+const STATUSES: readonly RowStatus[] = ['new', 'imported', 'egg', 'unsupported']
+
+/** Name of each status, read in the active language whenever it is asked for. */
+export const STATUS_LABELS: Readonly<Record<RowStatus, string>> = labelTable(STATUSES, (status) => t(`gamesave.status.${status}` as MessageKey))
 
 /** What a preview row shows and compares of the Pokémon behind it, whatever it was read from. */
 export type PreviewPokemon = Pick<GameSavePokemon, 'species' | 'form' | 'shiny' | 'gender' | 'fingerprint'>
@@ -257,21 +253,21 @@ export function buildPreview(dex: Dex, contents: GameSaveContents, existing: rea
     const pokemon = raw as GameSavePokemon
     const cannot = (name: string, reason: string, game?: GameDef): PreviewRow => ({ index, pokemon, status: 'unsupported', reason, name, game, fills: false })
     try {
-      if (!isRecord(raw) || typeof pokemon.fingerprint !== 'string' || pokemon.fingerprint === '') return cannot('Unknown Pokémon', 'It could not be read.')
+      if (!isRecord(raw) || typeof pokemon.fingerprint !== 'string' || pokemon.fingerprint === '') return cannot(t('gamesave.row.unknownPokemon'), t('gamesave.reason.unreadable'))
       const species = dex.species(pokemon.species)
       const form = species ? dex.form(pokemon.species, pokemon.form) : undefined
-      const name = form?.full ?? species?.name ?? `Pokémon #${String(pokemon.species)}`
-      if (pokemon.egg === true) return { index, pokemon, status: 'egg', name: species ? `${species.name} Egg` : 'Egg', fills: false }
-      if (!species) return cannot(name, 'Pelagix does not know this Pokémon.')
-      if (!form) return cannot(name, 'Pelagix does not know this form.')
+      const name = species && form ? formFullName(species, form) : species ? speciesName(species) : t('lib.entry.unknownPokemon', { number: String(pokemon.species) })
+      if (pokemon.egg === true) return { index, pokemon, status: 'egg', name: species ? t('gamesave.row.eggOf', { species: speciesName(species) }) : t('gamesave.row.egg'), fills: false }
+      if (!species) return cannot(name, t('gamesave.reason.unknownPokemon'))
+      if (!form) return cannot(name, t('gamesave.reason.unknownForm'))
 
       const games = originGames(pokemon, contents.save?.version)
-      if (games.length === 0) return cannot(name, 'It comes from a game that Pelagix does not track.')
+      if (games.length === 0) return cannot(name, t('gamesave.reason.untrackedGame'))
       let game = games.length === 1 ? games[0] : undefined
       if (!game) {
         for (const g of games) asked.add(g)
         game = games.find((g) => g.id === options.game)
-        if (!game) return cannot(name, options.game ? 'It cannot be from the game you chose.' : 'The save does not say which game it is from. Choose one above.')
+        if (!game) return cannot(name, options.game ? t('gamesave.reason.wrongGame') : t('gamesave.reason.askGame'))
       }
 
       const entry = entryFromPokemon(dex, pokemon, game.id, options.today)
@@ -286,7 +282,7 @@ export function buildPreview(dex: Dex, contents: GameSaveContents, existing: rea
       if (fills) claimed.add(slotKey)
       return { index, pokemon, status: 'new', name, game, entry, slotKey, fills }
     } catch {
-      return cannot('Unknown Pokémon', 'It could not be read.')
+      return cannot(t('gamesave.row.unknownPokemon'), t('gamesave.reason.unreadable'))
     }
   })
 
@@ -325,10 +321,13 @@ export function gameSaveSource(contents: GameSaveContents): ImportSource {
   return {
     fileName: contents.fileName,
     icon: 'gamepad',
-    description: `${contents.fileName} is a save of ${saveGameName(contents)}${trainer !== '' ? `, trainer ${trainer}` : ''}. Nothing has changed yet, and the save file is only read.`,
-    ...(contents.dropped > 0 && { note: `${plural(contents.dropped, 'Pokémon')} in this save could not be read and ${contents.dropped === 1 ? 'is' : 'are'} left out.` }),
-    empty: 'There are no Pokémon in this save.',
-    listLabel: 'Pokémon in this save',
+    description:
+      trainer !== ''
+        ? t('gamesave.source.save.descriptionTrainer', { file: contents.fileName, game: saveGameName(contents), trainer })
+        : t('gamesave.source.save.description', { file: contents.fileName, game: saveGameName(contents) }),
+    ...(contents.dropped > 0 && { note: t('gamesave.source.save.dropped', { count: contents.dropped }) }),
+    empty: t('gamesave.source.save.empty'),
+    listLabel: t('gamesave.source.save.list'),
     columns: 'met',
     preview: (dex, existing, rules, options) => buildPreview(dex, contents, existing, rules, options)
   }

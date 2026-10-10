@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearch } from 'wouter'
 import type { FormSummary, SpeciesSummary } from '@shared/dex-types'
-import { GENERATION_NAMES } from '@shared/games'
 import type { CatchEntry } from '@shared/save-types'
 import { DexNumber, GenderIcon, Sprite, TypeBadges } from '@renderer/components/pokemon'
 import { Button, EmptyState, Icon, Skeleton, Tag, useScrollParent } from '@renderer/components/ui'
 import type { SourcePreset } from '@renderer/domain/encounters'
+import { generationName } from '@renderer/domain/generation'
+import { useT } from '@renderer/i18n'
+import { flavorText, formFullName, formLabel, speciesGenus, speciesName } from '@renderer/i18n/terms'
 import { motionOK } from '@renderer/lib/anim'
 import { useDex, type Dex } from '@renderer/lib/data'
-import { dexNo } from '@renderer/lib/format'
+import { dexNo, percent as percentOf } from '@renderer/lib/format'
 import { navigate, paths } from '@renderer/shell/router'
 import { useEntriesForSpecies } from '@renderer/store/save'
 import { useUiStore } from '@renderer/store/ui'
@@ -81,15 +83,16 @@ const ARROW_BLOCKERS = 'input, textarea, select, [contenteditable="true"], [role
 // ---------------------------------------------------------------- pieces
 
 function Neighbour({ species, direction }: { species: SpeciesSummary | undefined; direction: 'prev' | 'next' }) {
+  const t = useT()
   if (!species) return <span className="sp-nav__gap" aria-hidden="true" />
-  const label = `${direction === 'prev' ? 'Previous' : 'Next'}: ${dexNo(species.id)} ${species.name}`
+  const label = t(direction === 'prev' ? 'species.nav.previous' : 'species.nav.next', { number: dexNo(species.id), name: speciesName(species) })
   return (
     <button type="button" className={`sp-neighbour sp-neighbour--${direction}`} aria-label={label} aria-keyshortcuts={direction === 'prev' ? 'ArrowLeft' : 'ArrowRight'} onClick={() => replaceWith(species.id)}>
       {direction === 'prev' && <Icon name="chevron-left" size={16} />}
       <Sprite species={species} size={28} />
       <span className="sp-neighbour__text">
         <span className="sp-neighbour__no">{dexNo(species.id)}</span>
-        <span className="sp-neighbour__name">{species.name}</span>
+        <span className="sp-neighbour__name">{speciesName(species)}</span>
       </span>
       {direction === 'next' && <Icon name="chevron-right" size={16} />}
     </button>
@@ -97,18 +100,19 @@ function Neighbour({ species, direction }: { species: SpeciesSummary | undefined
 }
 
 function GenderRatio({ species, form }: { species: SpeciesSummary; form: FormSummary }) {
+  const t = useT()
   const split = genderSplit(species.genderRate)
   if (!split) {
     return (
       <span className="sp-gender sp-gender--none">
         <GenderIcon gender="n" size={14} />
-        Genderless
+        {t('common.genderless')}
       </span>
     )
   }
-  const percent = (value: number): string => `${Number(value.toFixed(1))}%`
+  const percent = (value: number): string => percentOf(value, 100)
   const fixed = form.gender
-  const text = fixed ? (fixed === 'm' ? 'Always male' : 'Always female') : split.female === 0 ? 'Always male' : split.male === 0 ? 'Always female' : `${percent(split.male)} male, ${percent(split.female)} female`
+  const text = (fixed ? fixed === 'm' : split.female === 0) ? t('species.about.gender.male') : (fixed ? fixed === 'f' : split.male === 0) ? t('species.about.gender.female') : t('species.about.gender.split', { male: percent(split.male), female: percent(split.female) })
   const male = fixed ? (fixed === 'm' ? 100 : 0) : split.male
   return (
     <span className="sp-gender" role="img" aria-label={text}>
@@ -135,6 +139,7 @@ function GenderRatio({ species, form }: { species: SpeciesSummary; form: FormSum
 }
 
 function About({ dex, species, form, detail, shiny }: { dex: Dex; species: SpeciesSummary; form: FormSummary; detail: DetailState; shiny: boolean }) {
+  const t = useT()
   const [allNumbers, setAllNumbers] = useState(false)
   const data = detail.data
   const numbers = useMemo(() => (data ? regionalNumbers(data.dex) : []), [data])
@@ -144,13 +149,13 @@ function About({ dex, species, form, detail, shiny }: { dex: Dex; species: Speci
   return (
     <div className="sp-about">
       {data ? (
-        <p className="sp-about__flavor u-selectable">{data.flavor}</p>
+        <p className="sp-about__flavor u-selectable">{flavorText(species.id, data.flavor)}</p>
       ) : detail.error ? (
         <div className="sp-about__error" role="alert">
           <Icon name="warning" size={16} />
-          <span>The Pokédex entry could not be loaded.</span>
+          <span>{t('species.about.flavorError')}</span>
           <Button size="sm" icon="refresh" onClick={detail.retry}>
-            Try again
+            {t('species.retry')}
           </Button>
         </div>
       ) : (
@@ -163,15 +168,15 @@ function About({ dex, species, form, detail, shiny }: { dex: Dex; species: Speci
 
       <dl className="sp-facts">
         <div className="sp-fact">
-          <dt>Height</dt>
+          <dt>{t('species.about.height')}</dt>
           <dd>{data ? formatHeight(data.height) : detail.error ? '–' : <Skeleton variant="text" width={96} />}</dd>
         </div>
         <div className="sp-fact">
-          <dt>Weight</dt>
+          <dt>{t('species.about.weight')}</dt>
           <dd>{data ? formatWeight(data.weight) : detail.error ? '–' : <Skeleton variant="text" width={104} />}</dd>
         </div>
         <div className="sp-fact sp-fact--gender">
-          <dt>Gender</dt>
+          <dt>{t('species.about.gender')}</dt>
           <dd>
             <GenderRatio species={species} form={form} />
           </dd>
@@ -180,7 +185,7 @@ function About({ dex, species, form, detail, shiny }: { dex: Dex; species: Speci
 
       {(numbers.length > 0 || detail.loading) && (
         <div className="sp-numbers">
-          <span className="u-eyebrow">Regional Pokédex</span>
+          <span className="u-eyebrow">{t('species.about.regional')}</span>
           {data ? (
             <ul className="sp-numbers__list">
               {shownNumbers.map((n) => (
@@ -192,7 +197,7 @@ function About({ dex, species, form, detail, shiny }: { dex: Dex; species: Speci
               {numbers.length > 5 && (
                 <li>
                   <button type="button" className="sp-numbers__toggle" aria-expanded={allNumbers} onClick={() => setAllNumbers(!allNumbers)}>
-                    {allNumbers ? 'Show fewer' : `+${numbers.length - 5} more`}
+                    {allNumbers ? t('species.showFewer') : t('species.about.regional.more', { count: numbers.length - 5 })}
                   </button>
                 </li>
               )}
@@ -204,24 +209,25 @@ function About({ dex, species, form, detail, shiny }: { dex: Dex; species: Speci
       )}
 
       <div className="sp-family">
-        <span className="u-eyebrow">Evolution family</span>
-        {data ? <FamilyTree dex={dex} family={data.family} current={current} shiny={shiny} onOpen={(s, f) => (s === species.id ? replaceWith(s, f) : openSpecies(s, f))} /> : detail.error ? <p className="sp-fam__alone">Not available right now.</p> : <Skeleton height={76} radius={12} width="60%" />}
+        <span className="u-eyebrow">{t('species.about.family')}</span>
+        {data ? <FamilyTree dex={dex} family={data.family} current={current} shiny={shiny} onOpen={(s, f) => (s === species.id ? replaceWith(s, f) : openSpecies(s, f))} /> : detail.error ? <p className="sp-fam__alone">{t('species.about.family.error')}</p> : <Skeleton height={76} radius={12} width="60%" />}
       </div>
     </div>
   )
 }
 
 function UnknownSpecies({ id }: { id: string | undefined }) {
+  const t = useT()
   return (
     <div className="page">
       <EmptyState
         size="lg"
         icon="search"
-        title="No Pokémon with that number"
-        description={id ? `“${id}” is not in the Pokédex data.` : 'This address does not point at a Pokémon.'}
+        title={t('species.unknown.title')}
+        description={id ? t('species.unknown.description', { id }) : t('species.unknown.noId')}
         action={
           <Button variant="primary" icon="dex" onClick={() => navigate(paths.dex())}>
-            Open the Pokédex
+            {t('species.unknown.open')}
           </Button>
         }
       />
@@ -232,6 +238,7 @@ function UnknownSpecies({ id }: { id: string | undefined }) {
 // ---------------------------------------------------------------- the page
 
 function SpeciesView({ dex, species }: { dex: Dex; species: SpeciesSummary }) {
+  const t = useT()
   const search = useSearch()
   const scroller = useScrollParent()
   const whereRef = useRef<HTMLHeadingElement>(null)
@@ -333,9 +340,9 @@ function SpeciesView({ dex, species }: { dex: Dex; species: SpeciesSummary }) {
 
   return (
     <div className="page sp">
-      <nav className="sp-nav" aria-label="Pokédex navigation">
+      <nav className="sp-nav" aria-label={t('species.nav.label')}>
         <Button variant="ghost" icon="arrow-left" onClick={backToDex}>
-          Pokédex
+          {t('species.nav.back')}
         </Button>
         <div className="sp-nav__neighbours">
           <Neighbour species={previous} direction="prev" />
@@ -360,17 +367,17 @@ function SpeciesView({ dex, species }: { dex: Dex; species: SpeciesSummary }) {
           <header className="sp-id">
             <div className="sp-id__meta">
               <DexNumber id={species.id} />
-              <span className="sp-id__gen">{GENERATION_NAMES[species.gen] ?? `Generation ${species.gen}`}</span>
+              <span className="sp-id__gen">{generationName(species.gen)}</span>
               {species.tags.map((tag) => (
                 <Tag key={tag} tone={tag === 'legendary' || tag === 'mythical' ? 'gold' : 'accent'}>
                   {tagLabel(tag)}
                 </Tag>
               ))}
             </div>
-            <h1 className="page-title sp-id__name">{form.full}</h1>
+            <h1 className="page-title sp-id__name">{formFullName(species, form)}</h1>
             <div className="sp-id__sub">
-              <span className="sp-id__genus">{species.genus}</span>
-              {baseNamed && <span className="sp-id__form">{form.name}</span>}
+              <span className="sp-id__genus">{speciesGenus(species)}</span>
+              {baseNamed && <span className="sp-id__form">{formLabel(species, form)}</span>}
               <TypeBadges types={form.types} />
             </div>
           </header>

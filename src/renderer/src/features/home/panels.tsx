@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'wouter'
-import { BallIcon, EntryCard, GameIcon, ShinyMark, SystemIcon, TYPE_NAMES, typeColor } from '@renderer/components/pokemon'
+import { BallIcon, EntryCard, GameIcon, ShinyMark, SystemIcon, typeColor } from '@renderer/components/pokemon'
 import { Chip, Icon, Panel, Tooltip, cx } from '@renderer/components/ui'
 import type { Progress } from '@renderer/domain/progress'
+import { useT } from '@renderer/i18n'
+import { ballName, gameName, typeName } from '@renderer/i18n/terms'
 import { burst } from '@renderer/lib/anim'
 import { editEntry } from '@renderer/lib/entry-actions'
-import { formatCount, formatDate, percent, plural, pluralWord, ratio, todayIso } from '@renderer/lib/format'
+import { formatCount, formatDate, percent, ratio, todayIso } from '@renderer/lib/format'
 import { paths } from '@renderer/shell/router'
 import { useUiStore } from '@renderer/store/ui'
 import { SYSTEM_BY_ID } from '@shared/games'
@@ -25,15 +27,16 @@ function useBars(axis: 'x' | 'y', selector: string) {
 /** Nine rows, one per generation; each opens the Pokédex narrowed to that generation. */
 export function GenerationPanel({ progress, className }: { progress: Progress; className?: string }) {
   const ref = useBars('x', '.home-meter__grow')
+  const t = useT()
   return (
-    <Panel ref={ref} className={cx('home-gens', className)} title="Generation progress" eyebrow="Region by region" actions={<MoreLink href={paths.dex()}>Pokédex</MoreLink>}>
+    <Panel ref={ref} className={cx('home-gens', className)} title={t('home.gens.title')} eyebrow={t('home.gens.eyebrow')} actions={<MoreLink href={paths.dex()}>{t('home.gens.more')}</MoreLink>}>
       <ol className="home-gens__list">
         {progress.byGeneration.map((g) => {
           const region = regionOfGeneration(g.gen)
           const done = g.slots > 0 && g.caught >= g.slots
           return (
             <li key={g.gen}>
-              <Link href={`${paths.dex()}?gen=${g.gen}`} className={cx('home-gen', done && 'is-complete')} aria-label={`${region}, ${g.name}: ${formatCount(g.caught)} of ${formatCount(g.slots)} caught (${percent(g.caught, g.slots)}). Show this generation in the Pokédex`}>
+              <Link href={`${paths.dex()}?gen=${g.gen}`} className={cx('home-gen', done && 'is-complete')} aria-label={t('home.gens.row', { region, generation: g.name, caught: g.caught, total: g.slots, percent: percent(g.caught, g.slots) })}>
                 <span className="home-gen__numeral" aria-hidden="true">
                   {roman(g.gen)}
                 </span>
@@ -67,6 +70,7 @@ export function RecentPanel({ progress, className }: { progress: Progress; class
   const [highlight, setHighlight] = useState<string | null>(null)
   const listRef = useRef<HTMLUListElement>(null)
   const newest = recent[0]?.id
+  const t = useT()
 
   // Celebrate a just-logged entry once: this page takes the marker so no other page repeats it.
   useEffect(() => {
@@ -85,7 +89,7 @@ export function RecentPanel({ progress, className }: { progress: Progress; class
   }, [highlight])
 
   return (
-    <Panel className={cx('home-recent', className)} title="Recent catches" eyebrow={plural(progress.totals.entries, 'entry', 'entries')} actions={<MoreLink href={paths.journal()}>Journal</MoreLink>}>
+    <Panel className={cx('home-recent', className)} title={t('home.recent.title')} eyebrow={t('home.entries', { count: progress.totals.entries })} actions={<MoreLink href={paths.journal()}>{t('home.recent.more')}</MoreLink>}>
       <ul ref={listRef} className="home-recent__list">
         {recent.map((entry) => (
           <li key={entry.id} className="home-recent__item">
@@ -95,7 +99,7 @@ export function RecentPanel({ progress, className }: { progress: Progress; class
       </ul>
       {progress.totals.entries > recent.length && (
         <Link href={paths.journal()} className="home-recent__all">
-          See all {formatCount(progress.totals.entries)} entries in the journal
+          {t('home.recent.all', { count: progress.totals.entries })}
         </Link>
       )}
     </Panel>
@@ -115,40 +119,42 @@ export function GamesPanel({ progress, className }: { progress: Progress; classN
   const shown = games.slice(0, GAMES_SHOWN)
   const hidden = games.slice(GAMES_SHOWN)
   const unknown = progress.counts.unknownGame
+  const t = useT()
 
   return (
-    <Panel ref={ref} className={cx('home-games', className)} title="Your games" eyebrow={games.length === 0 ? 'Where you catch' : `${plural(games.length, 'game')} on ${plural(systems.length, 'system')}`}>
+    <Panel ref={ref} className={cx('home-games', className)} title={t('home.games.title')} eyebrow={games.length === 0 ? t('home.games.eyebrow.none') : t('home.games.eyebrow', { count: games.length, systems: t('home.games.systemCount', { count: systems.length }) })}>
       {games.length === 0 ? (
-        <p className="home-note">None of your entries come from a game Pelagix knows yet.</p>
+        <p className="home-note">{t('home.games.none')}</p>
       ) : (
         <ol className="home-games__list">
           {shown.map((g) => {
             const system = SYSTEM_BY_ID.get(g.game.system)
+            const name = gameName(g.game.id)
             return (
               <li key={g.game.id} className="home-game">
                 <GameIcon game={g.game} size={38} tooltip={false} alt="" />
                 <div className="home-game__name">
-                  <span className="home-game__title" title={g.game.name}>
-                    {g.game.name}
+                  <span className="home-game__title" title={name}>
+                    {name}
                   </span>
                   <span className="home-game__meta">
                     <SystemIcon system={g.game.system} size={14} label="" />
                     <span>{system?.short ?? g.game.system}</span>
                     <span aria-hidden="true">·</span>
-                    <span>{plural(g.species, 'species', 'species')}</span>
+                    <span>{t('home.games.species', { count: g.species })}</span>
                     {g.shiny > 0 && (
                       <span className="home-game__shiny">
                         <ShinyMark size={12} label="" />
-                        {formatCount(g.shiny)}
-                        <span className="u-sr-only"> shiny</span>
+                        <span aria-hidden="true">{formatCount(g.shiny)}</span>
+                        <span className="u-sr-only">{t('home.shiny', { count: g.shiny })}</span>
                       </span>
                     )}
                   </span>
                 </div>
-                <Meter value={ratio(g.entries, top)} label={`Share of entries from ${g.game.name}`} valueText={plural(g.entries, 'entry', 'entries')} className="home-game__meter" />
+                <Meter value={ratio(g.entries, top)} label={t('home.games.share', { game: name })} valueText={t('home.entries', { count: g.entries })} className="home-game__meter" />
                 <span className="home-game__count">
                   <b>{formatCount(g.entries)}</b>
-                  <span>{pluralWord(g.entries, 'entry', 'entries')}</span>
+                  <span>{t('home.games.entriesWord', { count: g.entries })}</span>
                 </span>
               </li>
             )
@@ -158,26 +164,29 @@ export function GamesPanel({ progress, className }: { progress: Progress; classN
 
       {hidden.length > 0 && (
         <div className="home-games__more">
-          <span className="u-eyebrow">Also</span>
+          <span className="u-eyebrow">{t('home.games.also')}</span>
           <span className="home-games__more-icons">
-            {hidden.map((g) => (
-              <Tooltip key={g.game.id} content={`${g.game.name}: ${plural(g.entries, 'entry', 'entries')}`}>
-                <span className="home-games__more-icon">
-                  <GameIcon game={g.game} size={26} tooltip={false} alt={`${g.game.name}: ${plural(g.entries, 'entry', 'entries')}`} />
-                </span>
-              </Tooltip>
-            ))}
+            {hidden.map((g) => {
+              const text = t('home.games.game', { game: gameName(g.game.id), count: g.entries })
+              return (
+                <Tooltip key={g.game.id} content={text}>
+                  <span className="home-games__more-icon">
+                    <GameIcon game={g.game} size={26} tooltip={false} alt={text} />
+                  </span>
+                </Tooltip>
+              )
+            })}
           </span>
         </div>
       )}
 
       {systems.length > 0 && (
         <div className="home-systems">
-          <span className="u-eyebrow">Systems</span>
+          <span className="u-eyebrow">{t('home.games.systems')}</span>
           <ul className="home-systems__list">
             {systems.map((s) => (
               <li key={s.system.id}>
-                <Chip icon={<SystemIcon system={s.system.id} size={15} label="" />} title={`${s.system.name}: ${plural(s.entries, 'entry', 'entries')} from ${plural(s.games, 'game')}`}>
+                <Chip icon={<SystemIcon system={s.system.id} size={15} label="" />} title={t('home.games.system', { system: s.system.name, count: s.entries, games: t('home.games.gameCount', { count: s.games }) })}>
                   {s.system.short}
                   <span className="home-systems__count">{formatCount(s.entries)}</span>
                 </Chip>
@@ -188,9 +197,7 @@ export function GamesPanel({ progress, className }: { progress: Progress; classN
       )}
 
       {unknown > 0 && (
-        <p className="home-note">
-          {plural(unknown, 'entry comes', 'entries come')} from a game this version of Pelagix does not know. {unknown === 1 ? 'It still counts' : 'They still count'} toward your Living Dex.
-        </p>
+        <p className="home-note">{t('home.games.unknown', { count: unknown })}</p>
       )}
     </Panel>
   )
@@ -205,20 +212,21 @@ export function ActivityPanel({ progress, className }: { progress: Progress; cla
   const peak = Math.max(1, ...months.map((m) => m.entries))
   const { streaks } = progress
   const summary = timelineSummary(months)
+  const t = useT()
 
   return (
-    <Panel ref={ref} className={cx('home-activity', className)} title="Activity" eyebrow={monthRangeText(months)}>
+    <Panel ref={ref} className={cx('home-activity', className)} title={t('home.activity.title')} eyebrow={monthRangeText(months)}>
       <ul className="home-streaks">
-        <StatTile icon="flame" tone={streaks.current > 0 ? 'catch' : 'neutral'} label="Current streak" value={daysText(streaks.current)} note={streaks.caughtToday ? 'Caught today' : streaks.current > 0 ? 'Log one today' : 'Starts with a catch'} />
-        <StatTile icon="trophy" tone={streaks.longest > 0 && streaks.longest === streaks.current ? 'gold' : 'neutral'} label="Best streak" value={daysText(streaks.longest)} note={streaks.longest > 0 && streaks.longest === streaks.current ? 'Still going' : streaks.longestEnd ? `Ended ${formatDate(streaks.longestEnd)}` : undefined} />
-        <StatTile icon="calendar" label="Days with a catch" value={formatCount(streaks.activeDays)} note={streaks.firstDay ? `Since ${formatDate(streaks.firstDay)}` : undefined} />
+        <StatTile icon="flame" tone={streaks.current > 0 ? 'catch' : 'neutral'} label={t('home.activity.streak.current')} value={daysText(streaks.current)} note={streaks.caughtToday ? t('home.activity.streak.caughtToday') : streaks.current > 0 ? t('home.activity.streak.logToday') : t('home.activity.streak.starts')} />
+        <StatTile icon="trophy" tone={streaks.longest > 0 && streaks.longest === streaks.current ? 'gold' : 'neutral'} label={t('home.activity.streak.best')} value={daysText(streaks.longest)} note={streaks.longest > 0 && streaks.longest === streaks.current ? t('home.activity.streak.stillGoing') : streaks.longestEnd ? t('home.activity.streak.ended', { date: formatDate(streaks.longestEnd) }) : undefined} />
+        <StatTile icon="calendar" label={t('home.activity.activeDays')} value={formatCount(streaks.activeDays)} note={streaks.firstDay ? t('home.activity.since', { date: formatDate(streaks.firstDay) }) : undefined} />
       </ul>
 
       <figure className="home-timeline">
-        <ol className="home-timeline__bars" aria-label={`Catches per month, ${monthRangeText(months)}`}>
+        <ol className="home-timeline__bars" aria-label={t('home.activity.chart', { range: monthRangeText(months) })}>
           {months.map((m) => (
             <li key={m.period} className={cx('home-month', m.current && 'is-current', m.entries === 0 && 'is-empty')}>
-              <Tooltip content={m.entries === 0 ? `${m.title}: no catches` : `${m.title}: ${plural(m.entries, 'catch', 'catches')}, ${formatCount(m.newSlots)} new for your Living Dex${m.shiny > 0 ? `, ${formatCount(m.shiny)} shiny` : ''}`}>
+              <Tooltip content={m.entries === 0 ? t('home.activity.month.none', { month: m.title }) : m.shiny > 0 ? t('home.activity.month.fullShiny', { month: m.title, count: m.entries, fresh: m.newSlots, shiny: m.shiny }) : t('home.activity.month.full', { month: m.title, count: m.entries, fresh: m.newSlots })}>
                 <div className="home-month__column">
                   <span className="home-month__value" aria-hidden="true">
                     {m.entries > 0 ? formatCount(m.entries) : ''}
@@ -231,9 +239,7 @@ export function ActivityPanel({ progress, className }: { progress: Progress; cla
                   <span className="home-month__label" aria-hidden="true">
                     {m.label}
                   </span>
-                  <span className="u-sr-only">
-                    {m.title}: {plural(m.entries, 'catch', 'catches')}
-                  </span>
+                  <span className="u-sr-only">{t('home.activity.month.short', { month: m.title, count: m.entries })}</span>
                 </div>
               </Tooltip>
             </li>
@@ -251,24 +257,25 @@ export function ActivityPanel({ progress, className }: { progress: Progress; cla
 export function TypesPanel({ progress, className }: { progress: Progress; className?: string }) {
   const ref = useBars('x', '.home-meter__grow')
   const types = useMemo(() => coveredTypes(progress.byType), [progress.byType])
+  const t = useT()
   return (
-    <Panel ref={ref} className={cx('home-types', className)} title="Type coverage" eyebrow={plural(types.length, 'type')}>
+    <Panel ref={ref} className={cx('home-types', className)} title={t('home.types.title')} eyebrow={t('home.types.eyebrow', { count: types.length })}>
       <ul className="home-types__list" style={{ '--type-rows': Math.ceil(types.length / 2) } as CSSProperties}>
-        {types.map((t) => {
-          const name = TYPE_NAMES[t.type] ?? t.type
+        {types.map((row) => {
+          const name = typeName(row.type)
           return (
-            <li key={t.type} className="home-type" title={`${name}: ${formatCount(t.caught)} of ${formatCount(t.slots)} caught (${percent(t.caught, t.slots)})`}>
-              <span className="home-type__dot" style={{ background: typeColor(t.type) }} aria-hidden="true" />
+            <li key={row.type} className="home-type" title={t('home.types.row', { type: name, caught: row.caught, total: row.slots, percent: percent(row.caught, row.slots) })}>
+              <span className="home-type__dot" style={{ background: typeColor(row.type) }} aria-hidden="true" />
               <span className="home-type__name">{name}</span>
-              <Meter value={ratio(t.caught, t.slots)} color={typeColor(t.type)} size="sm" label={`${name} type`} valueText={`${formatCount(t.caught)} of ${formatCount(t.slots)} caught`} className="home-type__meter" />
+              <Meter value={ratio(row.caught, row.slots)} color={typeColor(row.type)} size="sm" label={t('home.types.meter', { type: name })} valueText={t('home.types.meterValue', { caught: row.caught, total: row.slots })} className="home-type__meter" />
               <span className="home-type__count" aria-hidden="true">
-                <b>{formatCount(t.caught)}</b>/{formatCount(t.slots)}
+                <b>{formatCount(row.caught)}</b>/{formatCount(row.slots)}
               </span>
             </li>
           )
         })}
       </ul>
-      <p className="home-note home-types__note">A Pokémon with two types counts toward both.</p>
+      <p className="home-note home-types__note">{t('home.types.note')}</p>
     </Panel>
   )
 }
@@ -281,46 +288,44 @@ export function BallsPanel({ progress, className }: { progress: Progress; classN
   const favourite = balls[0]
   const withBall = progress.totals.entries - progress.counts.noBall
   const noBall = progress.counts.noBall
+  const t = useT()
 
   return (
-    <Panel className={cx('home-balls', className)} title="Balls used" eyebrow={balls.length === 0 ? 'What you catch with' : `${plural(balls.length, 'kind')} of ball`}>
+    <Panel className={cx('home-balls', className)} title={t('home.balls.title')} eyebrow={balls.length === 0 ? t('home.balls.eyebrow.none') : t('home.balls.eyebrow', { count: balls.length })}>
       {favourite === undefined ? (
-        <p className="home-note">No balls recorded yet. Pick the ball when you log a catch and it shows up here.</p>
+        <p className="home-note">{t('home.balls.none')}</p>
       ) : (
         <div className="home-balls__body">
           <div className="home-balls__favourite">
             <BallIcon ball={favourite.ball} size={52} label="" />
             <div>
-              <div className="u-eyebrow">Favourite</div>
-              <div className="home-balls__favourite-name">{favourite.ball.name}</div>
-              <div className="home-balls__favourite-share">
-                {formatCount(favourite.entries)} of {plural(withBall, 'catch', 'catches')} ({percent(favourite.entries, withBall, 0)})
-              </div>
+              <div className="u-eyebrow">{t('home.balls.favourite')}</div>
+              <div className="home-balls__favourite-name">{ballName(favourite.ball.id) ?? favourite.ball.name}</div>
+              <div className="home-balls__favourite-share">{t('home.balls.share', { used: favourite.entries, count: withBall, percent: percent(favourite.entries, withBall, 0) })}</div>
             </div>
           </div>
           <ul className="home-balls__list">
-            {balls.map((b) => (
-              <li key={b.ball.id}>
-                <Tooltip content={`${b.ball.name}: ${plural(b.entries, 'catch', 'catches')}${b.shiny > 0 ? `, ${formatCount(b.shiny)} shiny` : ''}`}>
-                  <span className="home-ball">
-                    <BallIcon ball={b.ball} size={26} label="" />
-                    <span className="home-ball__count" aria-hidden="true">
-                      {formatCount(b.entries)}
+            {balls.map((b) => {
+              const ball = ballName(b.ball.id) ?? b.ball.name
+              return (
+                <li key={b.ball.id}>
+                  <Tooltip content={b.shiny > 0 ? t('home.balls.ballShiny', { ball, count: b.entries, shiny: b.shiny }) : t('home.balls.ball', { ball, count: b.entries })}>
+                    <span className="home-ball">
+                      <BallIcon ball={b.ball} size={26} label="" />
+                      <span className="home-ball__count" aria-hidden="true">
+                        {formatCount(b.entries)}
+                      </span>
+                      <span className="u-sr-only">{t('home.balls.ball', { ball, count: b.entries })}</span>
                     </span>
-                    <span className="u-sr-only">
-                      {b.ball.name}: {plural(b.entries, 'catch', 'catches')}
-                    </span>
-                  </span>
-                </Tooltip>
-              </li>
-            ))}
+                  </Tooltip>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
       {noBall > 0 && favourite !== undefined && (
-        <p className="home-note">
-          {plural(noBall, 'entry has', 'entries have')} no ball recorded.
-        </p>
+        <p className="home-note">{t('home.balls.noBall', { count: noBall })}</p>
       )}
     </Panel>
   )

@@ -4,7 +4,8 @@ import logo from '@renderer/assets/logo.png'
 import { BallIcon, ShinyMark } from '@renderer/components/pokemon'
 import { Button, Icon, Kbd, NumberTicker, Panel, ProgressRing } from '@renderer/components/ui'
 import type { Progress } from '@renderer/domain/progress'
-import { matchRulePreset, RULE_PRESETS } from '@renderer/domain/slots'
+import { matchRulePreset } from '@renderer/domain/slots'
+import { rich, useT } from '@renderer/i18n'
 import { animate, enterStagger, popIn, useAnimeScope } from '@renderer/lib/anim'
 import { formatCount, percent } from '@renderer/lib/format'
 import { navigate, paths } from '@renderer/shell/router'
@@ -32,8 +33,9 @@ export function Hero({ progress, trainerName, rules }: HeroProps) {
 
   const { totals, shiny } = progress
   const preset = matchRulePreset(rules)
-  const rulesLabel = preset ? `${RULE_PRESETS[preset].label} rules` : 'Custom rules'
-  const caughtText = `${formatCount(totals.caught)} of ${formatCount(totals.slots)} caught (${percent(totals.caught, totals.slots)})`
+  const t = useT()
+  const rulesLabel = t(`home.rules.${preset ?? 'custom'}`)
+  const caughtText = t('home.hero.ring.value', { caught: totals.caught, total: totals.slots, percent: percent(totals.caught, totals.slots) })
   const complete = totals.slots > 0 && totals.caught >= totals.slots
 
   useLayoutEffect(() => {
@@ -58,7 +60,7 @@ export function Hero({ progress, trainerName, rules }: HeroProps) {
           </div>
 
           <div ref={copyRef} className="home-hero__copy">
-            <div className="u-eyebrow">Your Living Dex</div>
+            <div className="u-eyebrow">{t('home.hero.eyebrow')}</div>
             <h1 id="home-title" className="home-hero__title">
               {greeting(trainerName)}
             </h1>
@@ -66,16 +68,16 @@ export function Hero({ progress, trainerName, rules }: HeroProps) {
           </div>
 
           <div className="home-hero__progress">
-            <ProgressRing value={armed ? totals.completion : 0} size={compact ? 164 : 188} thickness={compact ? 11 : 12} tone={complete ? 'gold' : 'accent'} label="Living Dex completion" valueText={caughtText} className="home-hero__ring">
+            <ProgressRing value={armed ? totals.completion : 0} size={compact ? 164 : 188} thickness={compact ? 11 : 12} tone={complete ? 'gold' : 'accent'} label={t('home.hero.ring.label')} valueText={caughtText} className="home-hero__ring">
               <div className="home-hero__figure">
                 <NumberTicker value={totals.completion * 100} decimals={1} duration={900} format={(v) => tickerPercent(v, totals.caught, totals.slots)} className="home-hero__pct" />
                 <span className="home-hero__count">
                   <NumberTicker value={totals.caught} duration={900} className="home-hero__caught" />
                   <span aria-hidden="true"> / </span>
-                  <span className="u-sr-only"> of </span>
+                  <span className="u-sr-only"> {t('home.hero.of')} </span>
                   {formatCount(totals.slots)}
                 </span>
-                <span className="u-eyebrow">caught</span>
+                <span className="u-eyebrow">{t('home.hero.caught')}</span>
               </div>
             </ProgressRing>
 
@@ -85,20 +87,20 @@ export function Hero({ progress, trainerName, rules }: HeroProps) {
                   <ShinyMark size={18} label="" twinkle={shiny.slots > 0} />
                   <NumberTicker value={shiny.slots} />
                 </span>
-                <span className="u-eyebrow">Shiny</span>
+                <span className="u-eyebrow">{t('common.shiny')}</span>
               </li>
               <li className="home-hero__stat">
                 <span className="home-hero__stat-value">
                   <NumberTicker value={totals.speciesCaught} />
                   <span className="home-hero__stat-of"> / {formatCount(totals.species)}</span>
                 </span>
-                <span className="u-eyebrow">Species</span>
+                <span className="u-eyebrow">{t('home.hero.stat.species')}</span>
               </li>
               <li className="home-hero__stat">
                 <span className="home-hero__stat-value">
                   <NumberTicker value={totals.entries} />
                 </span>
-                <span className="u-eyebrow">Entries logged</span>
+                <span className="u-eyebrow">{t('home.hero.stat.entries')}</span>
               </li>
             </ul>
           </div>
@@ -107,25 +109,20 @@ export function Hero({ progress, trainerName, rules }: HeroProps) {
         <div className="home-hero__bar">
           <div className="home-hero__actions">
             <Button variant="catch" size="lg" icon={<BallIcon ball={4} size={22} label="" />} aria-keyshortcuts="Control+K" onClick={() => useUiStore.getState().setCommandPalette(true)}>
-              Log a catch
+              {t('home.action.logCatch')}
             </Button>
             <Button size="lg" icon="dex" onClick={() => navigate(paths.dex())}>
-              Browse the Pokédex
+              {t('home.action.browse')}
             </Button>
             <Button size="lg" variant="ghost" icon="grid" onClick={() => navigate(paths.living())}>
-              Open Living Dex
+              {t('home.action.openLiving')}
             </Button>
           </div>
           <div className="home-hero__aside">
-            <span className="home-hero__hint">
-              <Kbd keys={[isMac ? '⌘' : 'Ctrl', 'K']} />
-              <span>finds any Pokémon</span>
-            </span>
-            <Link href={paths.settings()} className="home-hero__rules" title="Choose which forms get their own slot">
+            <span className="home-hero__hint">{rich('home.hero.hint', { keys: () => <Kbd keys={[isMac ? '⌘' : 'Ctrl', 'K']} />, text: (c) => <span>{c}</span> })}</span>
+            <Link href={paths.settings()} className="home-hero__rules" title={t('home.hero.rulesHint')}>
               <Icon name="settings" size={14} />
-              <span>
-                {formatCount(totals.slots)} slots · {rulesLabel}
-              </span>
+              <span>{t('home.hero.slots', { count: totals.slots, rules: rulesLabel })}</span>
             </Link>
           </div>
         </div>

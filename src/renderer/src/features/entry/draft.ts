@@ -8,7 +8,10 @@
 import { ABILITIES, ABILITY_BY_ID } from '@shared/abilities'
 import type { EncounterRow, FormSummary, SpeciesDetail, SpeciesSummary } from '@shared/dex-types'
 import { MAX_EV, MAX_IV, type CatchEntry, type EntryGender, type EntryKind, type StatSpread } from '@shared/save-types'
+import { languageTag } from '@shared/languages'
 import { rowGender, rowLocation, type GameSources } from '@renderer/domain/encounters'
+import { activeLanguage, t, type MessageKey } from '@renderer/i18n/runtime'
+import { abilityName, methodLabel } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
 import { isIsoDate, kindLabel, levelRange } from '@renderer/lib/format'
 import type { EntryInput, EntryPatch } from '@renderer/store/save'
@@ -44,7 +47,7 @@ export interface Draft {
   abilityHidden: boolean
   /** As typed: 1 to 8 hex digits, or "". */
   pid: string
-  /** Six boxes in the order of `STAT_LABELS`; null is an empty box. */
+  /** Six boxes in the order of `STAT_IDS`; null is an empty box. */
   ivs: StatBoxes
   evs: StatBoxes
   /** The Pokémon has been sent to Pokémon HOME. */
@@ -54,7 +57,13 @@ export interface Draft {
 export type StatBoxes = readonly (number | null)[]
 
 /** The six stats in the order IVs and EVs are stored in. */
-export const STAT_LABELS = ['HP', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed'] as const
+export const STAT_IDS = ['hp', 'attack', 'defense', 'spAtk', 'spDef', 'speed'] as const
+export type StatId = (typeof STAT_IDS)[number]
+
+/** Name of a stat in the active language: "Attack", or the three-letter "Atk" for the small boxes. */
+export function statLabel(stat: StatId, short = false): string {
+  return t((short ? `entry.stat.short.${stat}` : `entry.stat.${stat}`) as MessageKey)
+}
 
 const NO_STATS: StatBoxes = [null, null, null, null, null, null]
 
@@ -216,13 +225,20 @@ export function draftForAnotherGame(dex: Dex, draft: Draft, defaults: DraftDefau
 }
 
 /**
- * The abilities the editor offers, by name. Ids that share a name (As One, Embody Aspect) are
- * offered once, under the first id, unless `current` is one of the others.
+ * The abilities the editor offers, by name in the active language. Ids that share a name (As One,
+ * Embody Aspect) are offered once, under the first id, unless `current` is one of the others.
+ * When the name shown is not the English one, the English name is a keyword, so typing either finds it.
  */
-export function abilityOptions(current: number | null): { value: number; label: string }[] {
+export function abilityOptions(current: number | null): { value: number; label: string; keywords?: string }[] {
   const byName = new Map<string, number>()
   for (const a of ABILITIES) if (!byName.has(a.name) || a.id === current) byName.set(a.name, a.id)
-  return [...byName].map(([label, value]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, 'en'))
+  const tag = languageTag(activeLanguage())
+  return [...byName]
+    .map(([english, value]) => {
+      const label = abilityName(value) ?? english
+      return label === english ? { value, label } : { value, label, keywords: english }
+    })
+    .sort((a, b) => a.label.localeCompare(b.label, tag))
 }
 
 export function sameDraft(a: Draft, b: Draft): boolean {
@@ -323,9 +339,9 @@ export interface ValidateOptions {
   original?: Pick<CatchEntry, 'species' | 'form' | 'game'>
 }
 
-const spreadError = (boxes: StatBoxes, max: number, name: string): string | undefined => {
+const spreadError = (boxes: StatBoxes, max: number, which: 'ivs' | 'evs'): string | undefined => {
   if (parseSpread(boxes, max) !== null) return undefined
-  return boxes.some((v) => v === null) ? `Fill in all six ${name}, or leave all six empty.` : `Use whole numbers from 0 to ${max} for the ${name}.`
+  return boxes.some((v) => v === null) ? t(`entry.error.${which}Partial`) : t(`entry.error.${which}Range`, { max: String(max) })
 }
 
 /** Species, form and game are required; a level, date, PID, IV or EV that is filled in has to make sense. */
@@ -334,19 +350,19 @@ export function validateDraft(dex: Dex, draft: Draft, options: ValidateOptions):
   const { original } = options
   const species = dex.species(draft.species)
   const keptSpecies = original !== undefined && original.species === draft.species
-  if (!species && !keptSpecies) errors.species = 'Choose a Pokémon.'
-  if (species && !dex.form(draft.species, draft.form) && !(keptSpecies && original.form === draft.form)) errors.form = 'Choose a form.'
-  if (draft.game === '') errors.game = 'Choose the game you got it in.'
-  else if (!GAME_ID.test(draft.game) && original?.game !== draft.game) errors.game = 'Choose a game from the list.'
-  if (draft.level !== null && (!Number.isInteger(draft.level) || draft.level < 1 || draft.level > 100)) errors.level = 'Use a whole number from 1 to 100.'
+  if (!species && !keptSpecies) errors.species = t('entry.error.species')
+  if (species && !dex.form(draft.species, draft.form) && !(keptSpecies && original.form === draft.form)) errors.form = t('entry.error.form')
+  if (draft.game === '') errors.game = t('entry.error.game')
+  else if (!GAME_ID.test(draft.game) && original?.game !== draft.game) errors.game = t('entry.error.gameList')
+  if (draft.level !== null && (!Number.isInteger(draft.level) || draft.level < 1 || draft.level > 100)) errors.level = t('entry.error.level')
   if (draft.date !== '') {
-    if (!isIsoDate(draft.date)) errors.date = 'Enter a real date.'
-    else if (draft.date > options.today) errors.date = 'The date cannot be in the future.'
+    if (!isIsoDate(draft.date)) errors.date = t('entry.error.date')
+    else if (draft.date > options.today) errors.date = t('entry.error.dateFuture')
   }
-  if (parsePid(draft.pid) === null) errors.pid = 'Use 1 to 8 hex digits (0–9, A–F).'
-  const ivs = spreadError(draft.ivs, MAX_IV, 'IVs')
+  if (parsePid(draft.pid) === null) errors.pid = t('entry.error.pid')
+  const ivs = spreadError(draft.ivs, MAX_IV, 'ivs')
   if (ivs !== undefined) errors.ivs = ivs
-  const evs = spreadError(draft.evs, MAX_EV, 'EVs')
+  const evs = spreadError(draft.evs, MAX_EV, 'evs')
   if (evs !== undefined) errors.evs = evs
   return errors
 }
@@ -377,6 +393,7 @@ export interface Suggestion {
   origin?: [number, number]
 }
 
+/** Written into the entry, so it stays English like every stored method; shown through `methodLabel()`. */
 const BRED_METHOD = 'Hatched from an Egg'
 
 function mergeRow(into: Suggestion, row: EncounterRow, first: boolean): void {
@@ -453,7 +470,7 @@ export interface MethodOption {
   key: string
   kind: EntryKind
   method: string
-  /** Text shown and written into the field. */
+  /** Text shown for it, in the active language. What is written into the entry is `method`, which stays English. */
   label: string
   places: string[]
   levels: [number, number] | null
@@ -467,7 +484,7 @@ export function methodOptions(suggestions: readonly Suggestion[], location: stri
   for (const s of suggestions) {
     const key = `${s.kind}|${s.method}`
     let option = byKey.get(key)
-    if (!option) byKey.set(key, (option = { key, kind: s.kind, method: s.method, label: s.method === '' ? kindLabel(s.kind) : s.method, places: [], levels: null, here: false }))
+    if (!option) byKey.set(key, (option = { key, kind: s.kind, method: s.method, label: s.method === '' ? kindLabel(s.kind) : methodLabel(s.method), places: [], levels: null, here: false }))
     if (s.location !== '') option.places.push(s.location)
     if (s.levels) option.levels = option.levels ? [Math.min(option.levels[0], s.levels[0]), Math.max(option.levels[1], s.levels[1])] : [s.levels[0], s.levels[1]]
     if (here !== '' && s.location === here) option.here = true
@@ -478,7 +495,7 @@ export function methodOptions(suggestions: readonly Suggestion[], location: stri
 
 export interface LocationOption {
   location: string
-  /** Method labels available there. */
+  /** Method labels available there, in the active language. */
   methods: string[]
   /** The method currently chosen is available there. */
   fits: boolean
@@ -491,7 +508,7 @@ export function locationOptions(suggestions: readonly Suggestion[], kind: EntryK
     if (s.location === '') continue
     let option = byPlace.get(s.location)
     if (!option) byPlace.set(s.location, (option = { location: s.location, methods: [], fits: false }))
-    const label = s.method === '' ? kindLabel(s.kind) : s.method
+    const label = s.method === '' ? kindLabel(s.kind) : methodLabel(s.method)
     if (!option.methods.includes(label)) option.methods.push(label)
     if (s.kind === kind && s.method === want) option.fits = true
   }

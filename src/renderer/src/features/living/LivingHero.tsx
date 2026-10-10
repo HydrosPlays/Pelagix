@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react'
 import { Link } from 'wouter'
 import type { DexRules } from '@shared/save-types'
 import { ShinyMark } from '@renderer/components/pokemon'
 import { HudBrackets, NumberTicker, ProgressRing, SegmentedControl, cx } from '@renderer/components/ui'
 import type { CollectionTotals } from '@renderer/domain/slots'
+import { rich, useT } from '@renderer/i18n'
 import { formatCount, ratio } from '@renderer/lib/format'
 import { paths } from '@renderer/shell/router'
 import { rulesLine, type LivingMode, type LivingStats } from './model'
@@ -30,18 +32,23 @@ function shownPercent(part: number, total: number): { value: number; decimals: n
 
 /** The page header: the big progress readout, the mode switch and the rules in force. */
 export function LivingHero({ mode, onMode, stats, totals, shinySpecies, rules, boxes, game }: LivingHeroProps) {
+  const t = useT()
   const shiny = mode === 'shiny'
   const complete = stats.slots > 0 && stats.filled === stats.slots
   const pct = shownPercent(stats.filled, stats.slots)
   const left = stats.slots - stats.filled
-  const unit = `${shiny ? 'shiny caught' : 'caught'}${game === undefined ? '' : ` in ${game}`}`
-  const countText = `${formatCount(stats.filled)} of ${formatCount(stats.slots)} ${unit}`
+  const unit = game === undefined ? t(shiny ? 'living.hero.unitShiny' : 'living.hero.unit') : t(shiny ? 'living.hero.unitShinyGame' : 'living.hero.unitGame', { game })
+  const countText =
+    game === undefined
+      ? t(shiny ? 'living.hero.countShiny' : 'living.hero.count', { filled: stats.filled, count: stats.slots })
+      : t(shiny ? 'living.hero.countShinyGame' : 'living.hero.countGame', { filled: stats.filled, count: stats.slots, game })
+  const bold = { b: (text: ReactNode) => <b>{text}</b> }
 
   return (
     <header className={cx('living-hero', shiny && 'is-shiny', complete && 'is-complete')}>
       <HudBrackets corners="diagonal" inset={8} size={16} />
 
-      <ProgressRing className="living-hero__ring" value={ratio(stats.filled, stats.slots)} size={124} thickness={10} tone={shiny || complete ? 'gold' : 'accent'} label={shiny ? 'Shiny Living Dex completion' : 'Living Dex completion'} valueText={countText}>
+      <ProgressRing className="living-hero__ring" value={ratio(stats.filled, stats.slots)} size={124} thickness={10} tone={shiny || complete ? 'gold' : 'accent'} label={shiny ? t('living.hero.ringShiny') : t('living.hero.ring')} valueText={countText}>
         <span className="living-hero__pct">
           <NumberTicker value={pct.value} decimals={pct.decimals} />
           <span className="living-hero__pct-sign">%</span>
@@ -51,7 +58,7 @@ export function LivingHero({ mode, onMode, stats, totals, shinySpecies, rules, b
       <div className="living-hero__main">
         <h1 className="living-hero__title">
           {shiny && <ShinyMark size={22} twinkle label="" />}
-          {shiny ? 'Shiny Living Dex' : 'Living Dex'}
+          {shiny ? t('living.hero.titleShiny') : t('living.hero.title')}
         </h1>
         <p className="living-hero__count">
           <NumberTicker value={stats.filled} className="living-hero__caught" />
@@ -60,23 +67,20 @@ export function LivingHero({ mode, onMode, stats, totals, shinySpecies, rules, b
         </p>
         <p className="living-hero__second">
           {shiny ? (
-            <span>
-              <b>{formatCount(totals.caught)}</b> caught in any colour
-            </span>
+            <span>{rich('living.hero.anyColour', bold, { count: totals.caught })}</span>
           ) : (
             <span className="living-hero__shiny">
               <ShinyMark size={14} label="" />
-              <b>{formatCount(totals.shiny)}</b> shiny
+              {rich('living.hero.shiny', bold, { count: totals.shiny })}
             </span>
           )}
           <span className="living-hero__dot" aria-hidden="true" />
-          <span>{complete ? 'Nothing left to catch' : `${formatCount(left)} to go`}</span>
+          <span>{complete ? t('living.hero.done') : t('living.hero.toGo', { count: left })}</span>
         </p>
         <p className="living-hero__rules">
-          {rulesLine(rules, stats.slots)}
-          {game !== undefined && ` obtainable in ${game}`}
+          {rulesLine(rules, stats.slots, game)}
           <Link href={paths.settings()} className="living-hero__rules-link">
-            Change rules
+            {t('living.rules.change')}
           </Link>
         </p>
       </div>
@@ -84,23 +88,23 @@ export function LivingHero({ mode, onMode, stats, totals, shinySpecies, rules, b
       <div className="living-hero__side">
         <SegmentedControl
           className="living-hero__mode"
-          label="Living Dex mode"
+          label={t('living.hero.mode')}
           value={mode}
           onChange={onMode}
           options={[
-            { value: 'normal', label: 'Living Dex', icon: 'pokeball' },
-            { value: 'shiny', label: 'Shiny', icon: 'sparkle' }
+            { value: 'normal', label: t('living.hero.mode.normal'), icon: 'pokeball' },
+            { value: 'shiny', label: t('common.shiny'), icon: 'sparkle' }
           ]}
         />
         <dl className="living-hero__stats">
           <div className="living-hero__stat">
-            <dt>Boxes complete</dt>
+            <dt>{t('living.hero.boxesComplete')}</dt>
             <dd>
               <b>{formatCount(stats.boxesComplete)}</b> / {formatCount(boxes)}
             </dd>
           </div>
           <div className="living-hero__stat">
-            <dt>{shiny ? 'Shiny species' : 'Species'}</dt>
+            <dt>{shiny ? t('living.hero.speciesShiny') : t('living.hero.species')}</dt>
             <dd>
               <b>{formatCount(shiny ? shinySpecies : totals.speciesCaught)}</b> / {formatCount(totals.species)}
             </dd>

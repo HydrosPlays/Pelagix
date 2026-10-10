@@ -1,0 +1,56 @@
+import type { Translation } from '../en'
+
+const messages: Translation<'homedex'> = {
+  'hero.title': 'HOME 图鉴',
+  'hero.titleShiny': '异色 HOME 图鉴',
+  'hero.ring': 'HOME 图鉴完成度',
+  'hero.ringShiny': '异色 HOME 图鉴完成度',
+  'hero.count': { other: '已在 HOME {inHome} / {count}' },
+  'hero.countShiny': { other: '异色已在 HOME {inHome} / {count}' },
+  'hero.countGame': { other: '来自《{game}》且已在 HOME {inHome} / {count}' },
+  'hero.countShinyGame': { other: '来自《{game}》的异色已在 HOME {inHome} / {count}' },
+  'hero.unit': '已在 HOME',
+  'hero.unitShiny': '异色已在 HOME',
+  'hero.unitGame': '来自《{game}》，已在 HOME',
+  'hero.unitShinyGame': '来自《{game}》的异色，已在 HOME',
+  'hero.pending': { other: '<b>{count}</b> 只尚未传送' },
+  'hero.missing': { other: '<b>{count}</b> 只未捕获' },
+  'hero.missingGame': { other: '<b>{count}</b> 只未在《{game}》中捕获' },
+  'hero.missingShiny': { other: '<b>{count}</b> 只没有异色' },
+  'hero.missingShinyGame': { other: '<b>{count}</b> 只在《{game}》中没有异色' },
+  'hero.mode': 'HOME 图鉴模式',
+  'hero.mode.normal': 'HOME 图鉴',
+
+  'filters.label': '显示',
+  'filters.noShiny': '无异色',
+  'hint': '点击已捕获的宝可梦，将其标记为已在 Pokémon HOME 中；再次点击可取消标记。',
+
+  'saveFailed': '无法保存',
+  'box.marked': '{box}已标记为在 HOME',
+  'box.marked.body': { other: '已标记 {count} 只宝可梦。撤销可取消标记。' },
+  'box.undo': '撤销',
+  'box.unmarked': '{box}已取消标记',
+  'box.unmarked.body': { other: '{count} 只宝可梦不再标记为已在 HOME。' },
+
+  'empty.noSlots.title': '没有可显示的宝可梦',
+  'empty.noSlots.description': '图鉴数据中没有宝可梦，因此暂时没有待填的格子。',
+  'empty.game.title': '《{game}》中没有可收集的',
+  'empty.game.description': '你的 Living Dex 中没有不靠活动就能在此游戏中获得的宝可梦。',
+  'empty.gameNothing.title': '《{game}》中还没有捕获',
+  'empty.gameNothing.description': '这里只计入在《{game}》中获得的宝可梦。记录一次来自该游戏的捕获，它就会出现在这里，随时可以标记为已传送。',
+  'empty.noShiny.title': '还没有异色宝可梦',
+  'empty.noShiny.description': '异色 HOME 图鉴只计入异色宝可梦。将一次捕获记录为异色，它就会出现在这里，随时可以标记为已传送。',
+  'empty.noShiny.action': '显示普通 HOME 图鉴',
+  'empty.nothing.title': '还没有可传送的',
+  'empty.nothing.description': 'HOME 图鉴显示你已将哪些宝可梦传送到 Pokémon HOME。先记录一次捕获，它就会出现在这里，点击一下即可标记为已传送。',
+  'empty.nothing.action': '打开宝可梦图鉴',
+  'empty.filter.home.title': 'HOME 中还没有宝可梦',
+  'empty.filter.home.description': '将已捕获的宝可梦标记为已传送，它就会列在这里。',
+  'empty.filter.pending.title': '你捕获的都已在 HOME 中',
+  'empty.filter.pending.description': '没有待传送的了。',
+  'empty.filter.missing.title': '什么都不缺',
+  'empty.filter.missing.description': '每一格都已填满。',
+  'empty.filter.action': '显示所有格子'
+}
+
+export default messages

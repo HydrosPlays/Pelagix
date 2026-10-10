@@ -6,6 +6,8 @@
 import type { FormSummary, SpeciesSummary } from '@shared/dex-types'
 import type { ThemeId } from '@shared/save-types'
 import type { IconName } from '@renderer/components/ui/Icon'
+import { activeLanguage, t, translate, type MessageKey } from '@renderer/i18n/runtime'
+import { formFullName, speciesName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
 import { normalizeText, searchDex } from '@renderer/lib/search'
 import type { RecentRef } from './recent'
@@ -88,20 +90,20 @@ function loggable(species: SpeciesSummary, form: FormSummary): FormSummary {
 }
 
 function pokemonItem(species: SpeciesSummary, form: FormSummary, ownName: boolean): PokemonItem {
-  return { kind: 'pokemon', id: `pokemon-${species.id}-${form.f}`, species, form, label: ownName ? form.full : species.name }
+  return { kind: 'pokemon', id: `pokemon-${species.id}-${form.f}`, species, form, label: ownName ? formFullName(species, form) : speciesName(species) }
 }
 
 function actionItems(input: PaletteInput, top: PokemonItem | undefined): ActionItem[] {
   const items: ActionItem[] = []
   if (top && !input.editorOpen) {
     const form = loggable(top.species, top.form)
-    const name = form === top.form ? top.label : top.species.name
-    items.push({ kind: 'action', id: 'action-log', action: 'log', icon: 'pokeball', label: `Log a catch for ${name}`, target: { species: top.species, form } })
+    const name = form === top.form ? top.label : speciesName(top.species)
+    items.push({ kind: 'action', id: 'action-log', action: 'log', icon: 'pokeball', label: t('search.action.log', { name }), target: { species: top.species, form } })
   }
   items.push(
-    { kind: 'action', id: 'action-shiny', action: 'shiny', icon: 'sparkle', label: input.shinyView ? 'Turn shiny view off' : 'Turn shiny view on', hint: input.shinyView ? 'On' : 'Off' },
-    { kind: 'action', id: 'action-theme', action: 'theme', icon: input.theme === 'dark' ? 'sun' : 'moon', label: input.theme === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme', hint: input.theme === 'dark' ? 'Dark' : 'Light' },
-    { kind: 'action', id: 'action-motion', action: 'motion', icon: 'motion', label: input.reduceMotion ? 'Turn reduced motion off' : 'Turn reduced motion on', hint: input.reduceMotion ? 'On' : 'Off' }
+    { kind: 'action', id: 'action-shiny', action: 'shiny', icon: 'sparkle', label: input.shinyView ? t('search.action.shiny.off') : t('search.action.shiny.on'), hint: input.shinyView ? t('search.hint.on') : t('search.hint.off') },
+    { kind: 'action', id: 'action-theme', action: 'theme', icon: input.theme === 'dark' ? 'sun' : 'moon', label: input.theme === 'dark' ? t('search.action.theme.light') : t('search.action.theme.dark'), hint: input.theme === 'dark' ? t('search.hint.dark') : t('search.hint.light') },
+    { kind: 'action', id: 'action-motion', action: 'motion', icon: 'motion', label: input.reduceMotion ? t('search.action.motion.off') : t('search.action.motion.on'), hint: input.reduceMotion ? t('search.hint.on') : t('search.hint.off') }
   )
   return items
 }
@@ -118,11 +120,17 @@ function recentItems(dex: Dex | null, recent: readonly RecentRef[]): PokemonItem
 }
 
 /** Words an action answers to besides its label (which changes with its state). */
-const ACTION_KEYWORDS: Readonly<Record<PaletteActionId, string>> = {
-  log: 'log catch add new entry caught',
-  shiny: 'toggle shiny view sprites renders',
-  theme: 'toggle switch theme dark light appearance mode',
-  motion: 'toggle reduce reduced motion animation animations'
+const ACTION_KEYWORDS: Readonly<Record<PaletteActionId, MessageKey>> = {
+  log: 'search.keywords.action.log',
+  shiny: 'search.keywords.action.shiny',
+  theme: 'search.keywords.action.theme',
+  motion: 'search.keywords.action.motion'
+}
+
+/** The words of a keyword message in the active language and, in another language than English, the English ones too. */
+function keywords(key: MessageKey): string {
+  const words = t(key)
+  return activeLanguage() === 'en' ? words : `${words} ${translate('en', key)}`
 }
 
 /**
@@ -138,9 +146,9 @@ export function buildPalette(input: PaletteInput): PaletteSection[] {
 
   if (!searching) {
     const recents = recentItems(dex, recent)
-    if (recents.length > 0) sections.push({ id: 'recent', title: 'Recently opened', items: recents })
-    sections.push({ id: 'pages', title: 'Pages', items: pages.map((page) => ({ kind: 'page', ...page })) })
-    sections.push({ id: 'actions', title: 'Actions', items: actionItems(input, recents[0]) })
+    if (recents.length > 0) sections.push({ id: 'recent', title: t('search.section.recent'), items: recents })
+    sections.push({ id: 'pages', title: t('search.section.pages'), items: pages.map((page) => ({ kind: 'page', ...page })) })
+    sections.push({ id: 'actions', title: t('search.section.actions'), items: actionItems(input, recents[0]) })
     return sections
   }
 
@@ -149,21 +157,21 @@ export function buildPalette(input: PaletteInput): PaletteSection[] {
   const matchingPages = pages.filter((page) => matchesWords(query, `${page.label} ${page.keywords ?? ''}`))
 
   // "Log a catch" follows the top Pokémon; typed on its own ("log") it is for the Pokémon opened last.
-  const asksToLog = matchesWords(query, `log a catch ${ACTION_KEYWORDS.log}`)
+  const asksToLog = matchesWords(query, `${keywords('search.keywords.logPhrase')} ${keywords(ACTION_KEYWORDS.log)}`)
   // A weak match on a Pokémon name - a near-miss ("shiny" is one letter from Shinx) or letters
   // from its middle ("log" is inside Oinkologne) - must not outrank a page or an action that the
   // words match outright: it moves to the end and is not offered for logging.
-  const toggles = actionItems(input, undefined).filter((item) => matchesWords(query, `${item.label} ${ACTION_KEYWORDS[item.action]}`))
+  const toggles = actionItems(input, undefined).filter((item) => matchesWords(query, `${item.label} ${keywords(ACTION_KEYWORDS[item.action])}`))
   const lastOpened = asksToLog ? recentItems(dex, recent)[0] : undefined
   const weak = hits.length > 0 && hits.every((hit) => hit.rank === 'fuzzy' || hit.rank === 'substring')
   const guess = weak && (matchingPages.length > 0 || toggles.length > 0 || lastOpened !== undefined)
   const target = guess ? lastOpened : (pokemon[0] ?? lastOpened)
   const actions = actionItems(input, target).filter((item) => item.action === 'log' || toggles.some((t) => t.id === item.id))
 
-  const pokemonSection: PaletteSection = { id: 'pokemon', title: 'Pokémon', items: pokemon }
+  const pokemonSection: PaletteSection = { id: 'pokemon', title: t('search.section.pokemon'), items: pokemon }
   if (pokemon.length > 0 && !guess) sections.push(pokemonSection)
-  if (matchingPages.length > 0) sections.push({ id: 'pages', title: 'Pages', items: matchingPages.map((page) => ({ kind: 'page', ...page })) })
-  if (actions.length > 0) sections.push({ id: 'actions', title: 'Actions', items: actions })
+  if (matchingPages.length > 0) sections.push({ id: 'pages', title: t('search.section.pages'), items: matchingPages.map((page) => ({ kind: 'page', ...page })) })
+  if (actions.length > 0) sections.push({ id: 'actions', title: t('search.section.actions'), items: actions })
   if (guess) sections.push(pokemonSection)
   return sections
 }

@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'wouter'
-import { GAME_BY_ID, GAMES, GENERATION_NAMES } from '@shared/games'
+import { GAME_BY_ID, GAMES } from '@shared/games'
 import { MAX_EV, MAX_IV, type CatchEntry, type EntryGender, type EntryKind } from '@shared/save-types'
 import { GameIcon, GenderIcon, ShinyMark, Sprite } from '@renderer/components/pokemon'
 import { Button, Checkbox, Combobox, cx, DateField, Dialog, Icon, Kbd, NumberField, SegmentedControl, Select, Switch, TextArea, TextField, type SelectOption } from '@renderer/components/ui'
 import { describeEntry } from '@renderer/domain/entries'
 import { sourcesByGame } from '@renderer/domain/encounters'
+import { generationName } from '@renderer/domain/generation'
 import { gameState, isBattleOnly, type GameState } from '@renderer/features/species/sources'
 import { useSpeciesDetailRetry } from '@renderer/features/species/hooks'
+import { rich, useT } from '@renderer/i18n'
+import { formFullName, formLabel, gameName, gameShortName, locationName, speciesName, variantName } from '@renderer/i18n/terms'
 import { shake } from '@renderer/lib/anim'
 import type { Dex } from '@renderer/lib/data'
 import { deleteEntryWithUndo, duplicateEntryWithToast } from '@renderer/lib/entry-actions'
-import { dexNo, ENTRY_KINDS, errorMessage, formatDate, genderLabel, kindLabel, levelRange, todayIso } from '@renderer/lib/format'
+import { dexNo, ENTRY_KINDS, errorMessage, formatDate, genderLabel, kindLabel, levelRange, shownMethod, todayIso } from '@renderer/lib/format'
 import { getDexSearch } from '@renderer/lib/search'
 import { resolveEntrySprite } from '@renderer/lib/sprites'
 import { navigate, paths } from '@renderer/shell/router'
@@ -45,7 +48,8 @@ import {
   pickForm,
   sameDraft,
   settleDraft,
-  STAT_LABELS,
+  STAT_IDS,
+  statLabel,
   TEXT_LIMITS,
   validateDraft,
   visibleForms,
@@ -87,26 +91,25 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-const STAT_SHORT = ['HP', 'Atk', 'Def', 'SpA', 'SpD', 'Spe'] as const
-
 /** Six small number boxes for one value per stat, with one message under the row. */
 function StatRow({ name, max, value, onChange, error }: { name: string; max: number; value: StatBoxes; onChange: (value: StatBoxes) => void; error?: string }) {
+  const t = useT()
   return (
     <div className="ui-field ee-span" role="group" aria-label={name}>
       <span className="ui-field__label">
         {name}
-        <span className="ui-field__optional">0–{max}</span>
+        <span className="ui-field__optional">{t('entry.stat.range', { max: String(max) })}</span>
       </span>
       <div className="ee-stats">
-        {STAT_SHORT.map((short, i) => (
+        {STAT_IDS.map((stat, i) => (
           <NumberField
-            key={short}
+            key={stat}
             size="sm"
             steppers={false}
-            label={short}
-            aria-label={`${name}: ${STAT_LABELS[i]!}`}
+            label={statLabel(stat, true)}
+            aria-label={t('entry.stat.box', { group: name, stat: statLabel(stat) })}
             value={value[i] ?? null}
-            onChange={(v) => onChange(STAT_SHORT.map((_, j) => (j === i ? v : (value[j] ?? null))))}
+            onChange={(v) => onChange(STAT_IDS.map((_, j) => (j === i ? v : (value[j] ?? null))))}
             min={0}
             max={max}
             placeholder="–"
@@ -128,6 +131,7 @@ function StatRow({ name, max, value, onChange, error }: { name: string; max: num
  * or by hand) or edits a saved one, with a live preview of the entry card.
  */
 export function EntryEditor({ dex, request, open }: EntryEditorProps) {
+  const t = useT()
   const uid = useId()
   const [path] = useLocation()
   const settings = useSettings()
@@ -144,6 +148,9 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
   // PID, IVs and EVs stay folded away until asked for, unless the entry has some.
   const [valuesOpen, setValuesOpen] = useState(() => hasValues(baseline))
   const [confirming, setConfirming] = useState(false)
+  // The method and location the user typed themselves in this editor: shown as typed, never translated.
+  const [typedMethod, setTypedMethod] = useState<string | null>(null)
+  const [typedLocation, setTypedLocation] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
   // After "Save and log another game": what was just saved, said inside the dialog (a toast would sit on the buttons).
@@ -218,7 +225,7 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
   useEffect(() => {
     if (!editing || original || reportedGone.current) return
     reportedGone.current = true
-    toast({ kind: 'error', title: 'That entry no longer exists', body: 'It may have been deleted already.' })
+    toast({ kind: 'error', title: t('entry.toast.gone.title'), body: t('entry.toast.gone.body') })
     useUiStore.getState().closeEditor()
   }, [editing, original])
 
@@ -227,20 +234,22 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
   const today = todayIso()
   const errors = useMemo(() => {
     const found = validateDraft(dex, draft, { today, original: original ?? undefined })
-    return speciesCleared ? { species: 'Choose a Pokémon.', ...found } : found
+    return speciesCleared ? { species: t('entry.error.species'), ...found } : found
   }, [dex, draft, today, original, speciesCleared])
   const shownErrors = showErrors ? errors : {}
 
   const announce = (entry: CatchEntry): void => {
     const view = describeEntry(dex, entry)
-    const name = `${entry.shiny ? 'Shiny ' : ''}${view.name}`
+    const name = entry.shiny ? t('lib.entry.shinyName', { name: view.name }) : view.name
+    const where = entry.location !== undefined && entry.location !== '' ? locationName(entry.location) : undefined
+    const inGame = view.game ? gameName(view.game.id) : undefined
     const onItsPage = path === `/dex/${entry.species}`
     toast({
       kind: 'success',
-      title: `${name} registered in your Living Dex`,
-      body: [view.game?.name, entry.location].filter(Boolean).join(' · ') || undefined,
+      title: t('entry.toast.registered', { name }),
+      body: inGame !== undefined && where !== undefined ? t('entry.toast.where', { game: inGame, location: where }) : (inGame ?? where),
       icon: 'pokeball',
-      ...(onItsPage ? {} : { action: { label: 'View', onSelect: () => navigate(paths.species(entry.species, entry.form)) } })
+      ...(onItsPage ? {} : { action: { label: t('entry.toast.view'), onSelect: () => navigate(paths.species(entry.species, entry.form)) } })
     })
   }
 
@@ -260,9 +269,9 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
       if (original) {
         const updated = store.updateEntry(original.id, draftToPatch(draft))
         if (!updated) {
-          toast({ kind: 'error', title: 'That entry no longer exists', body: 'Your changes could not be saved because it was deleted.' })
+          toast({ kind: 'error', title: t('entry.toast.gone.title'), body: t('entry.toast.gone.bodySaving') })
         } else {
-          toast({ kind: 'success', title: 'Changes saved', body: `${describeEntry(dex, updated).name} · ${GAME_BY_ID.get(updated.game)?.name ?? 'Unknown game'}`, icon: 'check' })
+          toast({ kind: 'success', title: t('entry.toast.saved'), body: t('lib.entry.summary', { who: describeEntry(dex, updated).name, game: GAME_BY_ID.has(updated.game) ? gameName(updated.game) : t('lib.entry.unknownGame') }), icon: 'check' })
         }
         useUiStore.getState().closeEditor()
         return
@@ -279,7 +288,7 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
           return
         }
         captureRef.current?.reset()
-        setSavedNote(`${describeEntry(dex, entry).name} saved in ${GAME_BY_ID.get(entry.game)?.name ?? 'that game'}. Pick the next game.`)
+        setSavedNote(GAME_BY_ID.has(entry.game) ? t('entry.saved.note', { name: describeEntry(dex, entry).name, game: gameName(entry.game) }) : t('entry.saved.noteUnknownGame', { name: describeEntry(dex, entry).name }))
         const next = draftForAnotherGame(dex, draft, { trainerName: defaults.trainerName, today: todayIso() })
         setDraft(next)
         setBaseline(next)
@@ -297,7 +306,7 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
       }
     } catch (err) {
       saving.current = false
-      toast({ kind: 'error', title: 'This entry could not be saved', body: errorMessage(err) })
+      toast({ kind: 'error', title: t('entry.toast.failed'), body: errorMessage(err) })
     }
   }
 
@@ -328,7 +337,7 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
       try {
         useSaveStore.getState().updateEntry(original.id, draftToPatch(draft))
       } catch (err) {
-        toast({ kind: 'error', title: 'This entry could not be saved', body: errorMessage(err) })
+        toast({ kind: 'error', title: t('entry.toast.failed'), body: errorMessage(err) })
         return
       }
     }
@@ -364,7 +373,7 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
     [dex]
   )
   const speciesOptions = useMemo<SelectOption<number>[]>(
-    () => (speciesLocked ? [] : dex.speciesList.map((s) => ({ value: s.id, label: s.name, description: dexNo(s.id), keywords: String(s.id), icon: <Sprite species={s} size={26} /> }))),
+    () => (speciesLocked ? [] : dex.speciesList.map((s) => ({ value: s.id, label: speciesName(s), description: dexNo(s.id), keywords: String(s.id), icon: <Sprite species={s} size={26} /> }))),
     [dex, speciesLocked]
   )
 
@@ -372,11 +381,11 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
     if (!species) return []
     const list = visibleForms(species)
     if (form && !list.includes(form)) list.push(form)
-    return list.map((f) => ({ value: f.f, label: f.cat === 'base' && f.name !== '' ? `${f.full} (${f.name})` : f.full, icon: <Sprite species={species} form={f} size={26} /> }))
+    return list.map((f) => ({ value: f.f, label: f.cat === 'base' && f.name !== '' ? t('entry.form.named', { name: formFullName(species, f), form: formLabel(species, f) }) : formFullName(species, f), icon: <Sprite species={species} form={f} size={26} /> }))
   }, [species, form])
 
   const variantOptions = useMemo<SelectOption<number>[]>(
-    () => (species && form?.variants ? form.variants.map((v) => ({ value: v.id, label: v.name, icon: <Sprite species={species} form={form} variant={v.id} size={26} /> })) : []),
+    () => (species && form?.variants ? form.variants.map((v) => ({ value: v.id, label: variantName(species, form, v.id) ?? v.name, icon: <Sprite species={species} form={form} variant={v.id} size={26} /> })) : []),
     [species, form]
   )
 
@@ -385,18 +394,19 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
     const rest: SelectOption<string>[] = []
     for (const g of GAMES) {
       const s = form ? gameState(dex, form, g.id) : null
-      // Short names ("Scarlet") so typing ranks by how players say them; the full title still matches.
-      const option: SelectOption<string> = { value: g.id, label: g.short, keywords: g.name, icon: <GameIcon game={g} size={22} tooltip={false} alt="" /> }
+      // Short names ("Scarlet") so typing ranks by how players say them; the full title still matches, and so do the English names.
+      const option: SelectOption<string> = { value: g.id, label: gameShortName(g.id), keywords: `${gameName(g.id)} ${g.name}`, icon: <GameIcon game={g} size={22} tooltip={false} alt="" /> }
       if (s === 'obtainable' || s === 'event') {
-        here.push({ ...option, group: 'Where you can get it', description: s === 'event' ? <span className="ee-opt ee-opt--event">Event only</span> : <span className="ee-opt ee-opt--ok">Obtainable</span> })
+        here.push({ ...option, group: t('entry.game.groupHere'), description: s === 'event' ? <span className="ee-opt ee-opt--event">{t('entry.game.eventOnly')}</span> : <span className="ee-opt ee-opt--ok">{t('entry.game.obtainable')}</span> })
       } else {
-        rest.push({ ...option, group: GENERATION_NAMES[g.generation] ?? 'Other', description: s === 'transfer' ? 'Transfer only' : undefined })
+        rest.push({ ...option, group: g.generation >= 1 && g.generation <= 9 ? generationName(g.generation) : t('entry.game.groupOther'), description: s === 'transfer' ? t('entry.game.transferOnly') : undefined })
       }
     }
     const all = [...here, ...rest]
     // An old entry may carry a game this version does not know; it stays selectable as it is.
-    if (draft.game !== '' && !GAME_BY_ID.has(draft.game)) all.unshift({ value: draft.game, label: 'Unknown game', description: draft.game, icon: <Icon name="help" size={18} /> })
+    if (draft.game !== '' && !GAME_BY_ID.has(draft.game)) all.unshift({ value: draft.game, label: t('lib.entry.unknownGame'), description: draft.game, icon: <Icon name="help" size={18} /> })
     return all
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dex, form, draft.game])
 
   const kindOptions = useMemo<SelectOption<EntryKind>[]>(() => ENTRY_KINDS.map((k) => ({ value: k, label: kindLabel(k) })), [])
@@ -408,10 +418,12 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
     return methods.map((m) => ({
       value: m.key,
       label: m.label,
-      keywords: kindLabel(m.kind),
-      group: anyHere ? (m.here ? `At ${place}` : 'Elsewhere in this game') : undefined,
-      description: m.places.length === 0 ? levelRange(m.levels) || undefined : m.places.length === 1 ? m.places[0] : `${m.places.length} places`
+      // The English label too, so a method is found by either name.
+      keywords: `${kindLabel(m.kind)} ${m.method}`,
+      group: anyHere ? (m.here ? t('entry.method.groupHere', { place: locationName(place) }) : t('entry.method.groupElsewhere')) : undefined,
+      description: m.places.length === 0 ? levelRange(m.levels) || undefined : m.places.length === 1 ? locationName(m.places[0]!) : t('entry.method.places', { count: m.places.length })
     }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [methods, draft.location])
   const methodKey = `${draft.kind}|${draft.method.trim()}`
   const methodValue = methods.some((m) => m.key === methodKey) && (draft.method.trim() !== '' || matched !== null) ? methodKey : null
@@ -419,18 +431,21 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
   const places = useMemo(() => locationOptions(suggestions, draft.kind, draft.method), [suggestions, draft.kind, draft.method])
   const placeSelect = useMemo<SelectOption<string>[]>(() => {
     const anyFit = places.some((p) => p.fits)
-    const how = draft.method.trim() !== '' ? draft.method.trim() : kindLabel(draft.kind)
+    const how = draft.method.trim() !== '' ? shownMethod(draft.method.trim()) : kindLabel(draft.kind)
     return places.map((p) => ({
       value: p.location,
-      label: p.location,
-      group: anyFit ? (p.fits ? `With ${how}` : 'Other places') : undefined,
-      description: p.methods.length <= 2 ? p.methods.join(', ') : `${p.methods.length} ways`
+      label: locationName(p.location),
+      // The English name too, so a place is found by either name.
+      keywords: p.location,
+      group: anyFit ? (p.fits ? t('entry.location.groupFits', { method: how }) : t('entry.location.groupOther')) : undefined,
+      description: p.methods.length === 2 ? t('entry.location.twoMethods', { first: p.methods[0]!, second: p.methods[1]! }) : p.methods.length < 2 ? p.methods[0] : t('entry.location.ways', { count: p.methods.length })
     }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [places, draft.kind, draft.method])
   const placeValue = places.some((p) => p.location === draft.location.trim()) ? draft.location.trim() : null
 
   const originOptions = useMemo<SelectOption<string>[]>(() => {
-    const out: SelectOption<string>[] = [{ value: NO_ORIGIN, label: 'Not set' }]
+    const out: SelectOption<string>[] = [{ value: NO_ORIGIN, label: t('entry.notSet') }]
     const seen = new Set<string>()
     const add = (s: number, f: number): void => {
       const key = `${s}-${f}`
@@ -438,20 +453,21 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
       const originForm = dex.form(s, f)
       if (!originForm || (originForm.cat === 'hidden' && !(draft.origin && draft.origin[0] === s && draft.origin[1] === f))) return
       seen.add(key)
-      out.push({ value: key, label: originForm.full, icon: <Sprite species={s} form={f} size={26} /> })
+      out.push({ value: key, label: formFullName(s, originForm), icon: <Sprite species={s} form={f} size={26} /> })
     }
     if (detail.data) for (const node of detail.data.family) add(node.s, node.f)
     else if (species) for (const member of dex.familyMembers(species.family)) add(member.id, member.forms[0]?.f ?? 0)
     if (species) for (const f of visibleForms(species)) add(species.id, f.f)
     if (draft.origin) add(draft.origin[0], draft.origin[1])
     return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dex, detail.data, species, draft.species, draft.form, draft.origin])
 
   const genders = genderChoices(species, form)
   const genderOptions = useMemo(
     () => [
       ...genders.map((g) => ({ value: g as string, label: genderLabel(g), icon: <GenderIcon gender={g} size={14} /> })),
-      { value: UNSET, label: 'Not set' }
+      { value: UNSET, label: t('entry.notSet') }
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [genders.join('')]
@@ -487,6 +503,26 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
   const abilitySelect = useMemo<SelectOption<number>[]>(() => abilityOptions(draft.ability), [draft.ability])
   const changeAbility = (ability: number | null): void => patch(ability === null ? { ability, abilityHidden: false } : { ability })
 
+  // The method and the location are stored in English (the datasets' labels) and shown in the active
+  // language. What the user types is stored and shown exactly as typed, unless it is the shown name
+  // of a suggestion, which then stands for that suggestion's own label.
+  const methodText = typedMethod === draft.method ? draft.method : shownMethod(draft.method)
+  const typeMethod = (typed: string): void => {
+    if (typed === methodText) return
+    const known = methods.find((m) => m.method !== '' && m.label === typed)
+    const method = (known ? known.method : typed).slice(0, TEXT_LIMITS.method)
+    setTypedMethod(known ? null : method)
+    patch({ method })
+  }
+  const locationText = typedLocation === draft.location ? draft.location : locationName(draft.location)
+  const typeLocation = (typed: string): void => {
+    if (typed === locationText) return
+    const known = places.find((p) => locationName(p.location) === typed)
+    const location = (known ? known.location : typed).slice(0, TEXT_LIMITS.location)
+    setTypedLocation(known ? null : location)
+    patch({ location })
+  }
+
   const pickPlace = (location: string | null): void => {
     if (location === null) return
     setAutoKind(false)
@@ -499,35 +535,47 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
   // ---------------------------------------------------------------- hints
 
   let sourceHint: ReactNode
-  if (draft.game === '') sourceHint = 'Choose a game to see the ways it offers this Pokémon.'
+  if (draft.game === '') sourceHint = t('entry.hint.chooseGame')
   else if (detail.error) {
-    sourceHint = (
-      <>
-        Suggestions could not be loaded.{' '}
+    sourceHint = rich('entry.hint.failed', {
+      retry: (text) => (
         <button type="button" className="ee-link" onClick={detail.retry}>
-          Try again
+          {text}
         </button>
-      </>
-    )
-  } else if (waitingForSources) sourceHint = 'Loading suggestions…'
+      )
+    })
+  } else if (waitingForSources) sourceHint = t('entry.hint.loading')
   else if (matched) {
+    const levels = levelHint(matched)
     sourceHint = (
       <span className="ee-known">
         <Icon name="check" size={13} strokeWidth={2.6} />
-        A known way to get it in {game?.name ?? 'this game'}
-        {levelHint(matched) !== '' ? ` · ${levelHint(matched)}` : ''}
+        {game
+          ? levels !== ''
+            ? t('entry.hint.knownLevels', { game: gameName(game.id), levels })
+            : t('entry.hint.known', { game: gameName(game.id) })
+          : levels !== ''
+            ? t('entry.hint.knownHereLevels', { levels })
+            : t('entry.hint.knownHere')}
       </span>
     )
-  } else if (suggestions.length === 0) sourceHint = state === 'transfer' ? 'It cannot be obtained in this game, so describe how you got it in your own words.' : 'No known sources here. Describe it in your own words.'
-  else sourceHint = 'Pick a suggestion or type your own.'
+  } else if (suggestions.length === 0) sourceHint = state === 'transfer' ? t('entry.hint.transferOnly') : t('entry.hint.noSources')
+  else sourceHint = t('entry.hint.pick')
 
-  const levelNote = matched?.levels ? (levelOutside(matched, draft.level) ? `Lower than this source gives (${levelHint(matched)}).` : `This source gives ${levelHint(matched)}.`) : undefined
+  const levelNote = matched?.levels ? t(levelOutside(matched, draft.level) ? 'entry.level.outside' : 'entry.level.source', { levels: levelHint(matched) }) : undefined
   const forcedFieldsDiffer = matched !== null && ((matched.ball !== undefined && draft.ball !== matched.ball) || (matched.shiny === 'forced' && !draft.shiny))
 
   const preview = useMemo(() => draftToPreview(draft, original?.createdAt ?? new Date().toISOString()), [draft, original])
   const spritePath = useMemo(() => resolveEntrySprite(dex, preview).path, [dex, preview])
-  const title = editing ? 'Edit entry' : savedCount > 0 ? 'Log another catch' : 'Log a catch'
-  const description = editing ? (original ? `Logged ${formatDate(original.createdAt, 'long')}` : undefined) : species ? `Add ${form?.full ?? species.name} to your Living Dex.` : 'Add a Pokémon to your Living Dex.'
+  const title = editing ? t('entry.title.edit') : savedCount > 0 ? t('entry.title.another') : t('entry.title.create')
+  const description = editing
+    ? original
+      ? t('entry.description.logged', { date: formatDate(original.createdAt, 'long') })
+      : undefined
+    : species
+      ? t('entry.description.add', { name: form ? formFullName(species, form) : speciesName(species) })
+      : t('entry.description.addAny')
+  const fixedGender = genders.length === 1 ? genders[0] : undefined
 
   return (
     <>
@@ -545,77 +593,77 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
             {editing && (
               <div className="ee-foot__left">
                 <Button variant="ghost" icon="trash" disabled={busy} onClick={() => original && deleteEntryWithUndo(original.id)}>
-                  Delete
+                  {t('common.delete')}
                 </Button>
                 <Button variant="ghost" icon="copy" disabled={busy} onClick={duplicate}>
-                  Duplicate
+                  {t('common.duplicate')}
                 </Button>
               </div>
             )}
             <span className="ee-foot__hint" aria-hidden="true">
-              <Kbd keys={['Ctrl', 'Enter']} /> saves
+              {rich('entry.footer.shortcut', { keys: () => <Kbd keys={['Ctrl', 'Enter']} /> })}
             </span>
             <Button variant="ghost" disabled={busy} onClick={requestClose}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             {!editing && (
               <Button disabled={busy} onClick={() => save(true)}>
-                Save and log another game
+                {t('entry.footer.saveAnother')}
               </Button>
             )}
             <Button variant={editing ? 'primary' : 'catch'} icon={editing ? 'check' : 'pokeball'} loading={busy} aria-keyshortcuts="Control+Enter" onClick={() => save(false)}>
-              {editing ? 'Save changes' : 'Save'}
+              {editing ? t('entry.footer.saveChanges') : t('common.save')}
             </Button>
           </>
         }
       >
         <div className="ee">
           <div ref={formRef} className="ee-form" inert={busy}>
-            <Group title="Pokémon">
+            <Group title={t('entry.group.pokemon')}>
               {speciesLocked && species ? (
                 <div className={cx('ee-mon', formOptions.length <= 1 && 'ee-span')}>
                   <span className="ee-mon__art">
                     <Sprite species={species} form={form} size={40} />
                   </span>
                   <span className="ee-mon__text">
-                    <span className="u-sr-only">Pokémon: </span>
-                    <span className="ee-mon__name">{species.name}</span>
+                    <span className="u-sr-only">{t('entry.pokemon.prefix')}</span>
+                    <span className="ee-mon__name">{speciesName(species)}</span>
                     <span className="ee-mon__no">{dexNo(species.id)}</span>
                   </span>
                 </div>
               ) : (
-                <Combobox id={ids.species} label="Pokémon" options={speciesOptions} value={species && !speciesCleared ? species.id : null} onChange={changeSpecies} filter={speciesFilter} placeholder={!species && draft.species > 0 && !speciesCleared ? `Pokémon ${dexNo(draft.species)} (not in the data)` : 'Search by name or number'} emptyText="No Pokémon matches" error={shownErrors.species} wrapperClassName={formOptions.length <= 1 ? 'ee-span' : undefined} />
+                <Combobox id={ids.species} label={t('entry.pokemon.label')} options={speciesOptions} value={species && !speciesCleared ? species.id : null} onChange={changeSpecies} filter={speciesFilter} placeholder={!species && draft.species > 0 && !speciesCleared ? t('entry.pokemon.missing', { number: dexNo(draft.species) }) : t('entry.pokemon.placeholder')} emptyText={t('entry.pokemon.noMatch')} error={shownErrors.species} wrapperClassName={formOptions.length <= 1 ? 'ee-span' : undefined} />
               )}
-              {formOptions.length > 1 && <Select label="Form" options={formOptions} value={form ? form.f : null} onChange={(f) => setDraft((d) => settleDraft(dex, { ...d, form: f }))} error={shownErrors.form} placeholder="Choose a form" />}
-              {variantOptions.length > 0 && <Select label={variantOptions.every((v) => v.label.endsWith('Sweet')) ? 'Sweet' : 'Variant'} options={variantOptions} value={draft.variant} onChange={(variant) => patch({ variant })} />}
+              {formOptions.length > 1 && <Select label={t('entry.form.label')} options={formOptions} value={form ? form.f : null} onChange={(f) => setDraft((d) => settleDraft(dex, { ...d, form: f }))} error={shownErrors.form} placeholder={t('entry.form.placeholder')} />}
+              {variantOptions.length > 0 && <Select label={form?.variants?.every((v) => v.name.endsWith('Sweet')) ? t('entry.variant.sweet') : t('entry.variant.label')} options={variantOptions} value={draft.variant} onChange={(variant) => patch({ variant })} />}
             </Group>
 
-            <Group title="Where and how">
-              <Combobox id={ids.game} label="Game" options={gameOptions} value={draft.game !== '' ? draft.game : null} onChange={changeGame} icon="gamepad" placeholder="Which game did you get it in?" emptyText="No game matches" maxItems={GAMES.length + 1} error={shownErrors.game} />
-              <Select label="How you got it" options={kindOptions} value={draft.kind} onChange={changeKind} />
+            <Group title={t('entry.group.where')}>
+              <Combobox id={ids.game} label={t('entry.game.label')} options={gameOptions} value={draft.game !== '' ? draft.game : null} onChange={changeGame} icon="gamepad" placeholder={t('entry.game.placeholder')} emptyText={t('entry.game.noMatch')} maxItems={GAMES.length + 1} error={shownErrors.game} />
+              <Select label={t('entry.kind.label')} options={kindOptions} value={draft.kind} onChange={changeKind} />
               <Combobox
                 id={ids.method}
-                label="Method"
+                label={t('entry.method.label')}
                 optional
                 options={methodSelect}
                 value={methodValue}
                 onChange={pickMethod}
-                freeText={{ text: draft.method, onTextChange: (method) => patch({ method: method.slice(0, TEXT_LIMITS.method) }) }}
+                freeText={{ text: methodText, onTextChange: typeMethod }}
                 icon="pokeball"
-                placeholder="Tall grass, Gift, Max Raid…"
+                placeholder={t('entry.method.placeholder')}
                 loading={waitingForSources}
                 maxItems={80}
               />
               <Combobox
                 id={ids.location}
-                label="Location"
+                label={t('entry.location.label')}
                 optional
                 options={placeSelect}
                 value={placeValue}
                 onChange={pickPlace}
-                freeText={{ text: draft.location, onTextChange: (location) => patch({ location: location.slice(0, TEXT_LIMITS.location) }) }}
+                freeText={{ text: locationText, onTextChange: typeLocation }}
                 icon="map-pin"
-                placeholder="Where was it?"
+                placeholder={t('entry.location.placeholder')}
                 loading={waitingForSources}
                 maxItems={80}
               />
@@ -625,16 +673,16 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
                   <>
                     {' '}
                     <button type="button" className="ee-link" onClick={useMatched}>
-                      Use this source's ball and details
+                      {t('entry.hint.useSource')}
                     </button>
                   </>
                 )}
               </p>
               {showOrigin && (
                 <Select
-                  label="Caught as"
+                  label={t('entry.origin.label')}
                   optional
-                  hint="The Pokémon it was when you got it."
+                  hint={t('entry.origin.hint')}
                   options={originOptions}
                   value={draft.origin ? `${draft.origin[0]}-${draft.origin[1]}` : NO_ORIGIN}
                   onChange={(value) => {
@@ -646,77 +694,77 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
               )}
             </Group>
 
-            <Group title="The catch">
+            <Group title={t('entry.group.catch')}>
               <div className="ee-span">
-                <BallPicker legal={legalBalls} value={draft.ball} onChange={(ball) => patch({ ball })} forced={matched?.ball} gameName={game?.name} />
+                <BallPicker legal={legalBalls} value={draft.ball} onChange={(ball) => patch({ ball })} forced={matched?.ball} gameName={game ? gameName(game.id) : undefined} />
               </div>
               <div className="ui-field">
-                <span className="ui-field__label">Gender</span>
-                {genders.length === 1 ? (
+                <span className="ui-field__label">{t('entry.gender.label')}</span>
+                {fixedGender !== undefined ? (
                   <span className="ee-static">
-                    <GenderIcon gender={genders[0]} size={15} />
-                    {genders[0] === 'n' ? 'Genderless' : `Always ${genderLabel(genders[0]).toLowerCase()}`}
+                    <GenderIcon gender={fixedGender} size={15} />
+                    {fixedGender === 'n' ? t('common.genderless') : fixedGender === 'm' ? t('entry.gender.alwaysMale') : t('entry.gender.alwaysFemale')}
                   </span>
                 ) : (
-                  <SegmentedControl label="Gender" fill options={genderOptions} value={draft.gender ?? UNSET} onChange={(value) => patch({ gender: value === UNSET ? null : (value as EntryGender) })} disabled={genderFixed} />
+                  <SegmentedControl label={t('entry.gender.label')} fill options={genderOptions} value={draft.gender ?? UNSET} onChange={(value) => patch({ gender: value === UNSET ? null : (value as EntryGender) })} disabled={genderFixed} />
                 )}
-                {genders.length > 1 && matched?.gender !== undefined && <span className="ui-field__hint">This source is always {genderLabel(matched.gender).toLowerCase()}.</span>}
+                {genders.length > 1 && matched?.gender !== undefined && <span className="ui-field__hint">{matched.gender === 'm' ? t('entry.gender.sourceMale') : matched.gender === 'f' ? t('entry.gender.sourceFemale') : t('entry.gender.sourceGenderless')}</span>}
               </div>
-              <NumberField id={ids.level} label="Level" optional value={draft.level} onChange={(level) => patch({ level })} min={1} max={100} placeholder="1–100" error={errors.level} hint={levelNote} />
-              <DateField label="Date caught" optional value={draft.date} onChange={(date) => patch({ date })} max={today} error={errors.date} />
+              <NumberField id={ids.level} label={t('common.level')} optional value={draft.level} onChange={(level) => patch({ level })} min={1} max={100} placeholder="1–100" error={errors.level} hint={levelNote} />
+              <DateField label={t('entry.date.label')} optional value={draft.date} onChange={(date) => patch({ date })} max={today} error={errors.date} />
               <div className="ee-switches">
                 <Switch
                   checked={draft.shiny}
                   onChange={(shiny) => patch({ shiny })}
                   label={
                     <span className="ee-switchlabel">
-                      Shiny <ShinyMark size={14} label="" />
+                      {rich('entry.shiny.label', { mark: () => <ShinyMark size={14} label="" /> })}
                     </span>
                   }
-                  description={matched?.shiny === 'forced' ? 'Always shiny from this source.' : undefined}
+                  description={matched?.shiny === 'forced' ? t('entry.shiny.forced') : undefined}
                 />
-                {showGmax && <Switch checked={draft.gmax} onChange={(gmax) => patch({ gmax })} label="Gigantamax" description="It has the Gigantamax Factor." />}
-                {showAlpha && <Switch checked={draft.alpha} onChange={(alpha) => patch({ alpha })} label="Alpha" description="A larger, red-eyed Alpha Pokémon." />}
+                {showGmax && <Switch checked={draft.gmax} onChange={(gmax) => patch({ gmax })} label={t('entry.gmax.label')} description={t('entry.gmax.description')} />}
+                {showAlpha && <Switch checked={draft.alpha} onChange={(alpha) => patch({ alpha })} label={t('entry.alpha.label')} description={t('entry.alpha.description')} />}
               </div>
               {draft.shiny && matched?.shiny === 'locked' && (
                 <p className="ee-warning ee-span" role="status">
                   <Icon name="warning" size={16} />
-                  <span>This one is shiny-locked in the game, so it normally cannot be shiny. It is your record: keep it on if yours really is.</span>
+                  <span>{t('entry.shiny.locked')}</span>
                 </p>
               )}
             </Group>
 
-            <Group title="Details">
-              <TextField id={ids.nickname} label="Nickname" optional value={draft.nickname} onChange={(nickname) => patch({ nickname })} maxLength={TEXT_LIMITS.nickname} placeholder="None" />
-              <TextField label="Original Trainer" optional value={draft.ot} onChange={(ot) => patch({ ot })} maxLength={TEXT_LIMITS.ot} icon="user" placeholder="OT name" />
+            <Group title={t('entry.group.details')}>
+              <TextField id={ids.nickname} label={t('entry.nickname.label')} optional value={draft.nickname} onChange={(nickname) => patch({ nickname })} maxLength={TEXT_LIMITS.nickname} placeholder={t('entry.nickname.placeholder')} />
+              <TextField label={t('entry.ot.label')} optional value={draft.ot} onChange={(ot) => patch({ ot })} maxLength={TEXT_LIMITS.ot} icon="user" placeholder={t('entry.ot.placeholder')} />
               <div className="ee-ability ee-span">
-                <Combobox label="Ability" optional options={abilitySelect} value={draft.ability} onChange={changeAbility} placeholder="Type to search" emptyText="No ability matches" maxItems={abilitySelect.length} />
-                <Checkbox checked={draft.ability !== null && draft.abilityHidden} onChange={(abilityHidden) => patch({ abilityHidden })} label="Hidden Ability" disabled={draft.ability === null} />
+                <Combobox label={t('entry.ability.label')} optional options={abilitySelect} value={draft.ability} onChange={changeAbility} placeholder={t('entry.ability.placeholder')} emptyText={t('entry.ability.noMatch')} maxItems={abilitySelect.length} />
+                <Checkbox checked={draft.ability !== null && draft.abilityHidden} onChange={(abilityHidden) => patch({ abilityHidden })} label={t('entry.ability.hidden')} disabled={draft.ability === null} />
               </div>
-              <TextArea label="Notes" optional value={draft.notes} onChange={(notes) => patch({ notes })} maxLength={TEXT_LIMITS.notes} counter={draft.notes.length > TEXT_LIMITS.notes - 400} rows={3} placeholder="Anything worth remembering about this catch" wrapperClassName="ee-span" />
+              <TextArea label={t('entry.notes.label')} optional value={draft.notes} onChange={(notes) => patch({ notes })} maxLength={TEXT_LIMITS.notes} counter={draft.notes.length > TEXT_LIMITS.notes - 400} rows={3} placeholder={t('entry.notes.placeholder')} wrapperClassName="ee-span" />
               <div className="ee-span">
-                <Switch checked={draft.inHome} onChange={(inHome) => patch({ inHome })} label="In Pokémon HOME" description="You have sent this Pokémon to Pokémon HOME." />
+                <Switch checked={draft.inHome} onChange={(inHome) => patch({ inHome })} label={t('entry.home.label')} description={t('entry.home.description')} />
               </div>
             </Group>
 
             <fieldset className="ee-group">
               <legend className="ee-group__title ee-group__title--fold u-eyebrow">
-                <span>PID, IVs and EVs</span>
+                <span>{t('entry.group.values')}</span>
                 <Button size="sm" variant="ghost" icon={valuesOpen ? 'chevron-up' : 'chevron-down'} aria-expanded={valuesOpen} aria-controls={ids.values} onClick={() => setValuesOpen(!valuesOpen)}>
-                  {valuesOpen ? 'Hide' : hasValues(draft) ? 'Show' : 'Add'}
+                  {valuesOpen ? t('entry.values.hide') : hasValues(draft) ? t('entry.values.show') : t('entry.values.add')}
                 </Button>
               </legend>
               {valuesOpen && (
                 <div className="ee-grid" id={ids.values}>
-                  <TextField id={ids.pid} label="PID" optional value={draft.pid} onChange={(pid) => patch({ pid })} maxLength={8} placeholder="8 hex digits" className="ee-pid" error={errors.pid} hint="The personality value, as PKHeX shows it." wrapperClassName="ee-span" />
-                  <StatRow name="IVs" max={MAX_IV} value={draft.ivs} onChange={(ivs) => patch({ ivs })} error={shownErrors.ivs} />
-                  <StatRow name="EVs" max={MAX_EV} value={draft.evs} onChange={(evs) => patch({ evs })} error={shownErrors.evs} />
+                  <TextField id={ids.pid} label={t('entry.pid.label')} optional value={draft.pid} onChange={(pid) => patch({ pid })} maxLength={8} placeholder={t('entry.pid.placeholder')} className="ee-pid" error={errors.pid} hint={t('entry.pid.hint')} wrapperClassName="ee-span" />
+                  <StatRow name={t('lib.values.ivs')} max={MAX_IV} value={draft.ivs} onChange={(ivs) => patch({ ivs })} error={shownErrors.ivs} />
+                  <StatRow name={t('lib.values.evs')} max={MAX_EV} value={draft.evs} onChange={(evs) => patch({ evs })} error={shownErrors.evs} />
                 </div>
               )}
             </fieldset>
           </div>
 
-          <aside className="ee-side" aria-label="Preview of the entry">
+          <aside className="ee-side" aria-label={t('entry.preview.label')}>
             {savedNote !== null && (
               <p className="ee-saved" role="status">
                 <Icon name="check" size={15} strokeWidth={2.6} />
@@ -739,12 +787,12 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
         onClose={() => setConfirming(false)}
         size="sm"
         hideClose
-        title={editing ? 'Discard your changes?' : 'Discard this entry?'}
-        description={editing ? 'The entry stays as it was saved.' : 'What you filled in will not be saved.'}
+        title={editing ? t('entry.discard.titleEdit') : t('entry.discard.titleCreate')}
+        description={editing ? t('entry.discard.descriptionEdit') : t('entry.discard.descriptionCreate')}
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirming(false)} data-autofocus>
-              Keep editing
+              {t('entry.discard.keep')}
             </Button>
             <Button
               variant="danger"
@@ -753,7 +801,7 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
                 finishClose()
               }}
             >
-              Discard
+              {t('entry.discard.confirm')}
             </Button>
           </>
         }

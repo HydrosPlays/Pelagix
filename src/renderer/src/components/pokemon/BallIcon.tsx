@@ -1,5 +1,7 @@
 import { useId, type ReactNode } from 'react'
 import { BALL_BY_ID, type BallDef } from '@shared/balls'
+import { t } from '@renderer/i18n'
+import { ballName } from '@renderer/i18n/terms'
 import { cx } from '../ui/cx'
 import './BallIcon.css'
 
@@ -431,7 +433,7 @@ export function BallIcon({ ball, size = 24, label, className }: BallIconProps) {
   const def = typeof ball === 'number' ? BALL_BY_ID.get(ball) : ball
   const spec = (def && SPECS[def.slug]) ?? UNKNOWN
   const clip = useId()
-  const name = label ?? def?.name ?? 'Unknown ball'
+  const name = label ?? ballName(def?.id) ?? t('components.ball.unknown')
   return (
     <svg className={cx('pk-ball', className)} width={size} height={size} viewBox="0 0 32 32" role={name === '' ? undefined : 'img'} aria-label={name === '' ? undefined : name} aria-hidden={name === '' ? true : undefined} focusable="false">
       <defs>

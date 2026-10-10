@@ -1,4 +1,5 @@
 import { useId, useRef, type ComponentPropsWithRef, type ReactNode } from 'react'
+import { t } from '@renderer/i18n'
 import { cx } from './cx'
 import { renderIconSlot, type ControlSize, type IconSlot } from './Button'
 import { Icon } from './Icon'
@@ -28,7 +29,7 @@ export function Field({ label, hint, error, optional, htmlFor, hintId, className
       {label !== undefined && (
         <label className="ui-field__label" htmlFor={htmlFor}>
           {label}
-          {optional && <span className="ui-field__optional">optional</span>}
+          {optional && <span className="ui-field__optional">{t('components.field.optional')}</span>}
         </label>
       )}
       {children}
@@ -92,7 +93,7 @@ export function TextField({ label, hint, error, optional, icon, suffix, size = '
           {...rest}
         />
         {clearable && value !== '' && !disabled && (
-          <button type="button" className="ui-input__clear" aria-label="Clear" onClick={() => onChange('')}>
+          <button type="button" className="ui-input__clear" aria-label={t('common.clear')} onClick={() => onChange('')}>
             <Icon name="close" size={14} />
           </button>
         )}
@@ -207,10 +208,10 @@ export function NumberField({ label, hint, error, optional, icon, suffix, size =
         {suffix !== undefined && <span className="ui-input__suffix">{suffix}</span>}
         {steppers && (
           <span className="ui-input__steppers">
-            <button type="button" tabIndex={-1} aria-label="Decrease" disabled={disabled || (value !== null && min !== undefined && value <= min)} onClick={() => bump(-1)}>
+            <button type="button" tabIndex={-1} aria-label={t('components.field.decrease')} disabled={disabled || (value !== null && min !== undefined && value <= min)} onClick={() => bump(-1)}>
               <Icon name="minus" size={14} />
             </button>
-            <button type="button" tabIndex={-1} aria-label="Increase" disabled={disabled || (value !== null && max !== undefined && value >= max)} onClick={() => bump(1)}>
+            <button type="button" tabIndex={-1} aria-label={t('components.field.increase')} disabled={disabled || (value !== null && max !== undefined && value >= max)} onClick={() => bump(1)}>
               <Icon name="plus" size={14} />
             </button>
           </span>
@@ -241,7 +242,7 @@ export function DateField({ label, hint, error, optional, suffix, size = 'md', w
         <button
           type="button"
           className="ui-input__icon ui-input__icon--button"
-          aria-label="Open calendar"
+          aria-label={t('components.field.openCalendar')}
           tabIndex={-1}
           disabled={disabled}
           onClick={() => {

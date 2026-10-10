@@ -1,0 +1,56 @@
+import type { Translation } from '../en'
+
+const messages: Translation<'homedex'> = {
+  'hero.title': 'HOME Dex',
+  'hero.titleShiny': 'Schillernder HOME Dex',
+  'hero.ring': 'Fortschritt im HOME Dex',
+  'hero.ringShiny': 'Fortschritt im Schillernden HOME Dex',
+  'hero.count': { one: '{inHome} von {count} in HOME', other: '{inHome} von {count} in HOME' },
+  'hero.countShiny': { one: '{inHome} von {count} schillernd in HOME', other: '{inHome} von {count} schillernd in HOME' },
+  'hero.countGame': { one: '{inHome} von {count} aus {game} in HOME', other: '{inHome} von {count} aus {game} in HOME' },
+  'hero.countShinyGame': { one: '{inHome} von {count} schillernd aus {game} in HOME', other: '{inHome} von {count} schillernd aus {game} in HOME' },
+  'hero.unit': 'in HOME',
+  'hero.unitShiny': 'schillernd in HOME',
+  'hero.unitGame': 'aus {game} in HOME',
+  'hero.unitShinyGame': 'schillernd aus {game} in HOME',
+  'hero.pending': { one: '<b>{count}</b> noch nicht gesendet', other: '<b>{count}</b> noch nicht gesendet' },
+  'hero.missing': { one: '<b>{count}</b> nicht gefangen', other: '<b>{count}</b> nicht gefangen' },
+  'hero.missingGame': { one: '<b>{count}</b> nicht in {game} gefangen', other: '<b>{count}</b> nicht in {game} gefangen' },
+  'hero.missingShiny': { one: '<b>{count}</b> ohne Schillerndes', other: '<b>{count}</b> ohne Schillerndes' },
+  'hero.missingShinyGame': { one: '<b>{count}</b> ohne Schillerndes in {game}', other: '<b>{count}</b> ohne Schillerndes in {game}' },
+  'hero.mode': 'Modus des HOME Dex',
+  'hero.mode.normal': 'HOME Dex',
+
+  'filters.label': 'Anzeigen',
+  'filters.noShiny': 'Kein Schillerndes',
+  'hint': 'Klicke auf ein gefangenes Pokémon, um es als „in Pokémon HOME“ zu markieren, und noch einmal, um die Markierung zu entfernen.',
+
+  'saveFailed': 'Das konnte nicht gespeichert werden',
+  'box.marked': '{box} als in HOME markiert',
+  'box.marked.body': { one: '{count} Pokémon markiert. „Rückgängig“ entfernt die Markierung wieder.', other: '{count} Pokémon markiert. „Rückgängig“ entfernt die Markierung wieder.' },
+  'box.undo': 'Rückgängig',
+  'box.unmarked': 'Markierung von {box} entfernt',
+  'box.unmarked.body': { one: '{count} Pokémon ist nicht mehr als in HOME markiert.', other: '{count} Pokémon sind nicht mehr als in HOME markiert.' },
+
+  'empty.noSlots.title': 'Keine Pokémon vorhanden',
+  'empty.noSlots.description': 'Die Pokédex-Daten enthalten keine Pokémon, also gibt es noch keine Plätze zu füllen.',
+  'empty.game.title': 'In {game} gibt es nichts zu sammeln',
+  'empty.game.description': 'Kein Pokémon deines Living Dex ist in diesem Spiel ohne Event erhältlich.',
+  'empty.gameNothing.title': 'Noch nichts in {game} gefangen',
+  'empty.gameNothing.description': 'Hier zählen nur Pokémon, die du in {game} erhalten hast. Trage einen Fang aus diesem Spiel ein, dann erscheint er hier und kann als gesendet markiert werden.',
+  'empty.noShiny.title': 'Noch keine Schillernden Pokémon',
+  'empty.noShiny.description': 'Der Schillernde HOME Dex zählt nur Schillernde Pokémon. Trage einen Fang als schillernd ein, dann erscheint er hier und kann als gesendet markiert werden.',
+  'empty.noShiny.action': 'Normalen HOME Dex zeigen',
+  'empty.nothing.title': 'Noch nichts zu senden',
+  'empty.nothing.description': 'Der HOME Dex zeigt, welche deiner Pokémon du an Pokémon HOME gesendet hast. Trage zuerst einen Fang ein; er erscheint dann hier, und ein Klick markiert ihn als gesendet.',
+  'empty.nothing.action': 'Pokédex öffnen',
+  'empty.filter.home.title': 'Noch nichts in HOME',
+  'empty.filter.home.description': 'Markiere ein gefangenes Pokémon als gesendet, dann wird es hier aufgeführt.',
+  'empty.filter.pending.title': 'Alles Gefangene ist in HOME',
+  'empty.filter.pending.description': 'Es gibt nichts mehr zu senden.',
+  'empty.filter.missing.title': 'Es fehlt nichts',
+  'empty.filter.missing.description': 'Jeder Platz ist gefüllt.',
+  'empty.filter.action': 'Alle Plätze zeigen'
+}
+
+export default messages

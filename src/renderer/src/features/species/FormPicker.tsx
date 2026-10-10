@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import type { FormCategory, FormSummary, RegionalVariant, SpeciesSummary } from '@shared/dex-types'
 import { FormCategoryTag, Sprite } from '@renderer/components/pokemon'
 import { cx, Icon, Panel } from '@renderer/components/ui'
-import { plural } from '@renderer/lib/format'
+import { useT } from '@renderer/i18n'
+import { formFullName, formLabel, speciesName } from '@renderer/i18n/terms'
 import { rovingRadioKeyDown } from './hooks'
 
 const CATEGORY_ORDER: readonly FormCategory[] = ['base', 'regional', 'gender', 'cosmetic', 'changeable', 'fusion', 'event', 'partner', 'mega', 'battle', 'hidden']
@@ -38,6 +39,7 @@ export interface FormPickerProps {
 
 /** Every form of the species as a tile, grouped by what kind of form it is. */
 export function FormPicker({ species, forms, selected, counts, shiny, onSelect }: FormPickerProps) {
+  const t = useT()
   const groups = useMemo(() => groupForms(forms), [forms])
   const dense = forms.length > 6
   const caught = forms.filter((f) => (counts.get(f.f) ?? 0) > 0).length
@@ -47,14 +49,11 @@ export function FormPicker({ species, forms, selected, counts, shiny, onSelect }
     <Panel as="section" className="sp-forms" aria-labelledby="sp-forms-title">
       <header className="sp-forms__head">
         <h2 id="sp-forms-title" className="section-title">
-          Forms
+          {t('species.forms.title')}
         </h2>
-        <span className="sp-forms__summary">
-          {plural(forms.length, 'form')}
-          {caught > 0 ? ` · ${caught} logged` : ''}
-        </span>
+        <span className="sp-forms__summary">{caught > 0 ? t('species.forms.summaryLogged', { count: forms.length, logged: caught }) : t('species.forms.summary', { count: forms.length })}</span>
       </header>
-      <div className={cx('sp-forms__groups', dense && 'sp-forms__groups--dense')} role="radiogroup" aria-label={`Forms of ${species.name}`} onKeyDown={rovingRadioKeyDown}>
+      <div className={cx('sp-forms__groups', dense && 'sp-forms__groups--dense')} role="radiogroup" aria-label={t('species.forms.label', { name: speciesName(species) })} onKeyDown={rovingRadioKeyDown}>
         {groups.map((group) => (
           <div key={group.key} className="sp-forms__group" role="presentation">
             <div className="sp-forms__label">
@@ -65,15 +64,16 @@ export function FormPicker({ species, forms, selected, counts, shiny, onSelect }
               {group.forms.map((form) => {
                 const isSelected = form.f === selected.f
                 const count = counts.get(form.f) ?? 0
-                const label = form.name !== '' ? form.name : species.name
+                const label = form.name !== '' ? formLabel(species, form) : speciesName(species)
+                const fullName = formFullName(species, form)
                 return (
                   <button
                     key={form.f}
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
-                    aria-label={`${form.full}${count > 0 ? `, ${plural(count, 'entry', 'entries')} logged` : ''}`}
-                    title={form.full}
+                    aria-label={count > 0 ? t('species.forms.optionLogged', { name: fullName, count }) : fullName}
+                    title={fullName}
                     tabIndex={isSelected ? 0 : -1}
                     className={cx('sp-form', isSelected && 'is-selected', count > 0 && 'is-caught')}
                     onClick={() => !isSelected && onSelect(form)}

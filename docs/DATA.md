@@ -20,8 +20,9 @@ what is in them, how they are built and where they fall short.
 | `src/renderer/public/data/dex.json` | Once, at startup | Every species and form: names, types, category, tags, gender ratio, render keys, and for each form the games it exists in, can be obtained in, or is event-only in. Also the ball list of each game. About 0.5 MB. |
 | `src/renderer/public/data/species/<id>.json` | When a Pokémon is opened | One file per National Pokédex number: Pokédex text, height and weight, regional numbers, the evolution family, and every source of every form. 1,025 files, about 4.1 MB together. |
 | `src/renderer/public/data/pokedexes.json` | When a game is chosen in "Obtainable in" | The 32 regional Pokédexes, each as its species in regional order. Built by `tools/build-data/pokedexes.ts` from the pinned PokeAPI tables. Which Pokédexes belong to which game is a hand-kept table in `src/shared/pokedexes.ts`. |
+| `src/renderer/public/data/terms/<language>.json` | When that language is chosen | The games' own wording for one language (nine files, every language but English): names of species and forms, categories, Pokédex entries, types, abilities, Poké Balls, games, places, and the items, moves and species that evolution methods mention. A name that reads the same as in English is left out. 0.2 to 0.3 MB each, 2.2 MB together. Built by `tools/build-data/terms.ts`. |
 
-The shapes are defined in [`src/shared/dex-types.ts`](../src/shared/dex-types.ts).
+The shapes are defined in [`src/shared/dex-types.ts`](../src/shared/dex-types.ts); the shape of a terms file is `TermData` in [`src/renderer/src/i18n/terms.ts`](../src/renderer/src/i18n/terms.ts).
 
 Current figures (`dex.json` → `meta`, also shown in Settings → About):
 
@@ -212,7 +213,7 @@ npm run data
 | Step | Script | What it does |
 | --- | --- | --- |
 | 1 | `npm run data:extract` | Builds the extractor into `tools/extractor/.artifacts` and writes `data/pkhex/*.json` (git-ignored). It stops if it finds build output inside `PKHeX/`, so that tree stays untouched. |
-| 2 | `npm run data:build` | Reads the extract, the PokeAPI tables and the render list, and writes `src/renderer/public/data/`. |
+| 2 | `npm run data:build` | Reads the extract, the PokeAPI tables and the render list, and writes `src/renderer/public/data/`. Its last step, `tools/build-data/terms.ts`, writes the terms file of each language from `data/pkhex/localized.json` (PKHeX's text in all ten languages) and PokeAPI's names and Pokédex entries. |
 | 3 | `npm run data:validate` | Checks the result. A failure exits with code 1 and lists what is wrong. |
 
 Notes:

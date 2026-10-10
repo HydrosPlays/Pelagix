@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'wouter'
-import { GAME_BY_ID } from '@shared/games'
 import { Sprite } from '@renderer/components/pokemon'
 import { Button, EmptyState, Icon, IconButton, useScrollParent, type SelectOption } from '@renderer/components/ui'
 import { sectionsOf, useGameView } from '@renderer/domain/gamedex'
 import { slotTarget, type LivingSlot } from '@renderer/domain/slots'
 import { GameDexBar } from '@renderer/features/pokedex/GamePicker'
+import { rich, t, useT } from '@renderer/i18n'
+import { gameShortName, speciesName } from '@renderer/i18n/terms'
 import { burst, flipIn, pulse } from '@renderer/lib/anim'
 import { useDex } from '@renderer/lib/data'
-import { dexNo, formatCount, plural } from '@renderer/lib/format'
+import { dexNo } from '@renderer/lib/format'
 import { navigate, paths } from '@renderer/shell/router'
 import { useEntries } from '@renderer/store/save'
 import { toast, useUiStore } from '@renderer/store/ui'
@@ -41,11 +42,13 @@ interface SizeNotice {
  * regular and a shiny edition. Slots open a drawer to log a catch into exactly that slot.
  */
 export default function LivingDexPage() {
+  useT()
   const dex = useDex()
   // With a game chosen the page shows that game's collection: its slots, in its order, filled by what was obtained there.
   const gameView = useGameView(dex)
   const { collection, game } = gameView
-  const gameName = game === null ? undefined : (GAME_BY_ID.get(game)?.short ?? game)
+  const gameName = game === null ? undefined : gameShortName(game)
+  const bold = { b: (text: ReactNode) => <b>{text}</b> }
   const entryCount = useEntries().length
   const scroller = useScrollParent()
   const shinyView = useUiStore((s) => s.dexView.shinyView)
@@ -164,7 +167,7 @@ export default function LivingDexPage() {
 
       if ((now.layout.rowOf[plan.target] ?? -1) < 0) {
         // Filtered out by "Missing only": the slot just leaves the list. A finished box still deserves a word.
-        for (const b of doneBoxes) toast({ kind: 'success', icon: 'star', title: `${now.boxes[b] ? boxName(now.boxes[b]) : 'Box'} complete`, body: `All ${now.boxes[b]?.slots.length ?? BOX_SIZE} slots are filled.` })
+        for (const b of doneBoxes) toast({ kind: 'success', icon: 'star', title: now.boxes[b] ? t('living.box.complete', { box: boxName(now.boxes[b]) }) : t('living.box.completeUnnamed'), body: t('living.box.complete.body', { count: now.boxes[b]?.slots.length ?? BOX_SIZE }) })
         return
       }
 
@@ -313,7 +316,7 @@ export default function LivingDexPage() {
     reveal.current = index
     if (missingOnly) {
       setPrefs({ missingOnly: false })
-      toast({ kind: 'info', icon: 'eye', title: 'Showing every slot', body: `${slots[index]?.label ?? 'That Pokémon'} is already caught, so “Missing only” was switched off.` })
+      toast({ kind: 'info', icon: 'eye', title: t('living.find.title'), body: slots[index] ? t('living.find.body', { name: slots[index].label }) : t('living.find.bodyUnnamed') })
     }
   }
 
@@ -382,7 +385,8 @@ export default function LivingDexPage() {
         value: slot.key,
         label: slot.label,
         description: dexNo(slot.species),
-        keywords: `${slot.species} ${dex.species(slot.species)?.name ?? ''}`,
+        // Found by the species' name in the active language and by its English one.
+        keywords: [...new Set([String(slot.species), speciesName(slot.species), dex.species(slot.species)?.name ?? ''])].join(' '),
         icon: <Sprite path={slot.spritePath(mode === 'shiny')} size={24} />
       })),
     [slots, dex, mode]
@@ -401,7 +405,7 @@ export default function LivingDexPage() {
   if (!hasSlots) {
     return (
       <div className="page">
-        <EmptyState size="lg" icon="grid" tone="neutral" title="No Pokémon to show" description="The Pokédex data holds no Pokémon, so there are no slots to fill yet." />
+        <EmptyState size="lg" icon="grid" tone="neutral" title={t('living.empty.noSlots.title')} description={t('living.empty.noSlots.description')} />
       </div>
     )
   }
@@ -415,13 +419,11 @@ export default function LivingDexPage() {
       {notice && (
         <div className="living-banner living-banner--info" role="status">
           <Icon name="info" size={18} />
-          <p>
-            <b>{notice.rulesChanged ? 'Your Living Dex rules changed.' : 'The Pokédex data was updated.'}</b> There are now {formatCount(notice.now)} slots to fill ({formatCount(notice.was)} before). Nothing you logged was lost.
-          </p>
+          <p>{rich(notice.rulesChanged ? 'living.notice.rules' : 'living.notice.data', bold, { count: notice.now, before: notice.was })}</p>
           <Link href={paths.settings()} className="living-banner__link">
-            Review rules
+            {t('living.notice.review')}
           </Link>
-          <IconButton icon="close" size="sm" label="Dismiss" onClick={() => setNotice(null)} />
+          <IconButton icon="close" size="sm" label={t('living.notice.dismiss')} onClick={() => setNotice(null)} />
         </div>
       )}
 
@@ -429,39 +431,34 @@ export default function LivingDexPage() {
         <div className="living-banner living-banner--gold" role="status">
           <Icon name="trophy" size={20} />
           <p>
-            <b>{mode === 'shiny' ? 'Shiny Living Dex complete!' : 'Living Dex complete!'}</b> Every one of the {formatCount(stats.slots)} slots is filled{mode === 'shiny' ? ' with a shiny' : ''}.{' '}
-            {gameName === undefined ? 'That is the whole collection.' : `That is everything obtainable in ${gameName}.`}
+            {gameName === undefined
+              ? rich(mode === 'shiny' ? 'living.complete.shinyAll' : 'living.complete.all', bold, { count: stats.slots })
+              : rich(mode === 'shiny' ? 'living.complete.shinyGame' : 'living.complete.game', bold, { count: stats.slots, game: gameName })}
           </p>
         </div>
       ) : entryCount === 0 ? (
         <div className="living-banner living-banner--accent">
           <Icon name="pokeball" size={20} />
-          <p>
-            <b>Your Living Dex is waiting.</b> Find a Pokémon in the Pokédex, pick the game and the place you caught it, and it lands in its slot here.
-          </p>
+          <p>{rich('living.waiting', bold)}</p>
           <Button variant="primary" icon="dex" onClick={() => navigate(paths.dex())}>
-            Open the Pokédex
+            {t('living.openPokedex')}
           </Button>
         </div>
       ) : gameName !== undefined && stats.slots > 0 && stats.filled === 0 ? (
         <div className={`living-banner ${mode === 'shiny' ? 'living-banner--gold' : 'living-banner--accent'}`}>
           <Icon name={mode === 'shiny' ? 'sparkle' : 'pokeball'} size={20} />
-          <p>
-            <b>{mode === 'shiny' ? `No shiny Pokémon from ${gameName} yet.` : `Nothing caught in ${gameName} yet.`}</b> Only Pokémon obtained in {gameName} fill a slot here; what you caught in other games stays in the full Living Dex.
-          </p>
+          <p>{rich(mode === 'shiny' ? 'living.gameEmptyShiny' : 'living.gameEmpty', bold, { game: gameName })}</p>
           <Button variant="subtle" icon="close" onClick={() => gameView.setGame(null)}>
-            Show every game
+            {t('pokedex.game.showAll')}
           </Button>
         </div>
       ) : mode === 'shiny' && stats.filled === 0 ? (
         <div className="living-banner living-banner--gold">
           <Icon name="sparkle" size={20} />
-          <p>
-            <b>No shiny Pokémon yet.</b> Log a catch as shiny and its slot lights up here. Your {plural(collection.totals.caught, 'caught slot', 'caught slots')} stay in the regular Living Dex.
-          </p>
+          <p>{rich('living.noShiny', bold, { count: collection.totals.caught })}</p>
           {firstMissing >= 0 && (
             <Button variant="subtle" icon="plus" onClick={() => openSlot(firstMissing)}>
-              Log a shiny
+              {t('living.logShiny')}
             </Button>
           )}
         </div>
@@ -470,10 +467,7 @@ export default function LivingDexPage() {
       {collection.unplaced.length > 0 && (
         <p className="living-aside">
           <Icon name="help" size={15} />
-          <span>
-            {plural(collection.unplaced.length, 'entry is', 'entries are')} for Pokémon this version does not know yet. {collection.unplaced.length === 1 ? 'It stays' : 'They stay'} safe in your{' '}
-            <Link href={paths.journal()}>Journal</Link>.
-          </span>
+          <span>{rich('living.unplaced', { link: (text) => <Link href={paths.journal()}>{text}</Link> }, { count: collection.unplaced.length })}</span>
         </p>
       )}
 
@@ -502,11 +496,11 @@ export default function LivingDexPage() {
           <EmptyState
             icon="gamepad"
             tone="neutral"
-            title={`Nothing to collect in ${gameName ?? 'this game'}`}
-            description="No Pokémon in your Living Dex can be obtained in this game without an event."
+            title={gameName === undefined ? t('living.empty.game.titleUnknown') : t('living.empty.game.title', { game: gameName })}
+            description={t('living.empty.game.description')}
             action={
               <Button variant="subtle" icon="close" onClick={() => gameView.setGame(null)}>
-                Show every game
+                {t('pokedex.game.showAll')}
               </Button>
             }
           />
@@ -514,11 +508,11 @@ export default function LivingDexPage() {
           <EmptyState
             tone="gold"
             icon="trophy"
-            title="Nothing is missing"
-            description={mode === 'shiny' ? 'Every slot holds a shiny. There is nothing left to hunt.' : 'Every slot is filled. There is nothing left to catch.'}
+            title={t('living.empty.nothingMissing.title')}
+            description={mode === 'shiny' ? t('living.empty.nothingMissing.descriptionShiny') : t('living.empty.nothingMissing.description')}
             action={
               <Button variant="subtle" icon="eye" onClick={() => setPrefs({ missingOnly: false })}>
-                Show every slot
+                {t('living.empty.showEverySlot')}
               </Button>
             }
           />

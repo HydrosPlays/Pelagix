@@ -1,0 +1,58 @@
+.lang-prompt__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lang-prompt__option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--ctl-lg);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  color: var(--text-1);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition:
+    background var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.lang-prompt__option:hover {
+  background: var(--surface-hover);
+}
+
+.lang-prompt__option:has(input:checked) {
+  border-color: var(--line-accent);
+  background: var(--accent-soft);
+}
+
+.lang-prompt__option:has(input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The radio itself is the mark on the left; it keeps its native keyboard behaviour (arrow keys). */
+.lang-prompt__option input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+  outline: none;
+  cursor: pointer;
+}
+
+@media (max-width: 520px) {
+  .lang-prompt__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

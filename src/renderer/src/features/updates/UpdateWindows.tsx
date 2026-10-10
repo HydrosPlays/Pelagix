@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { ErrorBoundary } from '@renderer/components/ui'
+import { t } from '@renderer/i18n'
 import { toast } from '@renderer/store/ui'
 import { openWebPage } from './links'
 import { releaseUrl } from './model'
@@ -15,7 +16,7 @@ function WindowFailed() {
     const store = useUpdateStore.getState()
     const url = releaseUrl(store.state?.offer?.url ?? store.state?.whatsNew?.url ?? '')
     store.closeWindow()
-    toast({ kind: 'error', title: 'The release notes could not be shown', body: 'They are on the release page.', action: { label: 'Open it', onSelect: () => openWebPage(url) } })
+    toast({ kind: 'error', title: t('updates.window.failed.title'), body: t('updates.window.failed.body'), action: { label: t('updates.toast.open'), onSelect: () => openWebPage(url) } })
   }, [])
   return null
 }

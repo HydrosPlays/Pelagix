@@ -9,6 +9,7 @@
 
 import type { GameSaveResult } from './game-save-types'
 import type { ShinyDexResult } from './shinydex-types'
+import type { LanguageId } from './languages'
 import type { SaveFile, ThemeId } from './save-types'
 
 export interface ExportResult {
@@ -188,6 +189,8 @@ export interface PelagixApi {
   openExternal(url: string): Promise<void>
   /** Recolours the native title-bar overlay and window background to match the theme. */
   setTheme(theme: ThemeId): Promise<void>
+  /** Tells the main process the language, for the text it shows by itself (the native file dialogs). */
+  setLanguage(language: LanguageId): Promise<void>
 
   /** The current update snapshot. */
   updateState(): Promise<UpdateState>
@@ -235,6 +238,7 @@ export interface PelagixIpc {
   'pelagix:app-info': { args: []; result: AppInfo }
   'pelagix:open-external': { args: [url: string]; result: void }
   'pelagix:set-theme': { args: [theme: ThemeId]; result: void }
+  'pelagix:set-language': { args: [language: LanguageId]; result: void }
   'pelagix:update-state': { args: []; result: UpdateState }
   'pelagix:update-check': { args: []; result: UpdateState }
   'pelagix:update-download': { args: []; result: UpdateState }

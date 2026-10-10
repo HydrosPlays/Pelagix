@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import type { UpdateState, WhatsNew } from '@shared/api'
 import { Button, Dialog, Icon, ProgressBar, Spinner, cx } from '@renderer/components/ui'
+import { rich, t as translate, useT } from '@renderer/i18n'
 import { openWebPage, WebLink } from './links'
 import {
-  INSTALL_OVERDUE_NOTE,
+  installOverdueNote,
   NOTHING_PENDING,
   offerDescription,
   offerFooter,
@@ -64,6 +65,7 @@ function OfferFoot({ footer, state, url, pending, overdue, spoken, footRef, onCl
   const { view, primary, alert } = footer
   const version = state.offer?.version ?? ''
   const openRelease = (): void => openWebPage(url)
+  const t = useT()
 
   let row
   if (view === 'downloading') {
@@ -72,17 +74,15 @@ function OfferFoot({ footer, state, url, pending, overdue, spoken, footRef, onCl
       <div className="upd-foot__row">
         <div className="upd-progress">
           <div className="upd-progress__head">
-            <span className="upd-progress__label">
-              Downloading <b>{percentText(state.progress)}</b>
-            </span>
+            <span className="upd-progress__label">{rich('updates.progress.label', { b: (c) => <b>{c}</b> }, { percent: percentText(state.progress) })}</span>
             {detail !== '' && <span className="upd-progress__detail">{detail}</span>}
           </div>
-          <ProgressBar value={progressFraction(state.progress)} label={`Downloading version ${version}`} valueText={[percentText(state.progress), detail].filter((part) => part !== '').join(', ')} />
+          <ProgressBar value={progressFraction(state.progress)} label={t('updates.progress.bar', { version })} valueText={[percentText(state.progress), detail].filter((part) => part !== '').join(', ')} />
           <p className="upd-foot__note">{footer.note}</p>
         </div>
         <div className="upd-foot__actions">
           <Button variant="ghost" loading={pending.cancel} onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
         </div>
       </div>
@@ -92,13 +92,13 @@ function OfferFoot({ footer, state, url, pending, overdue, spoken, footRef, onCl
       <div className="upd-foot__row upd-restarting" role="status">
         <Spinner size={20} />
         <div className="upd-restarting__text">
-          <span className="upd-restarting__title">Restarting Pelagix…</span>
-          <span className="upd-foot__note">{overdue ? INSTALL_OVERDUE_NOTE : footer.note}</span>
+          <span className="upd-restarting__title">{t('updates.offer.restarting')}</span>
+          <span className="upd-foot__note">{overdue ? installOverdueNote() : footer.note}</span>
         </div>
         {overdue && (
           <div className="upd-foot__actions">
             <Button variant="ghost" onClick={onClose}>
-              Close
+              {t('common.close')}
             </Button>
           </div>
         )}
@@ -111,11 +111,11 @@ function OfferFoot({ footer, state, url, pending, overdue, spoken, footRef, onCl
         {footer.note !== '' && <p className="upd-foot__note">{footer.note}</p>}
         <div className="upd-foot__actions">
           <Button variant="ghost" onClick={onClose}>
-            Later
+            {t('updates.offer.later')}
           </Button>
           {alert?.releaseLink && (
             <Button iconEnd="external" onClick={openRelease}>
-              Open the release page
+              {t('updates.action.release')}
             </Button>
           )}
           {primary && (
@@ -183,6 +183,7 @@ export function OfferDialog({ open, state, pending = NOTHING_PENDING, problem = 
   const viewBefore = useRef<OfferView | null>(null)
   const [spoken, setSpoken] = useState('')
   const version = offer?.version ?? ''
+  useT()
 
   // The buttons change with every step, and the one that had the keyboard focus goes away with
   // its step. The focus is then on the window itself (or on the page behind it): it is moved to
@@ -197,7 +198,7 @@ export function OfferDialog({ open, state, pending = NOTHING_PENDING, problem = 
     }
     if (before === null || before === view) return
     // Nothing on screen says "finished" except the heading, which a screen reader does not read again.
-    setSpoken(before === 'downloading' && view === 'ready' ? `${offerTitle(version, 'ready')}.` : '')
+    setSpoken(before === 'downloading' && view === 'ready' ? translate('updates.offer.readySpoken', { version }) : '')
     const panel = footRef.current?.closest<HTMLElement>('[role="dialog"]')
     if (!panel) return
     const focused = document.activeElement
@@ -248,6 +249,7 @@ export function WhatsNewDialog({ open, whatsNew, onClose, unasked = false }: Wha
   const last = useRef<WhatsNew | null>(null)
   if (whatsNew) last.current = whatsNew
   const shown = last.current
+  const t = useT()
   if (!shown) return null
   const url = releaseUrl(shown.url)
   return (
@@ -268,11 +270,11 @@ export function WhatsNewDialog({ open, whatsNew, onClose, unasked = false }: Wha
         <div className="upd-foot">
           <div className="upd-foot__row">
             <p className="upd-foot__note">
-              <WebLink href={url}>This release on GitHub</WebLink>
+              <WebLink href={url}>{t('updates.whatsNew.release')}</WebLink>
             </p>
             <div className="upd-foot__actions">
               <Button variant="primary" onClick={onClose} data-autofocus>
-                Close
+                {t('common.close')}
               </Button>
             </div>
           </div>
