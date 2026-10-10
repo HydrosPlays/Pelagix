@@ -7,6 +7,7 @@
 import type { CatchEntry, DexRules } from '@shared/save-types'
 import type { Dex } from '@renderer/lib/data'
 import { dexNo, formatCount, plural } from '@renderer/lib/format'
+import { sectionsOf } from '@renderer/domain/gamedex'
 import { matchRulePreset, RULE_KEYS, RULE_PRESETS, type Collection, type LivingSlot } from '@renderer/domain/slots'
 import { offsetsOf } from './rows'
 
@@ -37,22 +38,68 @@ export interface BoxModel {
   /** National dex numbers of its first and last slot. */
   firstDex: number
   lastDex: number
+  /** The number on its label: boxes count from 1 in every section of a game view (`index + 1` otherwise). */
+  no: number
+  /** Index of its section in `sectionsOf(slots)`; -1 when the slots have no sections. */
+  section: number
+  /** Heading of that section. */
+  sectionTitle?: string
+  /** In a section: places of its first and last slot there, from 1 (the section runs in the game's Pokédex order, not National order). */
+  positions?: readonly [number, number]
 }
 
 const boxCache = new WeakMap<readonly LivingSlot[], BoxModel[]>()
 
-/** The slots cut into boxes of thirty, in order. Cached per slot list. */
+/**
+ * The slots cut into boxes of thirty, in order. In a game view with sections every section starts
+ * a new box and numbers its boxes from 1. Cached per slot list.
+ */
 export function buildBoxes(slots: readonly LivingSlot[]): BoxModel[] {
   let boxes = boxCache.get(slots)
   if (!boxes) {
     boxes = []
-    for (let start = 0; start < slots.length; start += BOX_SIZE) {
-      const own = slots.slice(start, start + BOX_SIZE)
-      boxes.push({ index: boxes.length, start, slots: own, firstDex: own[0]?.species ?? 0, lastDex: own[own.length - 1]?.species ?? 0 })
+    const sections = sectionsOf(slots)
+    const spans: ReadonlyArray<{ title?: string; start: number; count: number }> = sections.length > 0 ? sections : [{ start: 0, count: slots.length }]
+    for (const [s, span] of spans.entries()) {
+      for (let start = span.start; start < span.start + span.count; start += BOX_SIZE) {
+        const own = slots.slice(start, Math.min(start + BOX_SIZE, span.start + span.count))
+        const from = start - span.start
+        boxes.push({
+          index: boxes.length,
+          start,
+          slots: own,
+          firstDex: own[0]?.species ?? 0,
+          lastDex: own[own.length - 1]?.species ?? 0,
+          no: from / BOX_SIZE + 1,
+          section: sections.length > 0 ? s : -1,
+          ...(span.title !== undefined && { sectionTitle: span.title, positions: [from + 1, from + own.length] as const })
+        })
+      }
     }
     boxCache.set(slots, boxes)
   }
   return boxes
+}
+
+/** Index of the box holding slot `index`; -1 when there is none. */
+export function boxIndexAt(boxes: readonly Pick<BoxModel, 'start' | 'slots'>[], index: number): number {
+  let lo = 0
+  let hi = boxes.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    const box = boxes[mid]
+    if (!box) return -1
+    if (index < box.start) hi = mid - 1
+    else if (index >= box.start + box.slots.length) lo = mid + 1
+    else return mid
+  }
+  return -1
+}
+
+/** "Box 3", or "Box 3 of the Isle of Armor Pokédex" where the boxes are numbered per section. */
+export function boxName(box: Pick<BoxModel, 'no' | 'sectionTitle'>): string {
+  if (box.sectionTitle === undefined) return `Box ${box.no}`
+  return `Box ${box.no} of ${box.sectionTitle.startsWith('Other ') ? box.sectionTitle.replace('Other ', 'the other ') : `the ${box.sectionTitle}`}`
 }
 
 const indexCache = new WeakMap<readonly LivingSlot[], Map<string, number>>()
@@ -67,8 +114,9 @@ export function slotIndexByKey(slots: readonly LivingSlot[]): ReadonlyMap<string
   return index
 }
 
-/** "#0001 – #0030", or one number when the whole box is one species. */
-export function boxRange(box: Pick<BoxModel, 'firstDex' | 'lastDex'>): string {
+/** "#0001 – #0030", or one number when the whole box is one species. In a section: the places it holds there, "31 – 60". */
+export function boxRange(box: Pick<BoxModel, 'firstDex' | 'lastDex' | 'positions'>): string {
+  if (box.positions) return box.positions[0] === box.positions[1] ? String(box.positions[0]) : `${box.positions[0]} – ${box.positions[1]}`
   return box.firstDex === box.lastDex ? dexNo(box.firstDex) : `${dexNo(box.firstDex)} – ${dexNo(box.lastDex)}`
 }
 
@@ -135,13 +183,20 @@ export interface LivingStats {
   boxesComplete: number
   /** One entry per generation, ascending. */
   gens: GenStat[]
+  /** One entry per section of a game view (see `sectionsOf`), in order; empty without sections. */
+  sections: { slots: number; filled: number }[]
 }
 
 /** Completion per box and per generation for a set of filled slot keys. */
 export function computeStats(dex: Dex, slots: readonly LivingSlot[], filled: ReadonlySet<string>): LivingStats {
   const boxes = buildBoxes(slots)
   const gens = slotGenerations(dex, slots)
-  const boxFilled = new Array<number>(boxes.length).fill(0)
+  const boxFilled = boxes.map((box) => box.slots.reduce((n, slot) => n + (filled.has(slot.key) ? 1 : 0), 0))
+  const sections = sectionsOf(slots).map((span) => {
+    let n = 0
+    for (let i = span.start; i < span.start + span.count; i++) if (filled.has(slots[i]?.key ?? '')) n++
+    return { slots: span.count, filled: n }
+  })
   const byGen = new Map<number, GenStat>()
   let total = 0
   slots.forEach((slot, i) => {
@@ -152,15 +207,14 @@ export function computeStats(dex: Dex, slots: readonly LivingSlot[], filled: Rea
     if (!filled.has(slot.key)) return
     total++
     stat.filled++
-    const box = Math.floor(i / BOX_SIZE)
-    boxFilled[box] = (boxFilled[box] ?? 0) + 1
   })
   return {
     slots: slots.length,
     filled: total,
     boxFilled,
     boxesComplete: boxes.reduce((n, box) => n + (boxFilled[box.index] === box.slots.length ? 1 : 0), 0),
-    gens: [...byGen.values()].sort((a, b) => a.gen - b.gen)
+    gens: [...byGen.values()].sort((a, b) => a.gen - b.gen),
+    sections
   }
 }
 
@@ -292,6 +346,8 @@ export function listMetrics(width: number): ListMetrics {
 export type LivingRow =
   | { kind: 'boxes'; key: string; height: number; boxes: readonly BoxModel[] }
   | { kind: 'divider'; key: string; height: number; gen: number }
+  /** Heading of one section of a game view; `section` indexes `sectionsOf(slots)`. */
+  | { kind: 'section'; key: string; height: number; section: number }
   | { kind: 'slots'; key: string; height: number; indices: readonly number[] }
 
 export interface LivingLayout {
@@ -329,31 +385,38 @@ export function layoutBoxes(slots: readonly LivingSlot[], metrics: BoxMetrics, s
   const rowOf = emptyIndex(slots.length)
   const order: number[] = []
 
-  for (let i = 0; i < shown.length; i += metrics.perRow) {
-    const group = shown.slice(i, i + metrics.perRow)
-    const row = rows.length
-    rows.push({ kind: 'boxes', key: `boxes-${group[0]?.index ?? i}`, height: metrics.boxHeight, boxes: group })
-    for (let r = 0; r < BOX_ROWS; r++) {
-      const line: number[] = []
-      for (const box of group) {
-        for (let c = 0; c < BOX_COLS; c++) {
-          const local = r * BOX_COLS + c
-          if (local >= box.slots.length) break
-          const index = box.start + local
-          lineOf[index] = lines.length
-          colOf[index] = line.length
-          rowOf[index] = row
-          line.push(index)
+  // In a game view with sections each section has its heading and its own rows of boxes.
+  const sections = sectionsOf(slots)
+  const runs = sections.length > 0 ? sections.map((_, s) => shown.filter((box) => box.section === s)) : [shown]
+  for (const [s, run] of runs.entries()) {
+    if (run.length === 0) continue
+    if (sections.length > 0) rows.push({ kind: 'section', key: `section-${sections[s]?.id ?? s}`, height: DIVIDER_HEIGHT, section: s })
+    for (let i = 0; i < run.length; i += metrics.perRow) {
+      const group = run.slice(i, i + metrics.perRow)
+      const row = rows.length
+      rows.push({ kind: 'boxes', key: `boxes-${group[0]?.index ?? i}`, height: metrics.boxHeight, boxes: group })
+      for (let r = 0; r < BOX_ROWS; r++) {
+        const line: number[] = []
+        for (const box of group) {
+          for (let c = 0; c < BOX_COLS; c++) {
+            const local = r * BOX_COLS + c
+            if (local >= box.slots.length) break
+            const index = box.start + local
+            lineOf[index] = lines.length
+            colOf[index] = line.length
+            rowOf[index] = row
+            line.push(index)
+          }
         }
+        if (line.length > 0) lines.push(line)
       }
-      if (line.length > 0) lines.push(line)
+      for (const box of group) for (let k = 0; k < box.slots.length; k++) order.push(box.start + k)
     }
-    for (const box of group) for (let k = 0; k < box.slots.length; k++) order.push(box.start + k)
   }
   return { view: 'boxes', rows, offsets: offsetsOf(rows.map((r) => r.height), BOX_GAP), lines, lineOf, colOf, rowOf, order }
 }
 
-/** List view: every shown slot in one grid, with a divider row ahead of each generation that has any. */
+/** List view: every shown slot in one grid, with a divider row ahead of each generation that has any (ahead of each section, in a game view that has them). */
 export function layoutList(slots: readonly LivingSlot[], spans: readonly GenSpan[], metrics: ListMetrics, showSlot: (index: number) => boolean = () => true): LivingLayout {
   const rows: LivingRow[] = []
   const lines: number[][] = []
@@ -361,12 +424,14 @@ export function layoutList(slots: readonly LivingSlot[], spans: readonly GenSpan
   const colOf = emptyIndex(slots.length)
   const rowOf = emptyIndex(slots.length)
   const order: number[] = []
+  const sections = sectionsOf(slots)
 
-  for (const span of spans) {
+  for (const [s, span] of (sections.length > 0 ? sections : spans).entries()) {
     const indices: number[] = []
     for (let i = span.start; i < span.start + span.count; i++) if (showSlot(i)) indices.push(i)
     if (indices.length === 0) continue
-    rows.push({ kind: 'divider', key: `gen-${span.gen}-${span.start}`, height: DIVIDER_HEIGHT, gen: span.gen })
+    if ('gen' in span) rows.push({ kind: 'divider', key: `gen-${span.gen}-${span.start}`, height: DIVIDER_HEIGHT, gen: span.gen })
+    else rows.push({ kind: 'section', key: `section-${span.id}`, height: DIVIDER_HEIGHT, section: s })
     for (let i = 0; i < indices.length; i += metrics.cols) {
       const line = indices.slice(i, i + metrics.cols)
       line.forEach((index, col) => {

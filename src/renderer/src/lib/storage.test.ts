@@ -316,6 +316,21 @@ describe('parseSave: entries', () => {
     }
   })
 
+  it('keeps the Pokémon HOME flag only when it is true, after the fingerprint', () => {
+    const kept = parseEntries([{ ...minimalEntry, fingerprint: '44:1:2', inHome: true }])
+    expect(kept.save.entries[0]?.inHome).toBe(true)
+    expect(Object.keys(kept.save.entries[0]!).slice(-4)).toEqual(['fingerprint', 'inHome', 'createdAt', 'updatedAt'])
+    expect(kept.repaired).toBe(0)
+    const off = parseEntries([{ ...minimalEntry, inHome: false }])
+    expect(off.save.entries[0]).toEqual(minimalEntry)
+    expect(off.repaired).toBe(0)
+    for (const bad of ['yes', 1, {}]) {
+      const report = parseEntries([{ ...minimalEntry, inHome: bad }])
+      expect(report.save.entries[0]).toEqual(minimalEntry)
+      expect(report.repaired).toBe(1)
+    }
+  })
+
   it('repairs entry timestamps from the save', () => {
     const entry = parseEntries([{ ...minimalEntry, createdAt: 'soon', updatedAt: null }]).save.entries[0]!
     expect(entry.createdAt).toBe(T1) // the save's createdAt

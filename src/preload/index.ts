@@ -23,6 +23,7 @@ const api: PelagixApi = {
   exportSave: (save) => invoke('pelagix:save-export', save),
   importSave: () => invoke('pelagix:save-import'),
   readGameSave: () => invoke('pelagix:game-save-read'),
+  readShinyDex: () => invoke('pelagix:shinydex-read'),
   spriteCacheInfo: () => invoke('pelagix:sprite-cache-info'),
   clearSpriteCache: () => invoke('pelagix:sprite-cache-clear'),
   appInfo: () => invoke('pelagix:app-info'),

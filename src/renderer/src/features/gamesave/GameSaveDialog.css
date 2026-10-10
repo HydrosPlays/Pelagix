@@ -97,6 +97,11 @@
   min-width: 0;
 }
 
+/* A hunt has a date where a caught Pokémon has its met level. */
+.gamesave-row--hunt {
+  grid-template-columns: 20px 40px minmax(0, 1.5fr) 132px minmax(0, 1.2fr) 96px 28px 168px;
+}
+
 .gamesave-row__title {
   display: flex;
   align-items: center;

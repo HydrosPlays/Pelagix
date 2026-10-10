@@ -17,7 +17,7 @@ import { Menu } from '../ui/Menu'
 import { Tooltip } from '../ui/Tooltip'
 import { BallIcon } from './BallIcon'
 import { GameBadge, GameIcon } from './GameIcon'
-import { GenderIcon, ShinyMark } from './Marks'
+import { GenderIcon, HomeMark, ShinyMark } from './Marks'
 import { Sprite } from './Sprite'
 import './EntryCard.css'
 
@@ -171,6 +171,7 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
     <>
       {entry.shiny && <ShinyMark size={variant === 'card' && showSpecies ? 16 : 14} />}
       <GenderIcon gender={gender} size={variant === 'card' && showSpecies ? 15 : 13} />
+      {entry.inHome === true && <HomeMark size={variant === 'card' && showSpecies ? 15 : 13} />}
     </>
   )
 

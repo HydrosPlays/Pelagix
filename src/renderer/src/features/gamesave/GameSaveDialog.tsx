@@ -1,21 +1,20 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
-import type { GameSaveContents } from '@shared/game-save-types'
 import type { SaveFile } from '@shared/save-types'
 import { BallIcon, GameBadge, GameIcon, ShinyMark, Sprite } from '@renderer/components/pokemon'
 import { Button, Chip, Dialog, Icon, Select, VirtualGrid, cx, type SelectOption } from '@renderer/components/ui'
 import { useDex } from '@renderer/lib/data'
-import { errorMessage, formatCount, plural, todayIso } from '@renderer/lib/format'
+import { errorMessage, formatCount, formatDate, plural, todayIso } from '@renderer/lib/format'
 import { newId } from '@renderer/lib/id'
 import { useEntries, useRules, useSaveStore } from '@renderer/store/save'
 import { toast } from '@renderer/store/ui'
-import { buildPreview, countChosen, entriesToComplete, entriesToImport, saveGameName, selectAllNew, selectFilling, STATUS_LABELS, type Preview, type PreviewRow } from './model'
+import { countChosen, entriesToComplete, entriesToImport, selectAllNew, selectFilling, STATUS_LABELS, type ImportSource, type Preview, type PreviewRow } from './model'
 import './GameSaveDialog.css'
 
 const ROW_HEIGHT = 56
 
 export interface GameSaveDialogProps {
-  /** What the reader found in the picked file; null keeps the window closed. */
-  contents: GameSaveContents | null
+  /** What was read from the picked file; null keeps the window closed. */
+  source: ImportSource | null
   onClose: () => void
   /**
    * The chosen Pokémon were added as entries, and `completed` earlier entries got the ability, PID, IVs or
@@ -26,7 +25,7 @@ export interface GameSaveDialogProps {
 
 /** What the user chose in the window, for one picked file. */
 interface Choice {
-  contents: GameSaveContents
+  contents: ImportSource
   /** Null until a checkbox or a quick choice was used: every new Pokémon. */
   selected: ReadonlySet<number> | null
   /** Answer to "which game is this save from?". */
@@ -66,7 +65,7 @@ function StatusChip({ row }: { row: PreviewRow }) {
   )
 }
 
-function Row({ row, checked }: { row: PreviewRow; checked: boolean }) {
+function Row({ row, checked, columns }: { row: PreviewRow; checked: boolean; columns: ImportSource['columns'] }) {
   const { pokemon, entry } = row
   const pickable = row.status === 'new'
   const detail = entry?.nickname !== undefined ? `“${entry.nickname}”` : undefined
@@ -76,7 +75,7 @@ function Row({ row, checked }: { row: PreviewRow; checked: boolean }) {
     </span>
   )
   return (
-    <div className={cx('gamesave-row', !pickable && 'gamesave-row--off', pickable && checked && 'is-checked')}>
+    <div className={cx('gamesave-row', columns === 'hunt' && 'gamesave-row--hunt', !pickable && 'gamesave-row--off', pickable && checked && 'is-checked')}>
       <span className="ui-checkbox gamesave-row__check">
         {pickable && (
           <>
@@ -104,9 +103,9 @@ function Row({ row, checked }: { row: PreviewRow; checked: boolean }) {
         <>
           <span className="gamesave-row__game">{row.game ? <GameBadge game={row.game} size="sm" system={false} /> : blank}</span>
           <span className="gamesave-row__where">
-            <span className="u-truncate">{entry?.location ?? blank}</span>
+            <span className="u-truncate">{(columns === 'hunt' ? entry?.method : entry?.location) ?? blank}</span>
           </span>
-          <span className="gamesave-row__level">{entry?.level !== undefined ? `Lv. ${entry.level}` : blank}</span>
+          <span className="gamesave-row__level">{columns === 'hunt' ? (entry?.date !== undefined ? formatDate(entry.date) : blank) : entry?.level !== undefined ? `Lv. ${entry.level}` : blank}</span>
           <span className="gamesave-row__ball">{entry?.ball !== undefined ? <BallIcon ball={entry.ball} size={22} /> : blank}</span>
         </>
       )}
@@ -118,24 +117,24 @@ function Row({ row, checked }: { row: PreviewRow; checked: boolean }) {
 }
 
 /**
- * The preview of "Import from a game save": what is in the picked file, which Pokémon are new,
- * and a confirm button that adds the chosen ones as entries in one step. Until that button is
- * pressed nothing changes; the save file itself is never written to.
+ * The preview of "Import from a game save" and "Import from ShinyDex": what is in the picked file,
+ * which Pokémon are new, and a confirm button that adds the chosen ones as entries in one step.
+ * Until that button is pressed nothing changes; the picked file itself is never written to.
  */
-export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialogProps) {
+export function GameSaveDialog({ source: contents, onClose, onImported }: GameSaveDialogProps) {
   const dex = useDex()
   const entries = useEntries()
   const rules = useRules()
   const [choice, setChoice] = useState<Choice | null>(null)
   /** The file whose import already went through, so a second press of the button adds nothing. */
-  const done = useRef<GameSaveContents | null>(null)
+  const done = useRef<ImportSource | null>(null)
 
   const fresh = useMemo(() => {
     if (!contents) return null
     const mine = choice?.contents === contents ? choice : { contents, selected: null, game: null }
     let preview: Preview
     try {
-      preview = buildPreview(dex, contents, entries, rules, { today: todayIso(), game: mine.game })
+      preview = contents.preview(dex, entries, rules, { today: todayIso(), game: mine.game })
     } catch {
       preview = { rows: [], counts: { new: 0, imported: 0, egg: 0, unsupported: 0, fills: 0, completes: 0 }, askGames: [] }
     }
@@ -182,7 +181,6 @@ export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialog
 
   const gameOptions = useMemo<SelectOption<string>[]>(() => (view?.preview.askGames ?? []).map((g) => ({ value: g.id, label: g.name, icon: <GameIcon game={g} size={20} tooltip={false} alt="" /> })), [view?.preview.askGames])
   const counts = view?.preview.counts
-  const trainer = view?.contents.save.trainer ?? ''
 
   return (
     <Dialog
@@ -190,10 +188,10 @@ export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialog
       onClose={onClose}
       size="xl"
       title="Import these Pokémon?"
-      description={view ? `${view.contents.fileName} is a save of ${saveGameName(view.contents)}${trainer !== '' ? `, trainer ${trainer}` : ''}. Nothing has changed yet, and the save file is only read.` : undefined}
+      description={view?.contents.description}
       media={
         <span className="settings-dialog-icon">
-          <Icon name="gamepad" size={22} />
+          <Icon name={view?.contents.icon ?? 'gamepad'} size={22} />
         </span>
       }
       footer={
@@ -224,10 +222,10 @@ export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialog
             {counts.unsupported > 0 && <Chip tone="warning">{formatCount(counts.unsupported)} cannot be imported</Chip>}
           </div>
 
-          {view.contents.dropped > 0 && (
+          {view.contents.note !== undefined && (
             <p className="gamesave__note">
               <Icon name="warning" size={16} />
-              {plural(view.contents.dropped, 'Pokémon')} in this save could not be read and {view.contents.dropped === 1 ? 'is' : 'are'} left out.
+              {view.contents.note}
             </p>
           )}
 
@@ -243,7 +241,7 @@ export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialog
           )}
 
           {view.preview.rows.length === 0 ? (
-            <p className="gamesave__empty">There are no Pokémon in this save.</p>
+            <p className="gamesave__empty">{view.contents.empty}</p>
           ) : (
             <>
               <div className="gamesave__bar">
@@ -261,14 +259,14 @@ export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialog
                 <VirtualGrid
                   items={view.preview.rows}
                   itemKey={(row) => row.index}
-                  renderItem={(row) => <Row row={row} checked={view.selected.has(row.index)} />}
+                  renderItem={(row) => <Row row={row} checked={view.selected.has(row.index)} columns={view.contents.columns} />}
                   minColumnWidth={320}
                   maxColumns={1}
                   itemHeight={ROW_HEIGHT}
                   gap={0}
                   overscan={6}
                   scroll="self"
-                  label="Pokémon in this save"
+                  label={view.contents.listLabel}
                   onActivate={toggle}
                 />
               </div>

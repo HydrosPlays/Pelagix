@@ -90,6 +90,7 @@ export const paths = {
   dex: (): string => '/dex',
   species: (id: number, form?: number): string => (form !== undefined && form > 0 ? `/dex/${id}?form=${form}` : `/dex/${id}`),
   living: (): string => '/living',
+  homeDex: (): string => '/home-dex',
   journal: (): string => '/journal',
   achievements: (): string => '/achievements',
   settings: (): string => '/settings',

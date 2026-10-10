@@ -4,6 +4,7 @@ import { dexNo, genderLabel } from '@renderer/lib/format'
 import { Chip, type Tone } from '../ui/Chip'
 import { cx } from '../ui/cx'
 import { Icon } from '../ui/Icon'
+import { GameIcon } from './GameIcon'
 import './Marks.css'
 
 // ---------------------------------------------------------------- GenderIcon
@@ -37,6 +38,25 @@ export interface ShinyMarkProps {
 /** The gold sparkle that marks a shiny. */
 export function ShinyMark({ size = 16, twinkle = false, label = 'Shiny', className }: ShinyMarkProps) {
   return <Icon name="sparkle" size={size} label={label === '' ? undefined : label} className={cx('pk-shiny', twinkle && 'pk-shiny--twinkle', className)} />
+}
+
+// ---------------------------------------------------------------- HomeMark
+
+export interface HomeMarkProps {
+  /** Square size in px. Default 16. */
+  size?: number
+  /** Accessible name. Default "In Pokémon HOME"; pass "" when the words are printed next to it. */
+  label?: string
+  className?: string
+}
+
+/** The Pokémon HOME icon, small: this Pokémon has been sent to Pokémon HOME. */
+export function HomeMark({ size = 16, label = 'In Pokémon HOME', className }: HomeMarkProps) {
+  return (
+    <span className={cx('pk-home', className)} title={label === '' ? undefined : label}>
+      <GameIcon game="home" size={size} tooltip={false} alt={label} />
+    </span>
+  )
 }
 
 // ---------------------------------------------------------------- DexNumber

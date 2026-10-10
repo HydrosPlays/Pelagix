@@ -1,9 +1,10 @@
 import { useState, type KeyboardEvent, type MouseEvent, type ReactNode, type Ref } from 'react'
 import { GENERATION_NAMES } from '@shared/games'
 import { Chip, Combobox, SegmentedControl, Tooltip, cx, type SelectOption } from '@renderer/components/ui'
+import type { DexSection } from '@renderer/domain/gamedex'
 import { formatCount, ratio } from '@renderer/lib/format'
 import { FloatingTip, useHoverTarget } from './HoverTip'
-import { BOX_SIZE, boxRange, romanNumeral, type BoxModel, type LivingMode, type LivingStats, type LivingView } from './model'
+import { boxIndexAt, boxName, boxRange, romanNumeral, type BoxModel, type LivingMode, type LivingStats, type LivingView } from './model'
 
 export interface LivingToolbarProps {
   mode: LivingMode
@@ -23,6 +24,9 @@ export interface LivingToolbarProps {
   onFind: (key: string | null) => void
   onJumpGen: (gen: number) => void
   onJumpBox: (boxIndex: number) => void
+  /** Sections of a game view; with any, their tabs stand in for the generation tabs. */
+  sections: readonly DexSection[]
+  onJumpSection: (section: number) => void
   ref?: Ref<HTMLDivElement>
 }
 
@@ -44,13 +48,13 @@ function rove(event: KeyboardEvent<HTMLElement>, selector: string): HTMLElement 
  * The bar that stays on screen while the boxes scroll: view switch, "Missing only", jump to a
  * generation, find a Pokémon, and the box index (one cell per box, filled as far as the box is).
  */
-export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, stats, boxes, visible, currentGen, searchOptions, found, onFind, onJumpGen, onJumpBox, ref }: LivingToolbarProps) {
+export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, stats, boxes, visible, currentGen, searchOptions, found, onFind, onJumpGen, onJumpBox, sections, onJumpSection, ref }: LivingToolbarProps) {
   const tip = useHoverTarget('[data-cell]', 220)
   const [genStop, setGenStop] = useState<number | null>(null)
   const [cellStop, setCellStop] = useState<number | null>(null)
   const missing = stats.slots - stats.filled
-  const firstBox = visible[0] >= 0 ? Math.floor(visible[0] / BOX_SIZE) : -1
-  const lastBox = visible[1] >= 0 ? Math.floor(visible[1] / BOX_SIZE) : -1
+  const firstBox = boxIndexAt(boxes, visible[0])
+  const lastBox = boxIndexAt(boxes, visible[1])
   const gens = stats.gens.filter((g) => g.gen > 0)
   // Each strip is one tab stop: the item last focused, else the one for what is on screen.
   const genTab = gens.some((g) => g.gen === genStop) ? genStop : gens.some((g) => g.gen === currentGen) ? currentGen : (gens[0]?.gen ?? -1)
@@ -77,7 +81,7 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
         data-cell={box.index}
         tabIndex={box.index === cellTab ? 0 : -1}
         aria-current={inView ? 'true' : undefined}
-        aria-label={`Box ${box.index + 1}, ${boxRange(box)}, ${complete ? 'complete' : `${filled} of ${size} caught`}`}
+        aria-label={`${boxName(box)}, ${boxRange(box)}, ${complete ? 'complete' : `${filled} of ${size} caught`}`}
         onFocus={() => setCellStop(box.index)}
       >
         <span className="living-map__fill" style={{ transform: `scaleY(${ratio(filled, size)})` }} />
@@ -102,7 +106,24 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
           <span className="living-toolbar__missing"> {formatCount(missing)}</span>
         </Chip>
 
-        <nav className="living-gens" aria-label="Jump to a generation" onKeyDown={(event) => rove(event, '.living-gens__item')}>
+        {sections.length > 0 && (
+          <nav className="gdex-tabs" aria-label="Jump to a Pokédex">
+            {sections.map((section, s) => {
+              const stat = stats.sections[s]
+              return (
+                <button key={section.id} type="button" className={cx('gdex-tabs__item', stat && stat.filled === stat.slots && 'is-complete')} title={section.title} onClick={() => onJumpSection(s)}>
+                  <span className="gdex-tabs__name">{section.id === 'other' ? 'Other' : section.title.replace(' Pokédex', '')}</span>
+                  {stat && (
+                    <span className="gdex-tabs__count">
+                      {formatCount(stat.filled)} / {formatCount(stat.slots)}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+        )}
+        <nav className="living-gens" aria-label="Jump to a generation" hidden={sections.length > 0} onKeyDown={(event) => rove(event, '.living-gens__item')}>
           {gens.map((g) => {
             const complete = g.slots > 0 && g.filled === g.slots
             const name = GENERATION_NAMES[g.gen] ?? `Generation ${g.gen}`
@@ -156,7 +177,7 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
       {tip.target && tipBox && (
         <FloatingTip key={tipBox.index} target={tip.target} side="bottom">
           <span className="living-tip__title">
-            Box {tipBox.index + 1} · {boxRange(tipBox)}
+            {boxName(tipBox)} · {boxRange(tipBox)}
           </span>
           <span className={cx('living-tip__status', tipFilled === tipBox.slots.length && 'is-filled', mode === 'shiny' && 'is-shiny')}>
             {tipFilled === tipBox.slots.length ? 'Complete' : `${tipFilled} / ${tipBox.slots.length} ${mode === 'shiny' ? 'shiny caught' : 'caught'}`}

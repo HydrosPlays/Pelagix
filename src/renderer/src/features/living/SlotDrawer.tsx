@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { EntryCard, FormCategoryTag, GenderIcon, ShinyMark, Sprite, SpriteStage, TypeBadges, typeColor } from '@renderer/components/pokemon'
-import { Button, Chip, Drawer, Icon, IconButton } from '@renderer/components/ui'
+import type { CatchEntry } from '@shared/save-types'
+import { Button, Chip, Drawer, Icon, IconButton, Switch } from '@renderer/components/ui'
 import type { Collection, LivingSlot } from '@renderer/domain/slots'
 import { useDex } from '@renderer/lib/data'
 import { editEntry } from '@renderer/lib/entry-actions'
 import { dexNo, plural } from '@renderer/lib/format'
-import { BOX_COLS, BOX_SIZE, slotEntries, slotInfo, slotStatus, type LivingMode } from './model'
+import { BOX_COLS, boxIndexAt, boxName, buildBoxes, slotEntries, slotInfo, slotStatus, type LivingMode } from './model'
 
 export interface SlotDrawerProps {
   /** The slot to show; null closes the drawer. */
@@ -22,6 +23,8 @@ export interface SlotDrawerProps {
   onLog: (slot: LivingSlot) => void
   /** Go to the Pokédex page of this Pokémon and form. */
   onFind: (slot: LivingSlot) => void
+  /** HOME Dex only: every entry gets its own "In Pokémon HOME" switch. */
+  onHome?: (entry: CatchEntry, on: boolean) => void
 }
 
 /**
@@ -38,16 +41,19 @@ const ENTRY_MENU = {
 }
 
 /** "Box 3 · Row 2, Column 4": where the slot sits, which is also where it goes in the game's boxes. */
-function placeText(index: number): string {
-  const local = index % BOX_SIZE
-  return `Box ${Math.floor(index / BOX_SIZE) + 1} · Row ${Math.floor(local / BOX_COLS) + 1}, Column ${(local % BOX_COLS) + 1}`
+function placeText(slots: readonly LivingSlot[], index: number): string {
+  const boxes = buildBoxes(slots)
+  const box = boxes[boxIndexAt(boxes, index)]
+  if (!box) return ''
+  const local = index - box.start
+  return `${boxName(box)} · Row ${Math.floor(local / BOX_COLS) + 1}, Column ${(local % BOX_COLS) + 1}`
 }
 
 /**
  * Everything about one slot: its render, where it stands, the entries in it, and the two ways
  * forward (log a catch into it, or look up where to find it). Left / Right step through slots.
  */
-export function SlotDrawer({ slot, index, collection, mode, onClose, onPrevious, onNext, onLog, onFind }: SlotDrawerProps) {
+export function SlotDrawer({ slot, index, collection, mode, onClose, onPrevious, onNext, onLog, onFind, onHome }: SlotDrawerProps) {
   const dex = useDex()
   // The panel keeps showing the last slot while it slides out.
   const last = useRef<{ slot: LivingSlot; index: number } | null>(null)
@@ -99,7 +105,7 @@ export function SlotDrawer({ slot, index, collection, mode, onClose, onPrevious,
       description={
         <span className="living-drawer__meta">
           <span className="living-drawer__no">{dexNo(shown.species)}</span>
-          <span>{placeText(shownIndex)}</span>
+          <span>{placeText(collection.slots, shownIndex)}</span>
         </span>
       }
       footer={
@@ -171,9 +177,16 @@ export function SlotDrawer({ slot, index, collection, mode, onClose, onPrevious,
             <>
               {shiny && !info.filled && <p className="living-drawer__note">You have {plural(entries.length, 'regular entry', 'regular entries')} here. Only a shiny one fills this slot in the Shiny Living Dex.</p>}
               <div className="living-drawer__list">
-                {entries.map((entry) => (
-                  <EntryCard key={entry.id} entry={entry} variant="card" showSpecies={false} onOpen={(e) => void editEntry(e.id)} menu={ENTRY_MENU} />
-                ))}
+                {entries.map((entry) =>
+                  onHome ? (
+                    <div key={entry.id} className="living-drawer__entry">
+                      <EntryCard entry={entry} variant="card" showSpecies={false} onOpen={(e) => void editEntry(e.id)} menu={ENTRY_MENU} />
+                      <Switch reverse className="living-drawer__home" checked={entry.inHome === true} onChange={(on) => onHome(entry, on)} label="In Pokémon HOME" />
+                    </div>
+                  ) : (
+                    <EntryCard key={entry.id} entry={entry} variant="card" showSpecies={false} onOpen={(e) => void editEntry(e.id)} menu={ENTRY_MENU} />
+                  )
+                )}
               </div>
             </>
           )}

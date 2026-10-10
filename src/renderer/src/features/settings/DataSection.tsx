@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
-import type { GameSaveContents } from '@shared/game-save-types'
 import type { SaveFile } from '@shared/save-types'
 import { Button, Checkbox, Dialog, Icon, TextField } from '@renderer/components/ui'
 import { GameSaveDialog } from '@renderer/features/gamesave/GameSaveDialog'
-import { failureText } from '@renderer/features/gamesave/model'
+import { failureText, gameSaveSource, type ImportSource } from '@renderer/features/gamesave/model'
+import { shinyDexFailureText, shinyDexSource } from '@renderer/features/gamesave/shinydex'
 import { shake } from '@renderer/lib/anim'
 import { errorMessage, formatCount, formatDateTime, plural } from '@renderer/lib/format'
 import { exportSaveToFile, importSaveFromFile, type SaveParseReport } from '@renderer/lib/storage'
@@ -312,9 +312,9 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
   const achievementCount = useSaveStore((s) => Object.keys(s.save.achievements).length)
   const updatedAt = useSaveStore((s) => s.save.updatedAt)
   const createdAt = useSaveStore((s) => s.save.createdAt)
-  const [busy, setBusy] = useState<'export' | 'import' | 'game' | null>(null)
+  const [busy, setBusy] = useState<'export' | 'import' | 'game' | 'shinydex' | null>(null)
   const [report, setReport] = useState<SaveParseReport | null>(null)
-  const [gameSave, setGameSave] = useState<GameSaveContents | null>(null)
+  const [gameSave, setGameSave] = useState<ImportSource | null>(null)
   const [resetOpen, setResetOpen] = useState(false)
 
   const exportSave = async (): Promise<void> => {
@@ -344,10 +344,27 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
       if (result === null) return
       // The main process has checked the reader's answer; this only keeps a malformed one away from the preview.
       const contents = result.ok === true ? result.contents : null
-      if (contents && Array.isArray(contents.pokemon) && typeof contents.fileName === 'string' && typeof contents.save?.trainer === 'string' && typeof contents.save.version?.name === 'string') setGameSave(contents)
+      if (contents && Array.isArray(contents.pokemon) && typeof contents.fileName === 'string' && typeof contents.save?.trainer === 'string' && typeof contents.save.version?.name === 'string') setGameSave(gameSaveSource(contents))
       else toast({ kind: 'error', title: 'That file could not be imported', body: failureText(result.ok === false ? result.reason : undefined) })
     } catch (err) {
       toast({ kind: 'error', title: 'That file could not be imported', body: errorMessage(err, failureText(undefined)) })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /** Lets the user pick a ShinyDex export, or a History page saved from shinydex.com, and shows the shinies in it. The file is only read. */
+  const importShinyDex = async (): Promise<void> => {
+    if (!window.api) return
+    setBusy('shinydex')
+    try {
+      const result = await window.api.readShinyDex()
+      if (result === null) return
+      const history = result.ok === true ? result.history : null
+      if (history && Array.isArray(history.rows) && typeof history.fileName === 'string' && typeof history.dropped === 'number' && typeof history.unusable === 'number') setGameSave(shinyDexSource(history))
+      else toast({ kind: 'error', title: 'That file could not be imported', body: shinyDexFailureText(result.ok === false ? result.reason : undefined) })
+    } catch (err) {
+      toast({ kind: 'error', title: 'That file could not be imported', body: errorMessage(err, shinyDexFailureText(undefined)) })
     } finally {
       setBusy(null)
     }
@@ -424,6 +441,20 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
             </Button>
           </div>
         )}
+        {app.desktop && (
+          <div className="settings-action">
+            <div className="settings-row__text">
+              <span className="settings-row__label">Import from ShinyDex</span>
+              <span className="settings-row__desc">
+                Choose your ShinyDex export, a .json file. A saved copy of your History page on shinydex.com works too: scroll to the end so that every shiny is listed, save the page from the browser and choose
+                the .html file. You choose which shinies to add first, and your rules and settings stay as they are.
+              </span>
+            </div>
+            <Button icon="sparkle" loading={busy === 'shinydex'} disabled={busy !== null && busy !== 'shinydex'} onClick={() => void importShinyDex()}>
+              {busy === 'shinydex' ? 'Reading…' : 'Import from ShinyDex'}
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="settings-danger">
@@ -440,7 +471,7 @@ export function DataSection({ app, onReplaced }: DataSectionProps) {
       </div>
 
       <ImportDialog report={report} onClose={() => setReport(null)} onReplaced={onReplaced} />
-      <GameSaveDialog contents={gameSave} onClose={() => setGameSave(null)} onImported={gameSaveImported} />
+      <GameSaveDialog source={gameSave} onClose={() => setGameSave(null)} onImported={gameSaveImported} />
       <ResetDialog open={resetOpen} onClose={() => setResetOpen(false)} onReplaced={onReplaced} />
     </SettingsSection>
   )

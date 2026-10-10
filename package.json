@@ -1,7 +1,7 @@
 {
   "name": "pelagix",
   "productName": "Pelagix",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Living Dex tracker for Pokemon games",
   "author": "HydrosPlays",
@@ -24,7 +24,7 @@
     "dist": "npm run reader:build && npm run build && electron-builder --win --publish never",
     "reader:build": "node tools/save-reader/run.mjs",
     "data:extract": "node tools/extractor/run.mjs",
-    "data:build": "node tools/build-data/index.ts",
+    "data:build": "node tools/build-data/index.ts && node tools/build-data/pokedexes.ts",
     "data:validate": "node tools/build-data/validate.ts",
     "data": "npm run data:extract && npm run data:build && npm run data:validate",
     "screenshots": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/screenshots/run.mjs"

@@ -694,6 +694,9 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
                 <Checkbox checked={draft.ability !== null && draft.abilityHidden} onChange={(abilityHidden) => patch({ abilityHidden })} label="Hidden Ability" disabled={draft.ability === null} />
               </div>
               <TextArea label="Notes" optional value={draft.notes} onChange={(notes) => patch({ notes })} maxLength={TEXT_LIMITS.notes} counter={draft.notes.length > TEXT_LIMITS.notes - 400} rows={3} placeholder="Anything worth remembering about this catch" wrapperClassName="ee-span" />
+              <div className="ee-span">
+                <Switch checked={draft.inHome} onChange={(inHome) => patch({ inHome })} label="In Pokémon HOME" description="You have sent this Pokémon to Pokémon HOME." />
+              </div>
             </Group>
 
             <fieldset className="ee-group">

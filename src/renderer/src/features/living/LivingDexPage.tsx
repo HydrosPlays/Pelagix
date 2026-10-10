@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'wouter'
+import { GAME_BY_ID } from '@shared/games'
 import { Sprite } from '@renderer/components/pokemon'
 import { Button, EmptyState, Icon, IconButton, useScrollParent, type SelectOption } from '@renderer/components/ui'
-import { slotTarget, useCollection, type LivingSlot } from '@renderer/domain/slots'
+import { sectionsOf, useGameView } from '@renderer/domain/gamedex'
+import { slotTarget, type LivingSlot } from '@renderer/domain/slots'
+import { GameDexBar } from '@renderer/features/pokedex/GamePicker'
 import { burst, flipIn, pulse } from '@renderer/lib/anim'
 import { useDex } from '@renderer/lib/data'
 import { dexNo, formatCount, plural } from '@renderer/lib/format'
@@ -14,7 +17,7 @@ import { LivingGrid, type LivingGridHandle } from './LivingGrid'
 import { LivingHero } from './LivingHero'
 import { LivingToolbar } from './LivingToolbar'
 import {
-  BOX_SIZE, boxMetrics, buildBoxes, computeStats, filledIn, generationSpans, layoutBoxes, layoutList, listMetrics, neighbour, rulesKey, slotGenerations, slotIndexByKey, slotInfo,
+  BOX_SIZE, boxIndexAt, boxMetrics, boxName, buildBoxes, computeStats, filledIn, generationSpans, layoutBoxes, layoutList, listMetrics, neighbour, rulesKey, slotGenerations, slotIndexByKey, slotInfo,
   type LivingLayout, type LivingMode, type LivingView
 } from './model'
 import { useLivingPrefs } from './prefs'
@@ -39,7 +42,10 @@ interface SizeNotice {
  */
 export default function LivingDexPage() {
   const dex = useDex()
-  const collection = useCollection()
+  // With a game chosen the page shows that game's collection: its slots, in its order, filled by what was obtained there.
+  const gameView = useGameView(dex)
+  const { collection, game } = gameView
+  const gameName = game === null ? undefined : (GAME_BY_ID.get(game)?.short ?? game)
   const entryCount = useEntries().length
   const scroller = useScrollParent()
   const shinyView = useUiStore((s) => s.dexView.shinyView)
@@ -52,7 +58,7 @@ export default function LivingDexPage() {
   const frameRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<LivingGridHandle>(null)
-  const hasSlots = collection.slots.length > 0
+  const hasSlots = gameView.base.slots.length > 0
   const width = useElementWidth(frameRef, hasSlots)
   const toolbarHeight = useElementHeight(toolbarRef, hasSlots)
 
@@ -66,6 +72,7 @@ export default function LivingDexPage() {
   const { slots } = collection
   const filled = filledIn(collection, mode)
   const boxes = buildBoxes(slots)
+  const sections = sectionsOf(slots)
   const indexOf = slotIndexByKey(slots)
   const gens = slotGenerations(dex, slots)
   const stats = useMemo(() => computeStats(dex, slots, filled), [dex, slots, filled])
@@ -153,11 +160,11 @@ export default function LivingDexPage() {
       const now = live.current
       if (!grid) return
       const gold = now.mode === 'shiny'
-      const doneBoxes = [...new Set(plan.fresh.map((index) => Math.floor(index / BOX_SIZE)))].filter((b) => (now.stats.boxFilled[b] ?? 0) === (now.boxes[b]?.slots.length ?? -1))
+      const doneBoxes = [...new Set(plan.fresh.map((index) => boxIndexAt(now.boxes, index)))].filter((b) => (now.stats.boxFilled[b] ?? 0) === (now.boxes[b]?.slots.length ?? -1))
 
       if ((now.layout.rowOf[plan.target] ?? -1) < 0) {
         // Filtered out by "Missing only": the slot just leaves the list. A finished box still deserves a word.
-        for (const b of doneBoxes) toast({ kind: 'success', icon: 'star', title: `Box ${b + 1} complete`, body: `All ${now.boxes[b]?.slots.length ?? BOX_SIZE} slots are filled.` })
+        for (const b of doneBoxes) toast({ kind: 'success', icon: 'star', title: `${now.boxes[b] ? boxName(now.boxes[b]) : 'Box'} complete`, body: `All ${now.boxes[b]?.slots.length ?? BOX_SIZE} slots are filled.` })
         return
       }
 
@@ -240,7 +247,8 @@ export default function LivingDexPage() {
   // ---------------------------------------------------------------- rules changed the slot count
 
   const rules = rulesKey(collection.rules)
-  const slotCount = slots.length
+  // The size of the whole Living Dex: a game choice narrows what is shown, it does not change the rules.
+  const slotCount = gameView.base.slots.length
   useEffect(() => {
     const seen = prefs.seen
     if (seen && seen.slots !== slotCount) setNotice({ was: seen.slots, now: slotCount, rulesChanged: seen.rules !== rules })
@@ -261,7 +269,8 @@ export default function LivingDexPage() {
   )
 
   const onJumpGen = (gen: number): void => jumpTo(layout.order.find((index) => gens[index] === gen) ?? -1)
-  const onJumpBox = (boxIndex: number): void => jumpTo(layout.order.find((index) => index >= boxIndex * BOX_SIZE) ?? layout.order[layout.order.length - 1] ?? -1)
+  const onJumpBox = (boxIndex: number): void => jumpTo(layout.order.find((index) => index >= (boxes[boxIndex]?.start ?? 0)) ?? layout.order[layout.order.length - 1] ?? -1)
+  const onJumpSection = (section: number): void => jumpTo(layout.order.find((index) => index >= (sections[section]?.start ?? 0)) ?? -1)
 
   // Switching the view or the filter re-flows everything: once scrolled into the boxes, stay with the slot that led the screen.
   const keepPlace = useRef<number | null>(null)
@@ -355,7 +364,7 @@ export default function LivingDexPage() {
 
   const onLog = (slot: LivingSlot): void => {
     setDrawerKey(null)
-    useUiStore.getState().openCreate({ ...slotTarget(slot), ...(mode === 'shiny' && { shiny: true }) })
+    useUiStore.getState().openCreate({ ...slotTarget(slot), ...(mode === 'shiny' && { shiny: true }), ...(game !== null && { game }) })
   }
 
   // The entry editor closed: its own focus restore points at the drawer that is gone, so take focus back.
@@ -389,7 +398,7 @@ export default function LivingDexPage() {
   const nothingMissing = missingOnly && layout.order.length === 0 && ready
   const firstMissing = slots.findIndex((slot) => !filled.has(slot.key))
 
-  if (slots.length === 0) {
+  if (!hasSlots) {
     return (
       <div className="page">
         <EmptyState size="lg" icon="grid" tone="neutral" title="No Pokémon to show" description="The Pokédex data holds no Pokémon, so there are no slots to fill yet." />
@@ -399,7 +408,9 @@ export default function LivingDexPage() {
 
   return (
     <div className={`page living${mode === 'shiny' ? ' is-shiny' : ''}`}>
-      <LivingHero mode={mode} onMode={(next) => setDexView({ shinyView: next === 'shiny' })} stats={stats} totals={collection.totals} shinySpecies={collection.speciesShiny.size} rules={collection.rules} boxes={boxes.length} />
+      <LivingHero mode={mode} onMode={(next) => setDexView({ shinyView: next === 'shiny' })} stats={stats} totals={collection.totals} shinySpecies={collection.speciesShiny.size} rules={collection.rules} boxes={boxes.length} game={gameName} />
+
+      <GameDexBar dex={dex} game={game} onGame={gameView.setGame} />
 
       {notice && (
         <div className="living-banner living-banner--info" role="status">
@@ -418,7 +429,8 @@ export default function LivingDexPage() {
         <div className="living-banner living-banner--gold" role="status">
           <Icon name="trophy" size={20} />
           <p>
-            <b>{mode === 'shiny' ? 'Shiny Living Dex complete!' : 'Living Dex complete!'}</b> Every one of the {formatCount(stats.slots)} slots is filled{mode === 'shiny' ? ' with a shiny' : ''}. That is the whole collection.
+            <b>{mode === 'shiny' ? 'Shiny Living Dex complete!' : 'Living Dex complete!'}</b> Every one of the {formatCount(stats.slots)} slots is filled{mode === 'shiny' ? ' with a shiny' : ''}.{' '}
+            {gameName === undefined ? 'That is the whole collection.' : `That is everything obtainable in ${gameName}.`}
           </p>
         </div>
       ) : entryCount === 0 ? (
@@ -429,6 +441,16 @@ export default function LivingDexPage() {
           </p>
           <Button variant="primary" icon="dex" onClick={() => navigate(paths.dex())}>
             Open the Pokédex
+          </Button>
+        </div>
+      ) : gameName !== undefined && stats.slots > 0 && stats.filled === 0 ? (
+        <div className={`living-banner ${mode === 'shiny' ? 'living-banner--gold' : 'living-banner--accent'}`}>
+          <Icon name={mode === 'shiny' ? 'sparkle' : 'pokeball'} size={20} />
+          <p>
+            <b>{mode === 'shiny' ? `No shiny Pokémon from ${gameName} yet.` : `Nothing caught in ${gameName} yet.`}</b> Only Pokémon obtained in {gameName} fill a slot here; what you caught in other games stays in the full Living Dex.
+          </p>
+          <Button variant="subtle" icon="close" onClick={() => gameView.setGame(null)}>
+            Show every game
           </Button>
         </div>
       ) : mode === 'shiny' && stats.filled === 0 ? (
@@ -471,10 +493,24 @@ export default function LivingDexPage() {
         onFind={onFind}
         onJumpGen={onJumpGen}
         onJumpBox={onJumpBox}
+        sections={sections}
+        onJumpSection={onJumpSection}
       />
 
       <div ref={frameRef} className="living-frame">
-        {nothingMissing ? (
+        {slots.length === 0 ? (
+          <EmptyState
+            icon="gamepad"
+            tone="neutral"
+            title={`Nothing to collect in ${gameName ?? 'this game'}`}
+            description="No Pokémon in your Living Dex can be obtained in this game without an event."
+            action={
+              <Button variant="subtle" icon="close" onClick={() => gameView.setGame(null)}>
+                Show every game
+              </Button>
+            }
+          />
+        ) : nothingMissing ? (
           <EmptyState
             tone="gold"
             icon="trophy"

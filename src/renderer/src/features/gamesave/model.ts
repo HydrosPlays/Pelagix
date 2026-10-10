@@ -8,10 +8,11 @@ import { BALL_BY_ID } from '@shared/balls'
 import type { GameSaveContents, GameSaveFailure, GameSavePokemon, PkhexVersion } from '@shared/game-save-types'
 import { GAMES, GAME_BY_ID, type GameDef } from '@shared/games'
 import type { CatchEntry, DexRules, EntryKind } from '@shared/save-types'
+import type { IconName } from '@renderer/components/ui'
 import { collectionFor, slotKeyFor } from '@renderer/domain/slots'
 import { draftToInput, settleDraft, TEXT_LIMITS, type Draft } from '@renderer/features/entry/draft'
 import type { Dex } from '@renderer/lib/data'
-import { isIsoDate, kindLabel } from '@renderer/lib/format'
+import { isIsoDate, kindLabel, plural } from '@renderer/lib/format'
 import type { EntryCompletion, EntryInput, EntryPatch } from '@renderer/store/save'
 
 // ---------------------------------------------------------------- wording
@@ -151,7 +152,8 @@ export function entryFromPokemon(dex: Dex, pokemon: GameSavePokemon, gameId: str
     abilityHidden: pokemon.abilityHidden === true,
     pid: typeof pokemon.pid === 'string' ? pokemon.pid : '',
     ivs: Array.isArray(pokemon.ivs) ? pokemon.ivs : [],
-    evs: Array.isArray(pokemon.evs) ? pokemon.evs : []
+    evs: Array.isArray(pokemon.evs) ? pokemon.evs : [],
+    inHome: false
   }
   return { ...draftToInput(settleDraft(dex, draft)), fingerprint: pokemon.fingerprint }
 }
@@ -177,7 +179,7 @@ export function missingValues(entry: Pick<EntryInput, Value>, existing: Pick<Cat
 }
 
 /** The first entry made from each fingerprint. */
-function byFingerprint(existing: readonly CatchEntry[]): Map<string, CatchEntry> {
+export function byFingerprint(existing: readonly CatchEntry[]): Map<string, CatchEntry> {
   const known = new Map<string, CatchEntry>()
   for (const e of existing) if (e.fingerprint !== undefined && !known.has(e.fingerprint)) known.set(e.fingerprint, e)
   return known
@@ -194,10 +196,13 @@ export const STATUS_LABELS: Readonly<Record<RowStatus, string>> = {
   unsupported: 'Cannot be imported'
 }
 
+/** What a preview row shows and compares of the Pokémon behind it, whatever it was read from. */
+export type PreviewPokemon = Pick<GameSavePokemon, 'species' | 'form' | 'shiny' | 'gender' | 'fingerprint'>
+
 export interface PreviewRow {
-  /** Position in `contents.pokemon`; the row's identity within one preview. */
+  /** Position in what was read; the row's identity within one preview. */
   index: number
-  pokemon: GameSavePokemon
+  pokemon: PreviewPokemon
   status: RowStatus
   /** Why an `unsupported` row cannot be imported. */
   reason?: string
@@ -291,6 +296,42 @@ export function buildPreview(dex: Dex, contents: GameSaveContents, existing: rea
     if (row.completes === true) counts.completes++
   }
   return { rows, counts, askGames: GAMES.filter((g) => asked.has(g)) }
+}
+
+/**
+ * Something the preview window can show: what was read from one picked file, and the words that are
+ * true for it. One object per picked file; the window tells files apart by it.
+ */
+export interface ImportSource {
+  /** Name of the picked file, without its folder. */
+  fileName: string
+  icon: IconName
+  /** What the file is, under the window's title. */
+  description: string
+  /** A warning above the list, when something of the file was left out. */
+  note?: string
+  /** Shown when the file holds nothing at all. */
+  empty: string
+  /** Accessible name of the list. */
+  listLabel: string
+  /** What a row shows next to the game: where and at which level it was met, or how and when it was obtained. */
+  columns: 'met' | 'hunt'
+  preview(dex: Dex, existing: readonly CatchEntry[], rules: DexRules, options: PreviewOptions): Preview
+}
+
+/** A game save as the preview window shows it. */
+export function gameSaveSource(contents: GameSaveContents): ImportSource {
+  const trainer = contents.save.trainer
+  return {
+    fileName: contents.fileName,
+    icon: 'gamepad',
+    description: `${contents.fileName} is a save of ${saveGameName(contents)}${trainer !== '' ? `, trainer ${trainer}` : ''}. Nothing has changed yet, and the save file is only read.`,
+    ...(contents.dropped > 0 && { note: `${plural(contents.dropped, 'Pokémon')} in this save could not be read and ${contents.dropped === 1 ? 'is' : 'are'} left out.` }),
+    empty: 'There are no Pokémon in this save.',
+    listLabel: 'Pokémon in this save',
+    columns: 'met',
+    preview: (dex, existing, rules, options) => buildPreview(dex, contents, existing, rules, options)
+  }
 }
 
 /** The default choice: every Pokémon that is new. */

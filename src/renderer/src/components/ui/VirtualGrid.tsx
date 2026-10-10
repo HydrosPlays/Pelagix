@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type Ref } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type Ref } from 'react'
 import { defaultRangeExtractor, useVirtualizer, type Range } from '@tanstack/react-virtual'
 import { cx } from './cx'
 import { useScrollParent } from './ScrollArea'
@@ -37,6 +37,15 @@ export interface VirtualGridProps<T> {
   label: string
   /** Click, Enter or Space on a cell. */
   onActivate?: (item: T, index: number) => void
+  /**
+   * Splits the items into consecutive sections, each under a full-width heading: `start` is the
+   * index of a section's first item, `count` how many follow. A section starts a new row.
+   */
+  sections?: ReadonlyArray<{ start: number; count: number }>
+  /** The heading of section `index`. */
+  renderSection?: (index: number) => ReactNode
+  /** Height of a section heading, px. Default 44. */
+  sectionHeight?: number
   /** Class for every cell wrapper. */
   cellClassName?: string
   className?: string
@@ -44,12 +53,19 @@ export interface VirtualGridProps<T> {
   ref?: Ref<VirtualGridHandle>
 }
 
+/** A row of the grid: the heading of section `head` (-1 otherwise), or the items `first` (inclusive) to `last` (exclusive). */
+interface GridRow {
+  head: number
+  first: number
+  last: number
+}
+
 /**
  * Windowed, responsive grid for long lists (the Pokédex, the Living Dex). Only the visible rows
  * are in the DOM. Keyboard: one tab stop; arrows, Home / End (row), Ctrl+Home / Ctrl+End (grid),
  * PageUp / PageDown move between cells; Enter / Space activates.
  */
-export function VirtualGrid<T>({ items, renderItem, itemKey, minColumnWidth, itemHeight, gap = 12, maxColumns, overscan = 3, scroll = 'page', label, onActivate, cellClassName, className, style, ref }: VirtualGridProps<T>) {
+export function VirtualGrid<T>({ items, renderItem, itemKey, minColumnWidth, itemHeight, gap = 12, maxColumns, overscan = 3, scroll = 'page', label, onActivate, sections, renderSection, sectionHeight = 44, cellClassName, className, style, ref }: VirtualGridProps<T>) {
   const rootRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const scrollParent = useScrollParent()
@@ -86,9 +102,26 @@ export function VirtualGrid<T>({ items, renderItem, itemKey, minColumnWidth, ite
   const columns = width <= 0 ? 0 : Math.max(1, Math.min(maxColumns ?? Infinity, Math.floor((width + gap) / (minColumnWidth + gap))))
   const columnWidth = columns > 0 ? (width - gap * (columns - 1)) / columns : 0
   const rowHeight = Math.max(1, Math.round(typeof itemHeight === 'function' ? itemHeight(columnWidth) : itemHeight))
-  const rowCount = columns > 0 ? Math.ceil(count / columns) : 0
+  // The rows: lines of `columns` items, and with sections a heading row ahead of each section's lines.
+  const { gridRows, rowOf } = useMemo(() => {
+    const gridRows: GridRow[] = []
+    const rowOf = new Int32Array(count).fill(-1)
+    if (columns <= 0) return { gridRows, rowOf }
+    const sectioned = sections !== undefined && sections.length > 0
+    for (const [s, span] of (sectioned ? sections : [{ start: 0, count }]).entries()) {
+      const end = Math.min(count, span.start + span.count)
+      if (sectioned && end > span.start) gridRows.push({ head: s, first: -1, last: -1 })
+      for (let first = span.start; first < end; first += columns) {
+        const last = Math.min(end, first + columns)
+        for (let i = first; i < last; i++) rowOf[i] = gridRows.length
+        gridRows.push({ head: -1, first, last })
+      }
+    }
+    return { gridRows, rowOf }
+  }, [count, columns, sections])
+  const rowCount = gridRows.length
   const safeFocus = count === 0 ? -1 : Math.min(focusIndex, count - 1)
-  const focusRow = columns > 0 && safeFocus >= 0 ? Math.floor(safeFocus / columns) : -1
+  const focusRow = safeFocus >= 0 ? (rowOf[safeFocus] ?? -1) : -1
 
   // The row holding the roving tab stop stays mounted, so Tab can always get back into the grid.
   const rangeExtractor = useCallback(
@@ -103,7 +136,7 @@ export function VirtualGrid<T>({ items, renderItem, itemKey, minColumnWidth, ite
   const virtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement,
-    estimateSize: () => rowHeight + gap,
+    estimateSize: (row) => ((gridRows[row]?.head ?? -1) >= 0 ? sectionHeight : rowHeight) + gap,
     overscan,
     scrollMargin,
     rangeExtractor
@@ -113,16 +146,18 @@ export function VirtualGrid<T>({ items, renderItem, itemKey, minColumnWidth, ite
   useLayoutEffect(() => {
     virtualizer.measure()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowHeight, gap, columns])
+  }, [rowHeight, gap, columns, gridRows, sectionHeight])
 
   const columnsRef = useRef(columns)
   columnsRef.current = columns
+  const rowOfRef = useRef(rowOf)
+  rowOfRef.current = rowOf
 
   const scrollToIndex = useCallback<VirtualGridHandle['scrollToIndex']>(
     (index, options) => {
-      const cols = columnsRef.current
-      if (cols <= 0) return
-      virtualizer.scrollToIndex(Math.floor(index / cols), { align: options?.align ?? 'auto', behavior: options?.behavior })
+      const row = rowOfRef.current[index] ?? -1
+      if (row < 0) return
+      virtualizer.scrollToIndex(row, { align: options?.align ?? 'auto', behavior: options?.behavior })
     },
     [virtualizer]
   )
@@ -157,16 +192,31 @@ export function VirtualGrid<T>({ items, renderItem, itemKey, minColumnWidth, ite
     const index = Number(cell.dataset.vgIndex)
     const { key } = event
     let next: number | null = null
+    const own = gridRows[rowOf[index] ?? -1]
+    if (!own) return
+    // The cell `lines` lines of items below (or above) this one, in the same column; section headings are stepped over.
+    const vertical = (lines: number): number => {
+      const step = lines > 0 ? 1 : -1
+      let at = index
+      let left = Math.abs(lines)
+      for (let r = (rowOf[index] ?? -1) + step; left > 0 && r >= 0 && r < gridRows.length; r += step) {
+        const row = gridRows[r]
+        if (!row || row.head >= 0) continue
+        at = Math.min(row.last - 1, row.first + (index - own.first))
+        left--
+      }
+      return at
+    }
     if (key === 'ArrowRight') next = index + 1
     else if (key === 'ArrowLeft') next = index - 1
-    else if (key === 'ArrowDown') next = index + columns >= count ? (Math.floor(index / columns) < rowCount - 1 ? count - 1 : index) : index + columns
-    else if (key === 'ArrowUp') next = index - columns < 0 ? index : index - columns
-    else if (key === 'Home') next = event.ctrlKey ? 0 : index - (index % columns)
-    else if (key === 'End') next = event.ctrlKey ? count - 1 : Math.min(count - 1, index - (index % columns) + columns - 1)
+    else if (key === 'ArrowDown') next = vertical(1)
+    else if (key === 'ArrowUp') next = vertical(-1)
+    else if (key === 'Home') next = event.ctrlKey ? 0 : own.first
+    else if (key === 'End') next = event.ctrlKey ? count - 1 : own.last - 1
     else if (key === 'PageDown' || key === 'PageUp') {
       const scroller = getScrollElement()
       const pageRows = Math.max(1, Math.floor((scroller?.clientHeight ?? rowHeight * 3) / (rowHeight + gap)) - 1)
-      next = index + (key === 'PageDown' ? 1 : -1) * pageRows * columns
+      next = vertical(key === 'PageDown' ? pageRows : -pageRows)
     } else if ((key === 'Enter' || key === ' ') && onActivate) {
       event.preventDefault()
       const item = items[index]
@@ -185,8 +235,16 @@ export function VirtualGrid<T>({ items, renderItem, itemKey, minColumnWidth, ite
     <div ref={rootRef} className={cx('ui-vgrid', scroll === 'self' && 'ui-vgrid--self', className)} style={style}>
       <div ref={innerRef} role="grid" aria-label={label} aria-rowcount={rowCount} aria-colcount={columns || undefined} className="ui-vgrid__inner" style={{ height: totalHeight }} onKeyDown={onKeyDown}>
         {rows.map((row) => {
-          const first = row.index * columns
-          const last = Math.min(count, first + columns)
+          const own = gridRows[row.index]
+          if (!own) return null
+          if (own.head >= 0) {
+            return (
+              <div key={row.key} role="presentation" className="ui-vgrid__row ui-vgrid__row--section" style={{ height: sectionHeight, transform: `translateY(${row.start - scrollMargin}px)` }}>
+                {renderSection?.(own.head)}
+              </div>
+            )
+          }
+          const { first, last } = own
           const cells: ReactNode[] = []
           for (let i = first; i < last; i++) {
             const item = items[i] as T

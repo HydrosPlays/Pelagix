@@ -12,6 +12,14 @@
   color: var(--genderless);
 }
 
+/* ---------------------------------------------------------------- in Pokémon HOME */
+
+.pk-home {
+  display: inline-flex;
+  flex: none;
+  vertical-align: middle;
+}
+
 /* ---------------------------------------------------------------- shiny */
 
 .pk-shiny {

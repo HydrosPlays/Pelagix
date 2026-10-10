@@ -17,6 +17,8 @@ export interface LivingHeroProps {
   shinySpecies: number
   rules: DexRules
   boxes: number
+  /** Short name of the game the page is narrowed to ("Sword"): the numbers count that game only. */
+  game?: string
 }
 
 /** Percentage for the ring: one decimal, and never 0 or 100 unless that is exact. */
@@ -27,12 +29,13 @@ function shownPercent(part: number, total: number): { value: number; decimals: n
 }
 
 /** The page header: the big progress readout, the mode switch and the rules in force. */
-export function LivingHero({ mode, onMode, stats, totals, shinySpecies, rules, boxes }: LivingHeroProps) {
+export function LivingHero({ mode, onMode, stats, totals, shinySpecies, rules, boxes, game }: LivingHeroProps) {
   const shiny = mode === 'shiny'
   const complete = stats.slots > 0 && stats.filled === stats.slots
   const pct = shownPercent(stats.filled, stats.slots)
   const left = stats.slots - stats.filled
-  const countText = `${formatCount(stats.filled)} of ${formatCount(stats.slots)} ${shiny ? 'shiny caught' : 'caught'}`
+  const unit = `${shiny ? 'shiny caught' : 'caught'}${game === undefined ? '' : ` in ${game}`}`
+  const countText = `${formatCount(stats.filled)} of ${formatCount(stats.slots)} ${unit}`
 
   return (
     <header className={cx('living-hero', shiny && 'is-shiny', complete && 'is-complete')}>
@@ -53,7 +56,7 @@ export function LivingHero({ mode, onMode, stats, totals, shinySpecies, rules, b
         <p className="living-hero__count">
           <NumberTicker value={stats.filled} className="living-hero__caught" />
           <span className="living-hero__total"> / {formatCount(stats.slots)}</span>
-          <span className="living-hero__unit">{shiny ? 'shiny caught' : 'caught'}</span>
+          <span className="living-hero__unit">{unit}</span>
         </p>
         <p className="living-hero__second">
           {shiny ? (
@@ -71,6 +74,7 @@ export function LivingHero({ mode, onMode, stats, totals, shinySpecies, rules, b
         </p>
         <p className="living-hero__rules">
           {rulesLine(rules, stats.slots)}
+          {game !== undefined && ` obtainable in ${game}`}
           <Link href={paths.settings()} className="living-hero__rules-link">
             Change rules
           </Link>

@@ -1,12 +1,15 @@
 import { memo, useCallback, useEffect, useId, useImperativeHandle, useRef, type CSSProperties, type FocusEvent, type KeyboardEvent, type MouseEvent, type Ref } from 'react'
 import { GENERATION_NAMES } from '@shared/games'
-import { BallIcon, Sprite } from '@renderer/components/pokemon'
-import { Icon, cx } from '@renderer/components/ui'
+import { BallIcon, HomeMark, Sprite } from '@renderer/components/pokemon'
+import { Icon, Tooltip, cx } from '@renderer/components/ui'
+import { sectionsOf } from '@renderer/domain/gamedex'
+import { homeStatus, type HomeDex, type HomeState } from '@renderer/domain/home'
 import type { Collection, LivingSlot } from '@renderer/domain/slots'
+import { SectionHeading } from '@renderer/features/pokedex/GamePicker'
 import { dexNo, formatCount, ratio } from '@renderer/lib/format'
 import { FloatingTip, useHoverTarget } from './HoverTip'
 import {
-  BOX_GAP, LIST_GAP, MOVE_KEYS, boxRange, moveFocus, slotInfo, slotMarker, slotStatus, slotTitle,
+  BOX_GAP, LIST_GAP, MOVE_KEYS, boxName, boxRange, moveFocus, slotInfo, slotMarker, slotStatus, slotTitle,
   type BoxModel, type GenStat, type LivingLayout, type LivingMode, type LivingRow, type LivingStats, type MoveKey, type SlotMarker
 } from './model'
 import { useRowWindow, type ScrollToRowOptions } from './windowing'
@@ -22,6 +25,12 @@ export interface LivingGridHandle {
   boxElement(boxIndex: number): HTMLElement | null
   /** The element all rows are positioned in. */
   listElement(): HTMLElement | null
+}
+
+/** Turns the grid into the HOME Dex: tiles show what is in Pokémon HOME, boxes count it and offer "Mark box as in HOME". */
+export interface LivingGridHome {
+  dex: HomeDex
+  onMarkBox: (boxIndex: number) => void
 }
 
 export interface LivingGridProps {
@@ -48,6 +57,8 @@ export interface LivingGridProps {
   onOpen: (index: number) => void
   /** First and last slot index on screen, whenever that changes. */
   onVisible: (first: number, last: number) => void
+  /** Only on the HOME Dex page. */
+  home?: LivingGridHome
   ref?: Ref<LivingGridHandle>
 }
 
@@ -72,18 +83,23 @@ interface SlotCellProps {
   /** Print the dex number under the render (list view). */
   caption: boolean
   resolution: number
+  /** HOME Dex: where the slot stands there. */
+  home?: HomeState
+  /** HOME Dex: the slot is a switch (one entry fills it) and this is its state; undefined when it opens the drawer. */
+  pressed?: boolean
 }
 
-const SlotCell = memo(function SlotCell({ slot, index, shiny, filled, count, ball, sparkle, status, tabbable, found, quiet, caption, resolution }: SlotCellProps) {
+const SlotCell = memo(function SlotCell({ slot, index, shiny, filled, count, ball, sparkle, status, tabbable, found, quiet, caption, resolution, home, pressed }: SlotCellProps) {
   const marker = slotMarker(slot)
   return (
     <button
       type="button"
-      className={cx('living-slot', filled ? 'is-filled' : 'is-missing', shiny && 'is-shiny', found && 'is-found', quiet && 'is-quiet', caption && 'has-caption')}
+      className={cx('living-slot', filled ? 'is-filled' : 'is-missing', shiny && 'is-shiny', found && 'is-found', quiet && 'is-quiet', caption && 'has-caption', home === 'home' && 'is-in-home')}
       data-slot={index}
       data-key={slot.key}
       tabIndex={tabbable ? 0 : -1}
-      aria-haspopup="dialog"
+      aria-haspopup={pressed === undefined ? 'dialog' : undefined}
+      aria-pressed={pressed}
       aria-label={`${slotTitle(slot)}, ${status}`}
     >
       <span className="living-slot__art">
@@ -99,6 +115,7 @@ const SlotCell = memo(function SlotCell({ slot, index, shiny, filled, count, bal
         )}
         {!quiet && filled && count > 1 && <span className="living-slot__count">{count > 99 ? '99+' : count}</span>}
         {!quiet && filled && ball !== undefined && <BallIcon ball={ball} size={resolution >= 60 ? 16 : 14} label="" className="living-slot__ball" />}
+        {home === 'home' && <HomeMark size={resolution >= 60 ? 18 : 15} label="" className="living-slot__home" />}
         {!quiet && sparkle && (
           <span className="living-slot__sparkle">
             <Icon name="sparkle" size={11} />
@@ -117,10 +134,12 @@ interface SlotBinding {
   tabStop: number
   found: number
   resolution: number
+  home?: LivingGridHome
 }
 
 function renderSlot(slot: LivingSlot, index: number, bind: SlotBinding, extra: { quietFilled: boolean; caption: boolean }) {
   const info = slotInfo(bind.collection, slot.key, bind.mode)
+  const home = bind.home ? (bind.home.dex.states.get(slot.key) ?? 'missing') : undefined
   return (
     <SlotCell
       key={slot.key}
@@ -129,9 +148,11 @@ function renderSlot(slot: LivingSlot, index: number, bind: SlotBinding, extra: {
       shiny={bind.mode === 'shiny'}
       filled={info.filled}
       count={info.count}
-      ball={info.ball}
+      ball={home === undefined ? info.ball : undefined}
       sparkle={bind.mode === 'normal' && info.hasShiny}
-      status={slotStatus(info, bind.mode)}
+      status={home === undefined ? slotStatus(info, bind.mode) : `${homeStatus(home, bind.mode === 'shiny')}${info.count > 1 ? ` · ${info.count} entries` : ''}`}
+      home={home}
+      pressed={home !== undefined && info.count === 1 ? home === 'home' : undefined}
       tabbable={index === bind.tabStop}
       found={index === bind.found}
       quiet={extra.quietFilled && info.filled}
@@ -153,13 +174,23 @@ const BoxPanel = memo(function BoxPanel({ box, filled, quietFilled, ...bind }: B
   const titleId = useId()
   const size = box.slots.length
   const complete = size > 0 && filled === size
+  const home = bind.home
+  const canMark = home !== undefined && box.slots.some((slot) => home.dex.states.get(slot.key) === 'pending')
   return (
     <section className={cx('living-box', complete && 'is-complete', bind.mode === 'shiny' && 'is-shiny')} data-box={box.index} aria-labelledby={titleId}>
       <header className="living-box__head">
         <h2 id={titleId} className="living-box__title">
-          Box {box.index + 1}
+          Box {box.no}
         </h2>
         <span className="living-box__range">{boxRange(box)}</span>
+        {home && canMark && (
+          <Tooltip content="Mark box as in HOME">
+            <button type="button" className="living-box__action" aria-label={`Mark ${boxName(box).replace('Box', 'box')} as in HOME`} onClick={() => home.onMarkBox(box.index)}>
+              <HomeMark size={14} label="" />
+              Mark box
+            </button>
+          </Tooltip>
+        )}
         <span className="living-box__status">
           {complete ? (
             <>
@@ -242,7 +273,7 @@ function rowSpan(row: LivingRow | undefined): [number, number] | null {
  * or a generation divider in the list view. One tab stop for the whole grid; the arrow keys walk
  * the slots the way they sit on screen, Enter or a click opens one.
  */
-export function LivingGrid({ collection, mode, layout, cell, columns, stats, quietFilled, countMissing, scroller, inset, focusIndex, foundIndex, onFocusIndex, onOpen, onVisible, ref }: LivingGridProps) {
+export function LivingGrid({ collection, mode, layout, cell, columns, stats, quietFilled, countMissing, scroller, inset, focusIndex, foundIndex, onFocusIndex, onOpen, onVisible, home, ref }: LivingGridProps) {
   const listRef = useRef<HTMLDivElement>(null)
   const hintId = useId()
   const pendingFocus = useRef<number | null>(null)
@@ -337,16 +368,18 @@ export function LivingGrid({ collection, mode, layout, cell, columns, stats, qui
 
   const resolution = cell
   const genStats = new Map(stats.gens.map((g) => [g.gen, g]))
+  const sections = sectionsOf(collection.slots)
   const total = offsets[rows.length] ?? 0
   const tipIndex = tip.target ? Number(tip.target.dataset.slot) : -1
   const tipSlot = tipIndex >= 0 ? collection.slots[tipIndex] : undefined
   const tipInfo = tipSlot ? slotInfo(collection, tipSlot.key, mode) : null
+  const tipHome = home && tipSlot ? (home.dex.states.get(tipSlot.key) ?? 'missing') : undefined
 
   return (
     <div
       ref={listRef}
       role="group"
-      aria-label={mode === 'shiny' ? 'Shiny Living Dex slots' : 'Living Dex slots'}
+      aria-label={home ? (mode === 'shiny' ? 'Shiny HOME Dex slots' : 'HOME Dex slots') : mode === 'shiny' ? 'Shiny Living Dex slots' : 'Living Dex slots'}
       aria-describedby={hintId}
       className={cx('living-grid', `living-grid--${layout.view}`, mode === 'shiny' && 'is-shiny')}
       style={{ height: total, '--living-cell': `${cell}px`, '--living-columns': columns, '--living-box-gap': `${BOX_GAP}px`, '--living-list-gap': `${LIST_GAP}px` } as CSSProperties}
@@ -359,7 +392,7 @@ export function LivingGrid({ collection, mode, layout, cell, columns, stats, qui
       onPointerDown={tip.handlers.onPointerDown}
     >
       <span id={hintId} className="u-sr-only">
-        Use the arrow keys to move between slots and Enter to open one.
+        {home ? 'Use the arrow keys to move between slots. Enter marks a caught Pokémon as in Pokémon HOME, or opens the slot when it holds several entries or none.' : 'Use the arrow keys to move between slots and Enter to open one.'}
       </span>
       {mounted.map((i) => {
         const row = rows[i]
@@ -383,9 +416,27 @@ export function LivingGrid({ collection, mode, layout, cell, columns, stats, qui
                     tabStop={inBox(focusIndex)}
                     found={inBox(foundIndex)}
                     resolution={resolution}
+                    home={home}
                   />
                 )
               })}
+            </div>
+          )
+        }
+        if (row.kind === 'section') {
+          const stat = stats.sections[row.section]
+          return (
+            <div key={row.key} className="living-row living-row--divider" style={style}>
+              <SectionHeading title={sections[row.section]?.title ?? ''}>
+                {stat &&
+                  (countMissing ? (
+                    `${formatCount(stat.slots - stat.filled)} missing`
+                  ) : (
+                    <>
+                      <b>{formatCount(stat.filled)}</b> / {formatCount(stat.slots)}
+                    </>
+                  ))}
+              </SectionHeading>
             </div>
           )
         }
@@ -398,14 +449,16 @@ export function LivingGrid({ collection, mode, layout, cell, columns, stats, qui
         }
         return (
           <div key={row.key} className="living-row living-row--slots" style={style}>
-            <SlotsRow indices={row.indices} collection={collection} mode={mode} tabStop={holds(focusIndex)} found={holds(foundIndex)} resolution={resolution} />
+            <SlotsRow indices={row.indices} collection={collection} mode={mode} tabStop={holds(focusIndex)} found={holds(foundIndex)} resolution={resolution} home={home} />
           </div>
         )
       })}
       {tip.target && tipSlot && tipInfo && (
         <FloatingTip key={tipIndex} target={tip.target}>
           <span className="living-tip__title">{slotTitle(tipSlot)}</span>
-          <span className={cx('living-tip__status', tipInfo.filled && 'is-filled', mode === 'shiny' && 'is-shiny')}>{slotStatus(tipInfo, mode)}</span>
+          <span className={cx('living-tip__status', (tipHome === undefined ? tipInfo.filled : tipHome === 'home') && 'is-filled', mode === 'shiny' && 'is-shiny')}>
+            {tipHome === undefined ? slotStatus(tipInfo, mode) : homeStatus(tipHome, mode === 'shiny')}
+          </span>
         </FloatingTip>
       )}
     </div>

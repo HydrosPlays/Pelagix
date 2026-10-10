@@ -144,6 +144,8 @@ export function checkEntry(raw: unknown, now: string): EntryCheck {
   // Compared, never shown: kept exactly as written or not at all.
   const fingerprint = optional('fingerprint', (v) => (typeof v === 'string' && v !== '' && v.length <= FINGERPRINT_LIMIT ? v : undefined))
 
+  const inHome = flag('inHome')
+
   // Keys in the order of the interface so saved files diff cleanly; absent fields are omitted, not undefined.
   const entry: CatchEntry = {
     id,
@@ -171,6 +173,7 @@ export function checkEntry(raw: unknown, now: string): EntryCheck {
     ...(ivs !== undefined && { ivs }),
     ...(evs !== undefined && { evs }),
     ...(fingerprint !== undefined && { fingerprint }),
+    ...(inHome && { inHome: true as const }),
     createdAt,
     updatedAt
   }

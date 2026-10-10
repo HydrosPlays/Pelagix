@@ -113,7 +113,7 @@ main process is what talks to GitHub for updates.
 
 | Folder | Contents |
 | --- | --- |
-| `features/` | One folder per page or app-wide feature: `home`, `pokedex`, `species`, `entry`, `living`, `journal`, `achievements`, `settings`, `search`, `updates` (and `kit`, development only). |
+| `features/` | One folder per page or app-wide feature: `home`, `pokedex`, `species`, `entry`, `living`, `homedex`, `journal`, `achievements`, `settings`, `search`, `gamesave`, `updates` (and `kit`, development only). |
 | `domain/` | The rules, as pure functions: Living Dex slots, progress, encounters, achievements. |
 | `components/` | Shared components (`ui/`) and Pokémon-specific ones (`pokemon/`). |
 | `lib/` | Data loading, sprites, storage, search, formatting, animation helpers. |
@@ -121,7 +121,7 @@ main process is what talks to GitHub for updates.
 | `shell/` | The app frame: navigation rail, title bar and routing. |
 | `styles/` | Design tokens and base styles. |
 
-Routing is hash-based: `#/`, `#/dex`, `#/dex/<number>?form=<index>`, `#/living`, `#/journal`,
+Routing is hash-based: `#/`, `#/dex`, `#/dex/<number>?form=<index>`, `#/living`, `#/home-dex`, `#/journal`,
 `#/achievements` and `#/settings`.
 
 Animation goes through `lib/anim.ts`, a thin layer over anime.js that honours the reduce-motion
@@ -156,7 +156,7 @@ is loaded or imported, and reports what it had to drop or repair.
 npm test
 ```
 
-Vitest, in a Node environment: 1,672 tests in 45 files at the time of writing. They cover the
+Vitest, in a Node environment: 1,773 tests in 50 files at the time of writing. They cover the
 logic: slot rules, progress, encounter handling, achievements (including that every one of them
 can be earned on the real datasets), search, the entry editor's draft handling, the page models,
 the save store and the sprite protocol's request parsing.

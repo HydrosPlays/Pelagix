@@ -66,6 +66,8 @@ export interface CatchEntry {
    * (`GameSavePokemon.fingerprint`), so the same Pokémon is not imported twice. Never shown.
    */
   fingerprint?: string
+  /** The user has sent it to Pokémon HOME (the HOME Dex page). Only ever `true`. */
+  inHome?: true
   createdAt: string
   updatedAt: string
 }

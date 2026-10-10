@@ -7,6 +7,7 @@ const PAGES: readonly PalettePage[] = [
   { id: 'page-home', label: 'Home', icon: 'home', href: '/', keywords: 'dashboard' },
   { id: 'page-dex', label: 'Pokédex', icon: 'dex', href: '/dex', keywords: 'pokemon browse' },
   { id: 'page-living', label: 'Living Dex', icon: 'grid', href: '/living' },
+  { id: 'page-homedex', label: 'HOME Dex', icon: 'box', href: '/home-dex', keywords: 'pokemon home sent' },
   { id: 'page-journal', label: 'Journal', icon: 'journal', href: '/journal', keywords: 'entries history' },
   { id: 'page-settings', label: 'Settings', icon: 'settings', href: '/settings', keywords: 'theme' }
 ]
@@ -83,6 +84,8 @@ describe('buildPalette with a query', () => {
     expect(section(buildPalette(input({ query: 'sett' })), 'pages')!.items.map((i) => i.id)).toEqual(['page-settings'])
     expect(section(buildPalette(input({ query: 'history' })), 'pages')!.items.map((i) => i.id)).toEqual(['page-journal'])
     expect(section(buildPalette(input({ query: 'living dex' })), 'pages')!.items.map((i) => i.id)).toEqual(['page-living'])
+    expect(section(buildPalette(input({ query: 'home dex' })), 'pages')!.items.map((i) => i.id)).toEqual(['page-homedex'])
+    expect(section(buildPalette(input({ query: 'sent' })), 'pages')!.items.map((i) => i.id)).toEqual(['page-homedex'])
   })
 
   it('finds the toggles by what they are about', () => {

@@ -19,6 +19,7 @@ what is in them, how they are built and where they fall short.
 | --- | --- | --- |
 | `src/renderer/public/data/dex.json` | Once, at startup | Every species and form: names, types, category, tags, gender ratio, render keys, and for each form the games it exists in, can be obtained in, or is event-only in. Also the ball list of each game. About 0.5 MB. |
 | `src/renderer/public/data/species/<id>.json` | When a Pokémon is opened | One file per National Pokédex number: Pokédex text, height and weight, regional numbers, the evolution family, and every source of every form. 1,025 files, about 4.1 MB together. |
+| `src/renderer/public/data/pokedexes.json` | When a game is chosen in "Obtainable in" | The 32 regional Pokédexes, each as its species in regional order. Built by `tools/build-data/pokedexes.ts` from the pinned PokeAPI tables. Which Pokédexes belong to which game is a hand-kept table in `src/shared/pokedexes.ts`. |
 
 The shapes are defined in [`src/shared/dex-types.ts`](../src/shared/dex-types.ts).
 

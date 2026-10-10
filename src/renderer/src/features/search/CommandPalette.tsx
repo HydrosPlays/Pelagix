@@ -27,6 +27,7 @@ const PAGE_KEYWORDS: Readonly<Record<string, string>> = {
   home: 'dashboard overview start progress',
   dex: 'pokedex pokemon browse species list',
   living: 'boxes collection forms slots',
+  homedex: 'pokemon home sent transferred stored bank boxes',
   journal: 'entries log history catches diary',
   achievements: 'trophies medals badges goals',
   settings: 'preferences options rules theme import export backup'

@@ -316,6 +316,11 @@
   gap: 2px;
 }
 
+/* A game view with Pokédex sections shows their tabs instead (.gdex-tabs). */
+.living-gens[hidden] {
+  display: none;
+}
+
 .living-gens__item {
   display: flex;
   flex-direction: column;
@@ -907,4 +912,60 @@
   .living-hero__stats {
     gap: var(--sp-4);
   }
+}
+
+/* ================================================================ HOME Dex (the same grid and drawer, see features/homedex) */
+
+/* In Pokémon HOME: the HOME icon in the corner and a green ring, so it never rests on colour alone. */
+.living-slot.is-in-home .living-slot__art {
+  background-image: radial-gradient(circle at 50% 62%, var(--success-soft), transparent 74%);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--success) 62%, transparent);
+}
+
+.living-slot__home {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  border-radius: 24%;
+  box-shadow: 0 0 0 1.5px var(--surface-solid);
+  pointer-events: none;
+}
+
+.living-box__action {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  align-self: flex-start;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px 0 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.living-box__action:hover {
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+.living-box__action:active {
+  background: var(--surface-press);
+}
+
+.living-drawer__entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.living-drawer__home {
+  padding: 0 var(--sp-2);
 }

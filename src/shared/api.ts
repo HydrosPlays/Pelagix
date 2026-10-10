@@ -8,6 +8,7 @@
  */
 
 import type { GameSaveResult } from './game-save-types'
+import type { ShinyDexResult } from './shinydex-types'
 import type { SaveFile, ThemeId } from './save-types'
 
 export interface ExportResult {
@@ -175,6 +176,11 @@ export interface PelagixApi {
    * read. Never rejects because of the file: what went wrong is the result's `reason`.
    */
   readGameSave(): Promise<GameSaveResult | null>
+  /**
+   * Open dialog -> the shinies of a ShinyDex export or a saved ShinyDex History page; null if cancelled. The file
+   * is only read. Never rejects because of the file: what went wrong is the result's `reason`.
+   */
+  readShinyDex(): Promise<ShinyDexResult | null>
   spriteCacheInfo(): Promise<SpriteCacheInfo>
   clearSpriteCache(): Promise<void>
   appInfo(): Promise<AppInfo>
@@ -223,6 +229,7 @@ export interface PelagixIpc {
   'pelagix:save-export': { args: [save: SaveFile]; result: ExportResult }
   'pelagix:save-import': { args: []; result: unknown | null }
   'pelagix:game-save-read': { args: []; result: GameSaveResult | null }
+  'pelagix:shinydex-read': { args: []; result: ShinyDexResult | null }
   'pelagix:sprite-cache-info': { args: []; result: SpriteCacheInfo }
   'pelagix:sprite-cache-clear': { args: []; result: void }
   'pelagix:app-info': { args: []; result: AppInfo }

@@ -2,13 +2,14 @@ import { memo, useMemo, type CSSProperties, type KeyboardEvent, type RefObject }
 import type { SpeciesTag, TypeId } from '@shared/dex-types'
 import { GENERATION_NAMES } from '@shared/games'
 import { GameIcon, ShinyMark, TYPE_IDS, TYPE_NAMES, typeColor } from '@renderer/components/pokemon'
-import { Button, Chip, Combobox, cx, Icon, Kbd, SegmentedControl, Switch, TextField, Tooltip, type IconName, type IconSlot, type SelectOption } from '@renderer/components/ui'
+import { Button, Chip, cx, Icon, Kbd, SegmentedControl, Switch, TextField, Tooltip, type IconName, type IconSlot } from '@renderer/components/ui'
 import type { Dex } from '@renderer/lib/data'
 import { formatCount } from '@renderer/lib/format'
 import { FilterPopover } from './FilterPopover'
+import { GamePicker } from './GamePicker'
 import { useDexBrowser } from './dex-store'
 import {
-  activeChips, DEX_STATUSES, facetCounts, GENERATION_REGIONS, hasActiveFilters, obtainGames, romanNumeral, SPECIES_TAGS, STATUS_INFO, TAG_LABELS,
+  activeChips, DEX_STATUSES, facetCounts, GENERATION_REGIONS, hasActiveFilters, romanNumeral, SPECIES_TAGS, STATUS_INFO, TAG_LABELS,
   type DexFilters, type DexStatus, type FilterChip, type TypeMatch
 } from './dex-query'
 
@@ -104,30 +105,10 @@ function StatusPanel({ value, onChange }: { value: DexStatus; onChange: (status:
 }
 
 function GamePanel({ dex, filters, onChange }: { dex: Dex; filters: DexFilters; onChange: (patch: Partial<DexFilters>) => void }) {
-  const options = useMemo<SelectOption<string>[]>(
-    () =>
-      obtainGames(dex).map((game) => ({
-        value: game.id,
-        label: game.name,
-        keywords: `${game.short} ${game.groupName}`,
-        icon: <GameIcon game={game} size={22} tooltip={false} alt="" />,
-        group: game.generation === 0 ? 'Services' : (GENERATION_NAMES[game.generation] ?? `Generation ${game.generation}`)
-      })),
-    [dex]
-  )
   const chosen = filters.game !== null
   return (
     <div className="dex-game">
-      <Combobox
-        ariaLabel="Game"
-        options={options}
-        value={filters.game}
-        onChange={(game) => onChange(game === null ? { game: null, gameEvents: false, gameMissing: false } : { game })}
-        placeholder="Choose a game"
-        icon="gamepad"
-        emptyText="No game with that name"
-        maxHeight={280}
-      />
+      <GamePicker dex={dex} value={filters.game} onChange={(game) => onChange(game === null ? { game: null, gameEvents: false, gameMissing: false } : { game })} />
       <Switch checked={filters.gameMissing} onChange={(gameMissing) => onChange({ gameMissing })} disabled={!chosen} reverse label="Only what I still need" description="Leaves out Pokémon and forms already in your Living Dex." />
       <Switch checked={filters.gameEvents} onChange={(gameEvents) => onChange({ gameEvents })} disabled={!chosen} reverse label="Include event-only Pokémon" description="Distributions and other time-limited sources." />
     </div>

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import type { PelagixChannel, PelagixEventChannel, PelagixEvents, PelagixIpc } from '@shared/api'
 import type { SaveFile, ThemeId } from '@shared/save-types'
 import { readGameSave, readerPath } from './game-save'
+import { readShinyDexHistory } from './shinydex'
 import { exportFileName, isPlainObject, readImportFile, writeExportFile, type SaveStore } from './save'
 import { clearSpriteCache, spriteCacheInfo } from './sprites'
 import type { UpdateService } from './update-service'
@@ -17,6 +18,10 @@ const JSON_FILTERS = [
 ]
 // Saves of the Switch games are called "main", without an extension, so no filter by extension is offered.
 const GAME_SAVE_FILTERS = [{ name: 'All files', extensions: ['*'] }]
+const SHINYDEX_FILTERS = [
+  { name: 'ShinyDex export or saved page', extensions: ['json', 'html', 'htm'] },
+  { name: 'All files', extensions: ['*'] }
+]
 const MAX_URL_LENGTH = 2048
 
 type Result<K extends PelagixChannel> = PelagixIpc[K]['result']
@@ -159,6 +164,18 @@ export function registerIpc(getWindow: () => BrowserWindow | null, store: SaveSt
     if (canceled || path === undefined) return null
     const reader = readerPath({ packaged: app.isPackaged, resourcesPath: process.resourcesPath, appPath: app.getAppPath() })
     return readGameSave(reader, path)
+  })
+
+  handle('pelagix:shinydex-read', async (args, win) => {
+    expectNoArgs('readShinyDex', args)
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: 'Import from ShinyDex',
+      properties: ['openFile'],
+      filters: SHINYDEX_FILTERS
+    })
+    const path = filePaths[0]
+    if (canceled || path === undefined) return null
+    return readShinyDexHistory(path)
   })
 
   handle('pelagix:sprite-cache-info', (args) => {

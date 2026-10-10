@@ -344,6 +344,18 @@ describe('entries', () => {
     expect(get().duplicateEntry(a.id)).not.toHaveProperty('fingerprint')
   })
 
+  it('keeps the Pokémon HOME flag through an edit and a merge, but not on a duplicate, and clears it in one step', async () => {
+    const { get } = await ready()
+    get().mergeEntries([{ ...pikachu, id: 'home-1', inHome: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }])
+    const b = get().addEntry(pikachu)
+    expect(b).not.toHaveProperty('inHome')
+    expect(get().updateEntry('home-1', { nickname: 'Volt' })?.inHome).toBe(true)
+    expect(get().duplicateEntry('home-1')).not.toHaveProperty('inHome')
+    expect(get().patchEntries([{ id: 'home-1', patch: { inHome: undefined } }, { id: b.id, patch: { inHome: true } }])).toBe(2)
+    expect(get().save.entries.find((e) => e.id === 'home-1')).not.toHaveProperty('inHome')
+    expect(get().save.entries.find((e) => e.id === b.id)?.inHome).toBe(true)
+  })
+
   it('keeps PID, IVs and EVs through an edit and a merge, but not on a duplicate', async () => {
     const { get } = await ready()
     get().mergeEntries([{ ...pikachu, id: 'gs-2', pid: '0000CAFE', ivs: [31, 30, 29, 28, 27, 26], evs: [0, 252, 0, 0, 6, 252], createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }])

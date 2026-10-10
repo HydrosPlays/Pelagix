@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <sub>Windows 10 and 11 · version 0.5.0 · GPL-3.0 · an unofficial fan project</sub>
+  <sub>Windows 10 and 11 · version 0.6.0 · GPL-3.0 · an unofficial fan project</sub>
 </p>
 
 > The screenshots on this page come from version 0.1.0 running a generated demo collection
@@ -36,6 +36,8 @@
   - [Species page and where to find it](#species-page-and-where-to-find-it)
   - [Logging a catch](#logging-a-catch)
   - [Living Dex and Shiny Living Dex](#living-dex-and-shiny-living-dex)
+  - [HOME Dex](#home-dex)
+  - [Viewing one game](#viewing-one-game)
   - [Forms and the Living Dex rules](#forms-and-the-living-dex-rules)
   - [Journal](#journal)
   - [Achievements](#achievements)
@@ -230,6 +232,39 @@ fills a slot, and the renders are the shiny ones.
 
 ![The Shiny Living Dex: 20 of 1,365 shiny caught, with a few shiny Pokémon such as Caterpie, Pidgey, Pikachu and Psyduck in colour and every other slot a silhouette](docs/screenshots/09-living-dex-shiny.png)
 
+### HOME Dex
+
+The HOME Dex shows which of your Pokémon you have sent to Pokémon HOME. It has the same slots
+and boxes of 30 as the Living Dex, and follows the same rules and the same Shiny mode.
+
+- Every slot is in one of three states: **in HOME**, **not sent yet** (caught, but not marked) or
+  **not caught**. The chips above the boxes filter by state, so *Not sent yet* is your to-do list.
+- Click a caught Pokémon to mark it as in HOME, and again to take the mark off. If several of
+  your entries fill the slot, a list opens and you choose which one went to HOME.
+- **Mark box** marks every caught Pokémon of a box at once, and can be undone straight afterwards.
+- The mark belongs to the entry: the entry editor has an **In Pokémon HOME** switch, and marked
+  entries carry a small HOME icon on their card and in the Journal.
+
+Pelagix does not connect to Pokémon HOME. The marks are yours to set.
+
+### Viewing one game
+
+The Pokédex, the Living Dex and the HOME Dex each have an **Obtainable in** picker. Choose a game
+and the page shows only the Pokémon you can obtain in it, in that game's own Pokédex order.
+
+- A game with several Pokédexes is split into sections, each with its own count: Lumiose and
+  Hyperspace for Legends: Z-A; Galar, Isle of Armor and Crown Tundra for Sword and Shield; Paldea,
+  Kitakami and Blueberry for Scarlet and Violet; Central, Coastal and Mountain Kalos for X and Y.
+  Pokémon obtainable in the game but in none of its Pokédexes come last.
+- On the Living Dex and the HOME Dex, a slot then counts only if you caught it **in that game**,
+  and the boxes are numbered within each section. The choice is shared by the two pages and
+  remembered.
+- On the Pokédex the sections appear while the list is sorted by number; the caught marks there
+  keep meaning caught in any game.
+- Games without a Pokédex of their own, such as Colosseum, XD and Pokémon GO, are filtered the
+  same way and stay in National order.
+- Event-only Pokémon are left out of a game's view.
+
 ### Forms and the Living Dex rules
 
 Forms are first-class. A Pokémon's page lists each form with its own render, its own sources and
@@ -337,7 +372,10 @@ the first catch.
   imported, an egg (skipped) or not importable, and only the ones you tick are added. The save
   file is only read, never changed, and the import can be undone straight afterwards. Imported
   entries also get their ability, PID, IVs and EVs where the game has them, and importing a save again
-  adds those to entries imported before 0.4.0.
+  adds those to entries imported before 0.4.0. **Import from ShinyDex** does the same for a
+  [ShinyDex](https://shinydex.com) history: choose the exported `.json`, or a saved copy of your
+  History page, and its shinies are offered in the same preview with game, method and date (and
+  the ball, from the saved page). Settings and achievements in the file are ignored.
 - **Sprite cache**: how much is stored, and a button to clear it.
 - **Updates**: your version, when it was last checked, **Check for updates**, and the switch for
   the automatic check. See [Updates](#updates).
@@ -584,7 +622,7 @@ npm install
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Starts the app in Electron with hot reload. The first run downloads the Electron binary. |
-| `npm test` | Runs the unit tests (1,672 tests in 45 files). |
+| `npm test` | Runs the unit tests (1,773 tests in 50 files). |
 | `npm run dist` | Builds the save reader, type-checks, builds, and packages the installer, the portable executable and the updater's files into `dist/`. Needs the .NET 10 SDK and the `PKHeX/` tree. Nothing is uploaded. |
 
 The datasets and the game icons are part of the repository, so nothing else has to be generated
@@ -649,7 +687,7 @@ src/
     public/games/      Game icons as shipped
     src/components/    Shared components
     src/features/      One folder per page: home, pokedex, species, entry, living,
-                       journal, achievements, settings, search, updates
+                       homedex, journal, achievements, settings, search, updates
     src/domain/        Living Dex slots, progress, encounters, achievements
     src/lib/           Data loading, sprites, storage, search, animation helpers
     src/store/         The save and the interface state

@@ -47,6 +47,8 @@ export interface Draft {
   /** Six boxes in the order of `STAT_LABELS`; null is an empty box. */
   ivs: StatBoxes
   evs: StatBoxes
+  /** The Pokémon has been sent to Pokémon HOME. */
+  inHome: boolean
 }
 
 export type StatBoxes = readonly (number | null)[]
@@ -149,7 +151,8 @@ export function draftFromPreset(dex: Dex, preset: EntryPreset, defaults: DraftDe
     abilityHidden: false,
     pid: '',
     ivs: NO_STATS,
-    evs: NO_STATS
+    evs: NO_STATS,
+    inHome: false
   }
   return settleDraft(dex, draft)
 }
@@ -179,7 +182,8 @@ export function draftFromEntry(entry: CatchEntry): Draft {
     abilityHidden: entry.ability !== undefined && entry.abilityHidden === true,
     pid: entry.pid ?? '',
     ivs: entry.ivs ?? NO_STATS,
-    evs: entry.evs ?? NO_STATS
+    evs: entry.evs ?? NO_STATS,
+    inHome: entry.inHome === true
   }
 }
 
@@ -206,7 +210,8 @@ export function draftForAnotherGame(dex: Dex, draft: Draft, defaults: DraftDefau
     abilityHidden: false,
     pid: '',
     ivs: NO_STATS,
-    evs: NO_STATS
+    evs: NO_STATS,
+    inHome: false
   })
 }
 
@@ -289,7 +294,8 @@ export function draftToPatch(draft: Draft): EntryPatch & Pick<EntryInput, 'speci
     abilityHidden: ability !== null && draft.abilityHidden ? true : undefined,
     pid: parsePid(draft.pid) ?? undefined,
     ivs: parseSpread(draft.ivs, MAX_IV) ?? undefined,
-    evs: parseSpread(draft.evs, MAX_EV) ?? undefined
+    evs: parseSpread(draft.evs, MAX_EV) ?? undefined,
+    inHome: draft.inHome ? true : undefined
   }
 }
 

@@ -8,6 +8,7 @@ import { useSearch } from 'wouter'
 import { GAME_BY_ID } from '@shared/games'
 import { TYPE_IDS } from '@renderer/components/pokemon'
 import { Button, EmptyState, NumberTicker, SegmentedControl, Select, Skeleton, Tooltip, type SelectOption } from '@renderer/components/ui'
+import { arrange, planSections, usePokedexes } from '@renderer/domain/gamedex'
 import { useCollection } from '@renderer/domain/slots'
 import { useDexStore, type Dex } from '@renderer/lib/data'
 import { formatCount } from '@renderer/lib/format'
@@ -132,7 +133,14 @@ function PokedexBrowser({ dex }: { dex: Dex }) {
   const deferredText = useDeferredValue(text)
   const universe = useMemo(() => buildTiles(dex, collection, display), [dex, collection, display])
   const filtered = useMemo(() => filterTiles(universe, { dex, collection, display, text: deferredText, filters }), [universe, dex, collection, display, deferredText, filters])
-  const tiles = useMemo(() => sortTiles(filtered, sort), [filtered, sort])
+  const sorted = useMemo(() => sortTiles(filtered, sort), [filtered, sort])
+  // A game chosen and the default order: the game's own Pokédex order, one section per Pokédex.
+  const pokedexes = usePokedexes()
+  const sectioned = useMemo(() => {
+    const plan = filters.game !== null && sort === 'number' ? planSections(filters.game, pokedexes) : null
+    return plan ? arrange(sorted, (tile) => tile.species.id, plan) : null
+  }, [sorted, sort, filters.game, pokedexes])
+  const tiles = sectioned?.items ?? sorted
   const viewKey = useMemo(() => viewKeyOf(tiles), [tiles])
 
   // A link such as /dex?game=scarlet&missing=1 sets the view once, then the address is tidied up
@@ -203,6 +211,8 @@ function PokedexBrowser({ dex }: { dex: Dex }) {
 
       <DexGrid
         tiles={tiles}
+        sections={sectioned?.sections}
+        noun={noun}
         viewKey={viewKey}
         display={display}
         density={density}

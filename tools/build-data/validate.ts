@@ -16,6 +16,8 @@ import { GAMES } from '../../src/shared/games.ts'
 import { POKEAPI_COMMIT, SPRITES_COMMIT } from '../../src/shared/sprites.ts'
 import { FACTS } from './facts.ts'
 import type { Fact } from './facts.ts'
+import { GAME_POKEDEXES, POKEDEX_NAMES } from '../../src/shared/pokedexes.ts'
+import type { PokedexFile } from '../../src/shared/pokedexes.ts'
 import { OUT_DIR, OUT_SPECIES_DIR } from './paths.ts'
 import { compareRows, isTimeLimited, rowIdentity } from './row-order.ts'
 import { SpriteManifest } from './sources.ts'
@@ -503,6 +505,32 @@ function checkFact(fact: Fact, index: DexIndex, details: Map<number, SpeciesDeta
   }
 }
 
+/** pokedexes.json lists exactly the species whose detail file carries a number in that Pokédex, in the order of those numbers. */
+function validatePokedexes(details: Map<number, SpeciesDetail>): void {
+  const file = readJson<PokedexFile>(path.join(OUT_DIR, 'pokedexes.json'))
+  if (!file) return
+  check(file.v === 1 && typeof file.pokedexes === 'object' && file.pokedexes !== null, () => 'pokedexes.json: not a version 1 file')
+  const expected = new Map<string, { species: number; no: number }[]>()
+  for (const [id, detail] of details) {
+    for (const [name, no] of Object.entries(detail.dex)) {
+      const list = expected.get(name)
+      if (list) list.push({ species: id, no })
+      else expected.set(name, [{ species: id, no }])
+    }
+  }
+  const names = Object.keys(file.pokedexes ?? {})
+  check(names.length === expected.size && names.every((name) => expected.has(name)), () => `pokedexes.json: holds ${names.length} Pokédexes, the species files name ${expected.size}`)
+  for (const [name, list] of expected) {
+    const want = list.sort((a, b) => a.no - b.no || a.species - b.species).map((e) => e.species)
+    const got = file.pokedexes?.[name]
+    check(Array.isArray(got) && got.length === want.length && got.every((s, i) => s === want[i]), () => `pokedexes.json: "${name}" does not match the dex numbers of the species files`)
+  }
+  for (const [game, own] of Object.entries(GAME_POKEDEXES)) {
+    check(GAME_INDEX.has(game), () => `GAME_POKEDEXES: unknown game "${game}"`)
+    for (const name of own) check(expected.has(name) && POKEDEX_NAMES[name] !== undefined, () => `GAME_POKEDEXES: "${game}" names "${name}", which has no species or no display name`)
+  }
+}
+
 function main(): void {
   const loaded = load()
   if (!loaded) {
@@ -513,6 +541,7 @@ function main(): void {
   const manifest = new SpriteManifest()
   validateIndex(index)
   const counted = validateSpecies(index, details, manifest)
+  validatePokedexes(details)
   check(index.meta.counts.species === index.species.length, () => `meta.counts.species ${index.meta.counts.species} != ${index.species.length}`)
   check(index.meta.counts.forms === counted.forms, () => `meta.counts.forms ${index.meta.counts.forms} != ${counted.forms}`)
   check(index.meta.counts.rows === counted.rows, () => `meta.counts.rows ${index.meta.counts.rows} != ${counted.rows}`)

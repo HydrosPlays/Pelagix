@@ -1,0 +1,33 @@
+/*
+ * HOME Dex. The header, the boxes, the tiles and the drawer are the Living Dex's own
+ * (features/living/LivingDexPage.css); only the filter bar is new here.
+ */
+
+.hdex-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3) var(--sp-5);
+}
+
+.hdex-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.hdex-filters__count {
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
+}
+
+.hdex-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}

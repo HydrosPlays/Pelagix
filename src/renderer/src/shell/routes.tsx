@@ -2,6 +2,7 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
 import type { IconName } from '@renderer/components/ui'
 import AchievementsPage from '@renderer/features/achievements/AchievementsPage'
 import HomePage from '@renderer/features/home/HomePage'
+import HomeDexPage from '@renderer/features/homedex/HomeDexPage'
 import JournalPage from '@renderer/features/journal/JournalPage'
 import LivingDexPage from '@renderer/features/living/LivingDexPage'
 import PokedexPage from '@renderer/features/pokedex/PokedexPage'
@@ -9,7 +10,7 @@ import SettingsPage from '@renderer/features/settings/SettingsPage'
 import SpeciesPage from '@renderer/features/species/SpeciesPage'
 import { paths } from './router'
 
-export type RouteId = 'home' | 'dex' | 'species' | 'living' | 'journal' | 'achievements' | 'settings' | 'kit'
+export type RouteId = 'home' | 'dex' | 'species' | 'living' | 'homedex' | 'journal' | 'achievements' | 'settings' | 'kit'
 
 export interface RouteDef {
   id: RouteId
@@ -31,6 +32,7 @@ export const ROUTES: readonly RouteDef[] = [
   { id: 'dex', path: '/dex', title: 'Pokédex', component: PokedexPage, nav: 'dex' },
   { id: 'species', path: '/dex/:id', title: 'Pokémon', component: SpeciesPage, parent: 'dex', nav: 'dex' },
   { id: 'living', path: '/living', title: 'Living Dex', component: LivingDexPage, nav: 'living' },
+  { id: 'homedex', path: '/home-dex', title: 'HOME Dex', component: HomeDexPage, nav: 'homedex' },
   { id: 'journal', path: '/journal', title: 'Journal', component: JournalPage, nav: 'journal' },
   { id: 'achievements', path: '/achievements', title: 'Achievements', component: AchievementsPage, nav: 'achievements' },
   { id: 'settings', path: '/settings', title: 'Settings', component: SettingsPage, nav: 'settings' },
@@ -50,6 +52,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', href: paths.home() },
   { id: 'dex', label: 'Pokédex', icon: 'dex', href: paths.dex() },
   { id: 'living', label: 'Living Dex', icon: 'grid', href: paths.living() },
+  { id: 'homedex', label: 'HOME Dex', icon: 'box', href: paths.homeDex() },
   { id: 'journal', label: 'Journal', icon: 'journal', href: paths.journal() },
   { id: 'achievements', label: 'Achievements', icon: 'trophy', href: paths.achievements() },
   { id: 'settings', label: 'Settings', icon: 'settings', href: paths.settings() }

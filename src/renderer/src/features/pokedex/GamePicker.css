@@ -1,0 +1,120 @@
+/*
+ * The per-game view shared by the Pokédex, the Living Dex and the HOME Dex: the "Obtainable in"
+ * bar, the heading of one Pokédex section, and the section tabs of the Living Dex toolbar.
+ */
+
+.gdex-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  min-width: 0;
+}
+
+.gdex-bar__label {
+  flex: none;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.gdex-bar__picker {
+  flex: 0 1 300px;
+  min-width: 200px;
+}
+
+.gdex-bar__hint {
+  min-width: 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+/* ---------------------------------------------------------------- section heading */
+
+.gdex-section {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  width: 100%;
+  min-width: 0;
+  padding-bottom: var(--sp-2);
+}
+
+.gdex-section__title {
+  overflow: hidden;
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gdex-section__count {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.gdex-section__count b {
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+}
+
+.gdex-section__line {
+  flex: 1;
+  align-self: center;
+  min-width: var(--sp-4);
+  height: 1px;
+  background: var(--line);
+}
+
+/* ---------------------------------------------------------------- section tabs (Living Dex toolbar) */
+
+.gdex-tabs {
+  display: flex;
+  flex: 0 1 auto;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.gdex-tabs__item {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 4px var(--sp-3);
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gdex-tabs__item:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+.gdex-tabs__name {
+  overflow: hidden;
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gdex-tabs__count {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.gdex-tabs__item.is-complete .gdex-tabs__count {
+  color: var(--catch);
+}

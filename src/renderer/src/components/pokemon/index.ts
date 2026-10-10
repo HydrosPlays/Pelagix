@@ -6,5 +6,5 @@ export { TypeBadge, TypeBadges, TYPE_IDS, TYPE_NAMES, typeColor, type TypeBadgeP
 export { BallIcon, BALL_ART_SLUGS, type BallIconProps } from './BallIcon'
 export { GameIcon, GameBadge, resolveGame, type GameIconProps, type GameBadgeProps, type GameRef } from './GameIcon'
 export { SystemIcon, type SystemIconProps } from './SystemIcon'
-export { GenderIcon, ShinyMark, DexNumber, FormCategoryTag, FORM_CATEGORY_LABELS, type GenderIconProps, type ShinyMarkProps, type DexNumberProps, type FormCategoryTagProps } from './Marks'
+export { GenderIcon, ShinyMark, HomeMark, DexNumber, FormCategoryTag, FORM_CATEGORY_LABELS, type GenderIconProps, type ShinyMarkProps, type HomeMarkProps, type DexNumberProps, type FormCategoryTagProps } from './Marks'
 export { EntryCard, EntryRowHeader, ENTRY_CARD_METRICS, type EntryCardProps, type EntryCardVariant, type EntryRowHeaderProps } from './EntryCard'
