@@ -51,6 +51,10 @@ export interface CatchEntry {
   /** Original Trainer name. */
   ot?: string
   notes?: string
+  /** PKHeX ability id, one of `ABILITIES` (abilities.ts). */
+  ability?: number
+  /** It is the Pokémon's Hidden Ability. Only with `ability`, and only ever `true`. */
+  abilityHidden?: true
   /** Personality value: exactly 8 uppercase hex digits. */
   pid?: string
   /** Individual values, 0 to 31 each. */

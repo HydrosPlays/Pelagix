@@ -147,6 +147,8 @@ export function entryFromPokemon(dex: Dex, pokemon: GameSavePokemon, gameId: str
     ot: pokemon.ot.trim().slice(0, TEXT_LIMITS.ot),
     notes: '',
     // A value the reader left open, or one that is not what it should be, is left out by the draft's own rules.
+    ability: typeof pokemon.ability === 'number' ? pokemon.ability : null,
+    abilityHidden: pokemon.abilityHidden === true,
     pid: typeof pokemon.pid === 'string' ? pokemon.pid : '',
     ivs: Array.isArray(pokemon.ivs) ? pokemon.ivs : [],
     evs: Array.isArray(pokemon.evs) ? pokemon.evs : []
@@ -154,13 +156,20 @@ export function entryFromPokemon(dex: Dex, pokemon: GameSavePokemon, gameId: str
   return { ...draftToInput(settleDraft(dex, draft)), fingerprint: pokemon.fingerprint }
 }
 
+type Value = 'ability' | 'abilityHidden' | 'pid' | 'ivs' | 'evs'
+
 /**
- * The PID, IVs and EVs that `entry` (a Pokémon as it would be imported now) has and `existing`
+ * The ability, PID, IVs and EVs that `entry` (a Pokémon as it would be imported now) has and `existing`
  * (the entry made from it earlier) lacks. Nothing `existing` already has is touched. Null when
  * there is nothing to add.
  */
-export function missingValues(entry: Pick<EntryInput, 'pid' | 'ivs' | 'evs'>, existing: Pick<CatchEntry, 'pid' | 'ivs' | 'evs'>): EntryPatch | null {
+export function missingValues(entry: Pick<EntryInput, Value>, existing: Pick<CatchEntry, Value>): EntryPatch | null {
   const patch: EntryPatch = {}
+  // The Hidden mark belongs to the ability it came with: it is only added together with it.
+  if (existing.ability === undefined && entry.ability !== undefined) {
+    patch.ability = entry.ability
+    if (entry.abilityHidden === true) patch.abilityHidden = true
+  }
   if (existing.pid === undefined && entry.pid !== undefined) patch.pid = entry.pid
   if (existing.ivs === undefined && entry.ivs !== undefined) patch.ivs = entry.ivs
   if (existing.evs === undefined && entry.evs !== undefined) patch.evs = entry.evs
@@ -202,7 +211,7 @@ export interface PreviewRow {
   slotKey?: string
   /** A `new` row that is the first in this save to fill a slot that is still empty. */
   fills: boolean
-  /** An `imported` row whose earlier entry lacks a PID, IVs or EVs that this save has: confirming adds them to it. */
+  /** An `imported` row whose earlier entry lacks an ability, PID, IVs or EVs that this save has: confirming adds them to it. */
   completes?: boolean
 }
 
@@ -315,7 +324,7 @@ export function entriesToImport(rows: readonly PreviewRow[], selected: ReadonlyS
 }
 
 /**
- * What confirming adds to earlier entries: for every `imported` row, the PID, IVs and EVs its
+ * What confirming adds to earlier entries: for every `imported` row, the ability, PID, IVs and EVs its
  * entry in `existing` lacks. Worked out against `existing` as it is now, so a stale preview
  * overwrites nothing; each entry is completed at most once.
  */

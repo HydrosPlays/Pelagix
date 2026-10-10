@@ -55,6 +55,7 @@ public static class Pokemon
             w.WriteNull("nickname");
         w.WriteString("ot", pk.OriginalTrainerName);
         w.WriteBoolean("fateful", pk.FatefulEncounter);
+        WriteAbility(w, pk);
         WriteValues(w, pk);
 
         IEncounterable? match = null;
@@ -73,6 +74,32 @@ public static class Pokemon
         WriteEncounter(w, pk, match);
         w.WriteString("fingerprint", Fingerprint(pk));
         w.WriteEndObject();
+    }
+
+    /// <summary>
+    /// The ability as PKHeX's ability id, and whether it is the Hidden Ability. Null where the game has no
+    /// abilities as a mechanic:
+    /// - Generation 1 and 2 formats: nothing is stored (GBPKM.Ability is -1).
+    /// - Let's Go (PB7), Legends: Arceus (PA8) and Legends: Z-A (PA9): the formats keep the ability and its
+    ///   number, because they share their layout with the mainline formats and HOME needs the values on the
+    ///   way out, but none of the three games has abilities: no battle uses them and no screen shows them.
+    ///   What is stored is what the Pokémon would have elsewhere, not something its trainer ever saw there.
+    /// The test is the format the Pokémon is in now, so one that came from an older game into such a game
+    /// reports null, and one moved on to a mainline game reports the ability it has there.
+    ///
+    /// Hidden is PKHeX's ability number 4 (the third slot). Generation 5 on store that number (PK5 as its own
+    /// flag). Generation 3 and 4 formats have no Hidden Abilities: PKHeX only ever reports number 1 or 2 there.
+    /// </summary>
+    private static void WriteAbility(Utf8JsonWriter w, PKM pk)
+    {
+        if (pk is GBPKM or PB7 or PA8 or PA9 || pk.Ability <= 0)
+        {
+            w.WriteNull("ability");
+            w.WriteBoolean("abilityHidden", false);
+            return;
+        }
+        w.WriteNumber("ability", pk.Ability);
+        w.WriteBoolean("abilityHidden", pk.AbilityNumber == 4);
     }
 
     /// <summary>

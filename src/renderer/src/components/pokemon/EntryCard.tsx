@@ -353,6 +353,7 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
                     {values.map((v) => (
                       <span key={v.label} className="pk-entry__tip-value">
                         {v.label} {v.text}
+                        {v.mark !== undefined && ` (${v.mark})`}
                       </span>
                     ))}
                   </span>
@@ -360,7 +361,7 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
                 placement="left"
               >
                 <span className="pk-entry__noteflag">
-                  <Icon name={notes !== undefined ? 'note' : 'chart'} size={15} label={[notes !== undefined ? `Notes: ${clip(notes, 320)}` : '', ...values.map((v) => `${v.label} ${v.text}`)].filter(Boolean).join('. ')} />
+                  <Icon name={notes !== undefined ? 'note' : 'chart'} size={15} label={[notes !== undefined ? `Notes: ${clip(notes, 320)}` : '', ...values.map((v) => `${v.label} ${v.text}${v.mark !== undefined ? ` (${v.mark})` : ''}`)].filter(Boolean).join('. ')} />
                 </span>
               </Tooltip>
             )}
@@ -420,9 +421,10 @@ export function EntryCard({ entry, variant = 'card', showSpecies = true, actions
       {values.length > 0 && (
         <dl className="pk-entry__values">
           {values.map((v) => (
-            <div key={v.label} title={v.title}>
+            <div key={v.label} title={v.title} className={v.label === 'Ability' ? 'pk-entry__ability' : undefined}>
               <dt>{v.label}</dt>
               <dd>{v.text}</dd>
+              {v.mark !== undefined && <span className="pk-entry__mark">{v.mark}</span>}
             </div>
           ))}
         </dl>

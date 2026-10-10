@@ -536,3 +536,37 @@ describe('PID, IVs and EVs of an entry', () => {
     expect(again.save.version).toBe(1)
   })
 })
+
+describe('the ability of an entry', () => {
+  const base = { id: 'v1', species: 25, form: 0, shiny: false, game: 'sword', kind: 'wild', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }
+  const NOW = '2026-02-02T00:00:00.000Z'
+
+  it('keeps a valid ability and its Hidden mark, in the order of the interface', () => {
+    const { entry, repaired } = checkEntry({ ...base, pid: '0000BEEF', abilityHidden: true, ability: 31, notes: 'n' }, NOW)
+    expect(repaired).toBe(false)
+    expect(entry).toMatchObject({ ability: 31, abilityHidden: true })
+    expect(Object.keys(entry!).slice(-6)).toEqual(['notes', 'ability', 'abilityHidden', 'pid', 'createdAt', 'updatedAt'])
+    expect(checkEntry({ ...base, ability: 9 }, NOW).entry).not.toHaveProperty('abilityHidden')
+  })
+
+  it.each([0, -1, 1.5, 9999, '9', 'Static', null, [9]])('drops the ability %j and keeps the entry', (bad) => {
+    const { entry, repaired } = checkEntry({ ...base, ability: bad, abilityHidden: true }, NOW)
+    expect(repaired).toBe(true)
+    expect(entry).toMatchObject({ id: 'v1', species: 25 })
+    expect(entry).not.toHaveProperty('ability')
+    expect(entry).not.toHaveProperty('abilityHidden')
+  })
+
+  it('stores Hidden only as true, and only beside an ability', () => {
+    for (const hidden of [false, 1, 'yes', null]) expect(checkEntry({ ...base, ability: 9, abilityHidden: hidden }, NOW).entry).toEqual({ ...base, ability: 9 })
+    expect(checkEntry({ ...base, abilityHidden: true }, NOW).entry).toEqual(base)
+  })
+
+  it('survives an export and import unchanged, at save version 1', () => {
+    const entry = { ...base, ability: 31, abilityHidden: true }
+    const first = parseSaveReport({ app: 'pelagix', version: 1, entries: [entry] }, NOW)
+    const again = parseSaveReport(JSON.parse(JSON.stringify(first.save)), NOW)
+    expect(again.save.entries[0]).toEqual(entry)
+    expect(again.save.version).toBe(1)
+  })
+})

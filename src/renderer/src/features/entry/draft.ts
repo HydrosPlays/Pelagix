@@ -5,6 +5,7 @@
  * conversion back into what the save store takes.
  */
 
+import { ABILITIES, ABILITY_BY_ID } from '@shared/abilities'
 import type { EncounterRow, FormSummary, SpeciesDetail, SpeciesSummary } from '@shared/dex-types'
 import { MAX_EV, MAX_IV, type CatchEntry, type EntryGender, type EntryKind, type StatSpread } from '@shared/save-types'
 import { rowGender, rowLocation, type GameSources } from '@renderer/domain/encounters'
@@ -37,6 +38,10 @@ export interface Draft {
   nickname: string
   ot: string
   notes: string
+  /** PKHeX ability id, or null. */
+  ability: number | null
+  /** Kept while an ability is chosen; it is dropped with it when the draft is saved. */
+  abilityHidden: boolean
   /** As typed: 1 to 8 hex digits, or "". */
   pid: string
   /** Six boxes in the order of `STAT_LABELS`; null is an empty box. */
@@ -140,6 +145,8 @@ export function draftFromPreset(dex: Dex, preset: EntryPreset, defaults: DraftDe
     nickname: preset.nickname ?? '',
     ot: preset.ot ?? defaults.trainerName,
     notes: preset.notes ?? '',
+    ability: null,
+    abilityHidden: false,
     pid: '',
     ivs: NO_STATS,
     evs: NO_STATS
@@ -168,6 +175,8 @@ export function draftFromEntry(entry: CatchEntry): Draft {
     nickname: entry.nickname ?? '',
     ot: entry.ot ?? '',
     notes: entry.notes ?? '',
+    ability: entry.ability ?? null,
+    abilityHidden: entry.ability !== undefined && entry.abilityHidden === true,
     pid: entry.pid ?? '',
     ivs: entry.ivs ?? NO_STATS,
     evs: entry.evs ?? NO_STATS
@@ -193,10 +202,22 @@ export function draftForAnotherGame(dex: Dex, draft: Draft, defaults: DraftDefau
     nickname: '',
     ot: defaults.trainerName,
     notes: '',
+    ability: null,
+    abilityHidden: false,
     pid: '',
     ivs: NO_STATS,
     evs: NO_STATS
   })
+}
+
+/**
+ * The abilities the editor offers, by name. Ids that share a name (As One, Embody Aspect) are
+ * offered once, under the first id, unless `current` is one of the others.
+ */
+export function abilityOptions(current: number | null): { value: number; label: string }[] {
+  const byName = new Map<string, number>()
+  for (const a of ABILITIES) if (!byName.has(a.name) || a.id === current) byName.set(a.name, a.id)
+  return [...byName].map(([label, value]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, 'en'))
 }
 
 export function sameDraft(a: Draft, b: Draft): boolean {
@@ -243,6 +264,8 @@ export function draftToInput(draft: Draft): EntryInput {
 
 /** The draft as a change to an existing entry: unset fields are present as `undefined`, which clears them. */
 export function draftToPatch(draft: Draft): EntryPatch & Pick<EntryInput, 'species' | 'form' | 'game' | 'kind' | 'shiny'> {
+  // An id that is no ability is left out, and the Hidden mark with it.
+  const ability = draft.ability !== null && ABILITY_BY_ID.has(draft.ability) ? draft.ability : null
   return {
     species: draft.species,
     form: draft.form,
@@ -262,6 +285,8 @@ export function draftToPatch(draft: Draft): EntryPatch & Pick<EntryInput, 'speci
     nickname: text(draft.nickname),
     ot: text(draft.ot),
     notes: text(draft.notes),
+    ability: ability ?? undefined,
+    abilityHidden: ability !== null && draft.abilityHidden ? true : undefined,
     pid: parsePid(draft.pid) ?? undefined,
     ivs: parseSpread(draft.ivs, MAX_IV) ?? undefined,
     evs: parseSpread(draft.evs, MAX_EV) ?? undefined

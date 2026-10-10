@@ -1,7 +1,7 @@
 {
   "name": "pelagix",
   "productName": "Pelagix",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Living Dex tracker for Pokemon games",
   "author": "HydrosPlays",

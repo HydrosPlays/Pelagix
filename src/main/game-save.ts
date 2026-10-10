@@ -10,6 +10,7 @@
 
 import { execFile } from 'node:child_process'
 import { basename, join } from 'node:path'
+import { ABILITY_BY_ID } from '@shared/abilities'
 import type {
   GameSaveContents, GameSaveEncounter, GameSaveEncounterKind, GameSaveFailure, GameSaveInfo, GameSaveLocation,
   GameSavePokemon, GameSaveResult, PkhexVersion
@@ -123,6 +124,8 @@ function pokemon(value: unknown): GameSavePokemon | null {
   // The fingerprint is compared, never shown, so it is taken whole or not at all.
   if (typeof fingerprint !== 'string' || fingerprint.length === 0 || fingerprint.length > MAX_FINGERPRINT) return null
   const nickname = text(value['nickname'], MAX_NAME)
+  const ability = int(value['ability'], 1, 0xffff)
+  const knownAbility = ability !== null && ABILITY_BY_ID.has(ability) ? ability : null
   return {
     place, box, boxName, slot, species, form,
     formArgument: int(value['formArgument'], 0, 0xffff_ffff),
@@ -138,6 +141,8 @@ function pokemon(value: unknown): GameSavePokemon | null {
     ot, fateful, legal,
     encounter: encounter(value['encounter']),
     // Optional facts: one that is missing or broken is left out, the Pokémon is still read.
+    ability: knownAbility,
+    abilityHidden: knownAbility !== null && value['abilityHidden'] === true,
     pid: typeof pid === 'string' && PID_PATTERN.test(pid) ? pid : null,
     ivs: spread(value['ivs'], MAX_IV),
     evs: spread(value['evs'], MAX_EV),

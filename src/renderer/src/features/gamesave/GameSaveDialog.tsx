@@ -18,7 +18,7 @@ export interface GameSaveDialogProps {
   contents: GameSaveContents | null
   onClose: () => void
   /**
-   * The chosen Pokémon were added as entries, and `completed` earlier entries got the PID, IVs or
+   * The chosen Pokémon were added as entries, and `completed` earlier entries got the ability, PID, IVs or
    * EVs they lacked. `previous` is the save as it was just before.
    */
   onImported: (previous: SaveFile, added: number, fileName: string, completed: number) => void
@@ -48,7 +48,7 @@ function StatusChip({ row }: { row: PreviewRow }) {
   if (row.status === 'imported') {
     return (
       <Chip size="sm" variant="outline" icon={row.completes === true ? 'plus' : 'check'}>
-        {row.completes === true ? 'Adds PID, IVs, EVs' : STATUS_LABELS.imported}
+        {row.completes === true ? 'Adds missing details' : STATUS_LABELS.imported}
       </Chip>
     )
   }
@@ -217,7 +217,7 @@ export function GameSaveDialog({ contents, onClose, onImported }: GameSaveDialog
             {counts.imported > 0 && <Chip variant="outline">{formatCount(counts.imported)} already imported</Chip>}
             {counts.completes > 0 && (
               <Chip tone="accent" variant="outline">
-                {plural(counts.completes, 'earlier entry gets', 'earlier entries get')} PID, IVs and EVs added
+                {plural(counts.completes, 'earlier entry gets', 'earlier entries get')} missing details added
               </Chip>
             )}
             {counts.egg > 0 && <Chip variant="outline">{plural(counts.egg, 'egg')} skipped</Chip>}

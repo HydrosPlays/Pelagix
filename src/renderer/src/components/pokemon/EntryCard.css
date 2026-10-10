@@ -385,7 +385,7 @@
   white-space: nowrap;
 }
 
-/* PID, IVs and EVs: one short line each, only on entries that have them. */
+/* Ability, PID, IVs and EVs: one short line each, only on entries that have them. */
 .pk-entry__values {
   display: grid;
   gap: 2px;
@@ -419,6 +419,24 @@
   font-size: var(--fs-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pk-entry__ability dt {
+  width: auto;
+}
+
+.pk-entry__ability dd {
+  font-family: inherit;
+  font-size: var(--fs-sm);
+}
+
+.pk-entry__mark {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
 }
 
 .pk-entry__tip {

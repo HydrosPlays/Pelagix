@@ -4,6 +4,7 @@ import { sourcesByGame } from '@renderer/domain/encounters'
 import { checkEntry } from '@renderer/lib/storage'
 import { fixtureDetails, fixtureDex as dex, ID, makeEntry } from '@renderer/lib/test-fixture'
 import {
+  abilityOptions,
   applySuggestion,
   buildSuggestions,
   canAlpha,
@@ -407,5 +408,45 @@ describe('PID, IVs and EVs in the editor', () => {
     const cleared = draftToPatch({ ...draft, pid: '', ivs: NONE })
     expect('pid' in cleared && cleared.pid === undefined && 'ivs' in cleared && cleared.ivs === undefined).toBe(true)
     expect(draftForAnotherGame(dex, draft, DEFAULTS)).toMatchObject({ pid: '', ivs: NONE, evs: NONE })
+  })
+})
+
+describe('the ability in the editor', () => {
+  const base = (): Draft => ({ ...draftFromPreset(dex, { species: ID.pikachu, form: 0 }, DEFAULTS), game: 'red' })
+
+  it('starts empty, and reads an entry back exactly', () => {
+    expect(base()).toMatchObject({ ability: null, abilityHidden: false })
+    expect(draftToInput(base())).not.toHaveProperty('ability')
+    expect(draftToInput(base())).not.toHaveProperty('abilityHidden')
+    const entry = makeEntry(ID.pikachu, 0, { game: 'red', ability: 31, abilityHidden: true })
+    const draft = draftFromEntry(entry)
+    expect(draft).toMatchObject({ ability: 31, abilityHidden: true })
+    expect(draftToPatch(draft)).toMatchObject({ ability: 31, abilityHidden: true })
+    expect(checkEntry(draftToPreview(draft, NOW), NOW).repaired).toBe(false)
+  })
+
+  it('stores Hidden only when ticked, and never without an ability', () => {
+    expect(draftToInput({ ...base(), ability: 9 })).toMatchObject({ ability: 9 })
+    expect(draftToInput({ ...base(), ability: 9 })).not.toHaveProperty('abilityHidden')
+    const cleared = draftToPatch({ ...base(), ability: null, abilityHidden: true })
+    expect('ability' in cleared && cleared.ability === undefined && 'abilityHidden' in cleared && cleared.abilityHidden === undefined).toBe(true)
+    expect(draftToInput({ ...base(), ability: 9999, abilityHidden: true })).not.toHaveProperty('ability')
+    expect(draftFromEntry(makeEntry(ID.pikachu, 0, { game: 'red', abilityHidden: true }))).toMatchObject({ ability: null, abilityHidden: false })
+  })
+
+  it('belongs to one catch', () => {
+    expect(draftForAnotherGame(dex, { ...base(), ability: 31, abilityHidden: true }, DEFAULTS)).toMatchObject({ ability: null, abilityHidden: false })
+  })
+
+  it('offers every ability name once, in alphabetical order', () => {
+    const options = abilityOptions(null)
+    const labels = options.map((o) => o.label)
+    expect(new Set(labels).size).toBe(labels.length)
+    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b, 'en')))
+    expect(options.find((o) => o.label === 'As One')?.value).toBe(266)
+    expect(options.find((o) => o.label === 'Static')?.value).toBe(9)
+    // An entry that holds the second "As One" keeps its own id selectable.
+    expect(abilityOptions(267).find((o) => o.label === 'As One')?.value).toBe(267)
+    expect(abilityOptions(267)).toHaveLength(options.length)
   })
 })

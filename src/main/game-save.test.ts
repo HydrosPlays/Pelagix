@@ -18,6 +18,7 @@ const boxed = {
     kind: 'raid', type: 'raid', species: 290, form: 0, version: { id: 45, name: 'SH' },
     location: { id: 162, name: 'Pokémon Den' }, levelMin: 15, levelMax: 30
   },
+  ability: 14, abilityHidden: false,
   pid: '5B63395C', ivs: [31, 0, 17, 31, 9, 30], evs: [252, 0, 4, 0, 0, 252],
   fingerprint: '45:217bf47d:5b63395c'
 }
@@ -191,5 +192,34 @@ describe('PID, IVs and EVs in the reader output', () => {
     const contents = read({ ...boxed, ...broken })
     expect(contents?.dropped).toBe(0)
     expect(contents?.pokemon[0]).toEqual({ ...boxed, [key]: null })
+  })
+})
+
+describe('the ability in the reader output', () => {
+  const read = (record: object) => parseReaderOutput(output([record]), 'a.sav')
+
+  it('passes it on as it is', () => {
+    expect(read(boxed)?.pokemon[0]).toMatchObject({ ability: 14, abilityHidden: false })
+    expect(read({ ...boxed, ability: 3, abilityHidden: true })?.pokemon[0]).toMatchObject({ ability: 3, abilityHidden: true })
+  })
+
+  it('keeps null where the game has no abilities', () => {
+    expect(read({ ...boxed, ability: null, abilityHidden: false })?.pokemon[0]).toMatchObject({ ability: null, abilityHidden: false })
+  })
+
+  it.each([
+    ['a missing ability', { ability: undefined, abilityHidden: true }],
+    ['an ability that is a name', { ability: 'Compound Eyes' }],
+    ['ability 0', { ability: 0 }],
+    ['an ability PKHeX does not have', { ability: 9999, abilityHidden: true }],
+    ['a fractional ability', { ability: 14.5 }]
+  ] as const)('turns %s into null without dropping the Pokémon', (_what, broken) => {
+    const contents = read({ ...boxed, ...broken })
+    expect(contents?.dropped).toBe(0)
+    expect(contents?.pokemon[0]).toEqual({ ...boxed, ability: null, abilityHidden: false })
+  })
+
+  it('takes Hidden only as a boolean true', () => {
+    for (const hidden of [undefined, null, 1, 'true']) expect(read({ ...boxed, abilityHidden: hidden })?.pokemon[0]).toEqual(boxed)
   })
 })

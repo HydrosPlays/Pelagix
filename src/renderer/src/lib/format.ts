@@ -1,5 +1,6 @@
 /** Small, pure text formatters shared by every feature. English UI, locale-independent output. */
 
+import { abilityName } from '@shared/abilities'
 import type { EntryGender, EntryKind } from '@shared/save-types'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -229,17 +230,24 @@ export function errorMessage(err: unknown, fallback = 'Something went wrong.'): 
 }
 
 export interface EntryValueLine {
-  label: 'PID' | 'IVs' | 'EVs'
+  label: 'Ability' | 'PID' | 'IVs' | 'EVs'
   text: string
+  /** A short mark after the text ("Hidden"). */
+  mark?: string
   /** What the line holds, spelled out. */
   title: string
 }
 
 const STAT_ORDER = 'HP / Attack / Defense / Sp. Atk / Sp. Def / Speed'
 
-/** An entry's PID, IVs and EVs as short lines ("31 / 31 / 31 / 31 / 31 / 31"); only the ones it has. */
-export function entryValues(entry: { pid?: string; ivs?: readonly number[]; evs?: readonly number[] }): EntryValueLine[] {
+/** An entry's ability, PID, IVs and EVs as short lines ("31 / 31 / 31 / 31 / 31 / 31"); only the ones it has. */
+export function entryValues(entry: { ability?: number; abilityHidden?: boolean; pid?: string; ivs?: readonly number[]; evs?: readonly number[] }): EntryValueLine[] {
   const lines: EntryValueLine[] = []
+  const ability = abilityName(entry.ability)
+  if (ability !== undefined) {
+    const hidden = entry.abilityHidden === true
+    lines.push({ label: 'Ability', text: ability, title: hidden ? `Hidden Ability: ${ability}` : `Ability: ${ability}`, ...(hidden && { mark: 'Hidden' }) })
+  }
   if (entry.pid !== undefined) lines.push({ label: 'PID', text: entry.pid, title: `PID ${entry.pid}` })
   if (entry.ivs !== undefined) lines.push({ label: 'IVs', text: entry.ivs.join(' / '), title: `IVs: ${STAT_ORDER}` })
   if (entry.evs !== undefined) lines.push({ label: 'EVs', text: entry.evs.join(' / '), title: `EVs: ${STAT_ORDER}` })

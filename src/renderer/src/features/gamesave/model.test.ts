@@ -18,6 +18,7 @@ function mon(species: number, extra: Partial<GameSavePokemon> = {}): GameSavePok
     metLocation: { id: 1, name: 'Route 1' }, eggLocation: null, metLevel: 5, metDate: '2024-03-02', level: 30,
     nickname: null, ot: 'Red', fateful: false, legal: true,
     encounter: { kind: 'wild', type: 'slot', species, form: 0, version: v('SW'), location: { id: 1, name: 'Route 1' }, levelMin: 3, levelMax: 5 },
+    ability: null, abilityHidden: false,
     pid: null, ivs: null, evs: null,
     fingerprint: `44:0000${serial}:abcd`,
     ...extra
@@ -277,5 +278,35 @@ describe('completing earlier entries', () => {
     const p = buildPreview(dex, save([a, { ...a, slot: 99 }]), existing, DEFAULT_RULES, { today: TODAY })
     expect(p.counts.completes).toBe(1)
     expect(entriesToComplete(p.rows, existing)).toHaveLength(1)
+  })
+})
+
+describe('the ability of an imported Pokémon', () => {
+  it('goes into the entry, with the Hidden mark only when it is set', () => {
+    expect(entryFromPokemon(dex, mon(ID.pikachu, { ability: 9 }), 'sword', TODAY)).toMatchObject({ ability: 9 })
+    expect(entryFromPokemon(dex, mon(ID.pikachu, { ability: 9 }), 'sword', TODAY)).not.toHaveProperty('abilityHidden')
+    expect(entryFromPokemon(dex, mon(ID.pikachu, { ability: 31, abilityHidden: true }), 'sword', TODAY)).toMatchObject({ ability: 31, abilityHidden: true })
+  })
+
+  it('is left out when the game has none or the value is not an ability', () => {
+    for (const ability of [null, 0, 9999, 'Static']) {
+      const entry = entryFromPokemon(dex, { ...mon(ID.pikachu), ability, abilityHidden: true } as unknown as GameSavePokemon, 'sword', TODAY)
+      expect(entry).not.toHaveProperty('ability')
+      expect(entry).not.toHaveProperty('abilityHidden')
+    }
+  })
+
+  it('is added to an earlier entry that lacks it, and never replaces one', () => {
+    expect(missingValues({ ability: 31, abilityHidden: true }, {})).toEqual({ ability: 31, abilityHidden: true })
+    expect(missingValues({ ability: 9 }, {})).toEqual({ ability: 9 })
+    expect(missingValues({ ability: 31, abilityHidden: true }, { ability: 9 })).toBeNull()
+    expect(missingValues({ ability: 9, pid: '0000ABCD' }, { ability: 31, abilityHidden: true })).toEqual({ pid: '0000ABCD' })
+
+    const a = mon(ID.pikachu, { ability: 31, abilityHidden: true })
+    const { ability: _ability, abilityHidden: _hidden, ...rest } = entryFromPokemon(dex, a, 'sword', TODAY)
+    const existing = [checkEntry({ ...rest, id: 'a', createdAt: NOW, updatedAt: NOW }, NOW).entry!]
+    const p = buildPreview(dex, save([a]), existing, DEFAULT_RULES, { today: TODAY })
+    expect(p.counts).toMatchObject({ imported: 1, completes: 1 })
+    expect(entriesToComplete(p.rows, existing)).toEqual([{ id: 'a', patch: { ability: 31, abilityHidden: true } }])
   })
 })

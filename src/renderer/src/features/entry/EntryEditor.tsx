@@ -3,7 +3,7 @@ import { useLocation } from 'wouter'
 import { GAME_BY_ID, GAMES, GENERATION_NAMES } from '@shared/games'
 import { MAX_EV, MAX_IV, type CatchEntry, type EntryGender, type EntryKind } from '@shared/save-types'
 import { GameIcon, GenderIcon, ShinyMark, Sprite } from '@renderer/components/pokemon'
-import { Button, Combobox, cx, DateField, Dialog, Icon, Kbd, NumberField, SegmentedControl, Select, Switch, TextArea, TextField, type SelectOption } from '@renderer/components/ui'
+import { Button, Checkbox, Combobox, cx, DateField, Dialog, Icon, Kbd, NumberField, SegmentedControl, Select, Switch, TextArea, TextField, type SelectOption } from '@renderer/components/ui'
 import { describeEntry } from '@renderer/domain/entries'
 import { sourcesByGame } from '@renderer/domain/encounters'
 import { gameState, isBattleOnly, type GameState } from '@renderer/features/species/sources'
@@ -20,6 +20,7 @@ import { toast, useUiStore, type EntryEditorState } from '@renderer/store/ui'
 import { BallPicker } from './BallPicker'
 import { CapturePreview, type CaptureHandle } from './CapturePreview'
 import {
+  abilityOptions,
   applySuggestion,
   buildSuggestions,
   canAlpha,
@@ -483,6 +484,9 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
     setAutoKind(false)
     setDraft((d) => chooseMethod(d, suggestions, option, context))
   }
+  const abilitySelect = useMemo<SelectOption<number>[]>(() => abilityOptions(draft.ability), [draft.ability])
+  const changeAbility = (ability: number | null): void => patch(ability === null ? { ability, abilityHidden: false } : { ability })
+
   const pickPlace = (location: string | null): void => {
     if (location === null) return
     setAutoKind(false)
@@ -685,6 +689,10 @@ export function EntryEditor({ dex, request, open }: EntryEditorProps) {
             <Group title="Details">
               <TextField id={ids.nickname} label="Nickname" optional value={draft.nickname} onChange={(nickname) => patch({ nickname })} maxLength={TEXT_LIMITS.nickname} placeholder="None" />
               <TextField label="Original Trainer" optional value={draft.ot} onChange={(ot) => patch({ ot })} maxLength={TEXT_LIMITS.ot} icon="user" placeholder="OT name" />
+              <div className="ee-ability ee-span">
+                <Combobox label="Ability" optional options={abilitySelect} value={draft.ability} onChange={changeAbility} placeholder="Type to search" emptyText="No ability matches" maxItems={abilitySelect.length} />
+                <Checkbox checked={draft.ability !== null && draft.abilityHidden} onChange={(abilityHidden) => patch({ abilityHidden })} label="Hidden Ability" disabled={draft.ability === null} />
+              </div>
               <TextArea label="Notes" optional value={draft.notes} onChange={(notes) => patch({ notes })} maxLength={TEXT_LIMITS.notes} counter={draft.notes.length > TEXT_LIMITS.notes - 400} rows={3} placeholder="Anything worth remembering about this catch" wrapperClassName="ee-span" />
             </Group>
 

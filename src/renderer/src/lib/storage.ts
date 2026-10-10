@@ -9,6 +9,7 @@
  * - `exportSaveToFile` / `importSaveFromFile` wrap the native dialogs or their browser stand-ins.
  */
 
+import { ABILITY_BY_ID } from '@shared/abilities'
 import type { ExportResult, PelagixApi } from '@shared/api'
 import { BALL_BY_ID } from '@shared/balls'
 import {
@@ -132,6 +133,9 @@ export function checkEntry(raw: unknown, now: string): EntryCheck {
   const nickname = text('nickname')
   const ot = text('ot')
   const notes = text('notes')
+  const ability = optional('ability', (v) => (typeof v === 'number' && ABILITY_BY_ID.has(v) ? v : undefined))
+  // Says something about the ability, so it goes when there is none.
+  const abilityHidden = optional('abilityHidden', (v) => (v === true && ability !== undefined ? true : undefined))
   const pid = optional('pid', (v) => (typeof v === 'string' && PID_PATTERN.test(v) ? v : undefined))
   const spread = (key: 'ivs' | 'evs', max: number): StatSpread | undefined =>
     optional(key, (v) => (Array.isArray(v) && v.length === 6 && v.every((n) => isInt(n, 0, max)) ? (v.slice() as StatSpread) : undefined))
@@ -161,6 +165,8 @@ export function checkEntry(raw: unknown, now: string): EntryCheck {
     ...(nickname !== undefined && { nickname }),
     ...(ot !== undefined && { ot }),
     ...(notes !== undefined && { notes }),
+    ...(ability !== undefined && { ability }),
+    ...(abilityHidden !== undefined && { abilityHidden }),
     ...(pid !== undefined && { pid }),
     ...(ivs !== undefined && { ivs }),
     ...(evs !== undefined && { evs }),

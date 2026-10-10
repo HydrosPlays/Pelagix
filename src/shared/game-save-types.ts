@@ -92,6 +92,13 @@ export interface GameSavePokemon {
   legal: boolean
   /** Null when PKHeX could not match an encounter. */
   encounter: GameSaveEncounter | null
+  /**
+   * PKHeX ability id; null in the formats and games without abilities (Generation 1 and 2,
+   * Let's Go, Legends: Arceus, Legends: Z-A).
+   */
+  ability: number | null
+  /** The ability is the Hidden Ability. False when `ability` is null. */
+  abilityHidden: boolean
   /** Personality value, 8 uppercase hex digits; null when the format has none (Generation 1 and 2). */
   pid: string | null
   /** 0 to 31 each; in the Game Boy formats the DVs (0 to 15, Special for both Sp. Atk and Sp. Def). Null when unreadable. */

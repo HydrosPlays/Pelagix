@@ -354,6 +354,16 @@ describe('entries', () => {
     for (const key of ['pid', 'ivs', 'evs']) expect(copy).not.toHaveProperty(key)
   })
 
+  it('keeps the ability through an edit, a merge and a duplicate, and drops Hidden with it', async () => {
+    const { get } = await ready()
+    get().mergeEntries([{ ...pikachu, id: 'gs-3', ability: 31, abilityHidden: true, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }])
+    expect(get().updateEntry('gs-3', { nickname: 'Volt' })).toMatchObject({ ability: 31, abilityHidden: true })
+    expect(get().duplicateEntry('gs-3')).toMatchObject({ ability: 31, abilityHidden: true })
+    const cleared = get().updateEntry('gs-3', { ability: undefined })
+    expect(cleared).not.toHaveProperty('ability')
+    expect(cleared).not.toHaveProperty('abilityHidden')
+  })
+
   it('patchEntries changes several entries in one step and skips what it cannot change', async () => {
     const { get } = await ready()
     const a = get().addEntry(pikachu)
