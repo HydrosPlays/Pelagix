@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/Based%20On-PKHeX & PokeAPI-red?style=flat&logo=github" alt="Based on PKHeX & PokeAPI">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blue?style=flat" alt="Platform: Windows 10 | 11">
   <img src="https://img.shields.io/github/v/release/HydrosPlays/Pelagix?include_prereleases&style=flat&label=Version&color=maroon" alt="Latest version">
-  <a href="https://github.com/HydrosPlays/Pelagix/releases"><img src="https://img.shields.io/github/downloads/HydrosPlays/Pelagix/total?style=flat&label=Downloads&color=mediumslateblue" alt="Total downloads"></a>
+  <a href="https://github.com/HydrosPlays/Pelagix/releases"><img src="https://img.shields.io/github/downloads/HydrosPlays/Pelagix/total?style=flat&label=Downloads&color=7B68EE" alt="Total downloads"></a>
 </p>
 
 <p align="center">
