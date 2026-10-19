@@ -3,11 +3,14 @@ import type { CatchEntry } from '@shared/save-types'
 import { HomeMark, ShinyMark } from '@renderer/components/pokemon'
 import { Button, Chip, EmptyState, HudBrackets, NumberTicker, ProgressRing, SegmentedControl, cx, useScrollParent } from '@renderer/components/ui'
 import { boxMarkTargets, computeHomeDex, filterCount, HOME_FILTERS, slotPress, type HomeFilter, type HomeTotals } from '@renderer/domain/home'
+import { orderedCollection } from '@renderer/domain/debut'
 import { useGameView } from '@renderer/domain/gamedex'
 import { slotTarget, type LivingSlot } from '@renderer/domain/slots'
 import { focusIsLost, whenPageReleased } from '@renderer/features/living/focus'
 import { LivingGrid, type LivingGridHandle, type LivingGridHome } from '@renderer/features/living/LivingGrid'
 import { boxMetrics, boxName, buildBoxes, computeStats, generationSpans, layoutBoxes, layoutList, listMetrics, neighbour, rulesLine, slotIndexByKey, type LivingLayout, type LivingMode } from '@renderer/features/living/model'
+import { OrderControl } from '@renderer/features/living/OrderControl'
+import { orderOf, useLivingPrefs } from '@renderer/features/living/prefs'
 import { SlotDrawer } from '@renderer/features/living/SlotDrawer'
 import { GameDexBar } from '@renderer/features/pokedex/GamePicker'
 import { useElementWidth } from '@renderer/features/living/windowing'
@@ -113,7 +116,11 @@ export default function HomeDexPage() {
   const dex = useDex()
   // With a game chosen: that game's slots, and only the entries obtained in it (so nothing else is ever marked).
   const gameView = useGameView(dex)
-  const { collection, game } = gameView
+  const { game } = gameView
+  // The order the Living Dex uses (one preference for both pages); a game keeps its own Pokédex order.
+  const [prefs, setPrefs] = useLivingPrefs()
+  const order = orderOf(prefs)
+  const collection = orderedCollection(dex, gameView.collection, order, game !== null)
   const gameName = game === null ? undefined : gameShortName(game)
   const scroller = useScrollParent()
   const shinyView = useUiStore((s) => s.dexView.shinyView)
@@ -290,6 +297,7 @@ export default function HomeDexPage() {
               </Chip>
             ))}
           </div>
+          <OrderControl value={order} onChange={(next) => setPrefs({ order: next })} unavailable={game !== null} />
           <p className="hdex-hint">
             <HomeMark size={14} label="" />
             {t('homedex.hint')}

@@ -188,7 +188,7 @@ language. Smoke runs and the screenshot tool always get English, so it never blo
 npm test
 ```
 
-Vitest, in a Node environment: 1,868 tests in 56 files at the time of writing. They cover the
+Vitest, in a Node environment: 1,878 tests in 57 files at the time of writing. They cover the
 logic: slot rules, progress, encounter handling, achievements (including that every one of them
 can be earned on the real datasets), search, the entry editor's draft handling, the page models,
 the save store and the sprite protocol's request parsing.

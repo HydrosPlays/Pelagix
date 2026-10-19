@@ -290,8 +290,10 @@
 
 .living-toolbar__row {
   display: flex;
+  /* With the order switch the controls can outgrow a narrow window: what does not fit takes a second line. */
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2) var(--sp-3);
   min-width: 0;
 }
 

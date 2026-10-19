@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Link } from 'wouter'
 import { Sprite } from '@renderer/components/pokemon'
 import { Button, EmptyState, Icon, IconButton, useScrollParent, type SelectOption } from '@renderer/components/ui'
+import { orderedCollection, type DexOrder } from '@renderer/domain/debut'
 import { sectionsOf, useGameView } from '@renderer/domain/gamedex'
 import { slotTarget, type LivingSlot } from '@renderer/domain/slots'
 import { GameDexBar } from '@renderer/features/pokedex/GamePicker'
@@ -21,7 +22,7 @@ import {
   BOX_SIZE, boxIndexAt, boxMetrics, boxName, buildBoxes, computeStats, filledIn, generationSpans, layoutBoxes, layoutList, listMetrics, neighbour, rulesKey, slotGenerations, slotIndexByKey, slotInfo,
   type LivingLayout, type LivingMode, type LivingView
 } from './model'
-import { useLivingPrefs } from './prefs'
+import { orderOf, useLivingPrefs } from './prefs'
 import { SlotDrawer } from './SlotDrawer'
 import { useElementHeight, useElementWidth, useStuckFlag } from './windowing'
 import './LivingDexPage.css'
@@ -46,7 +47,7 @@ export default function LivingDexPage() {
   const dex = useDex()
   // With a game chosen the page shows that game's collection: its slots, in its order, filled by what was obtained there.
   const gameView = useGameView(dex)
-  const { collection, game } = gameView
+  const { game } = gameView
   const gameName = game === null ? undefined : gameShortName(game)
   const bold = { b: (text: ReactNode) => <b>{text}</b> }
   const entryCount = useEntries().length
@@ -57,6 +58,9 @@ export default function LivingDexPage() {
   const mode: LivingMode = shinyView ? 'shiny' : 'normal'
   const [prefs, setPrefs] = useLivingPrefs()
   const { view, missingOnly } = prefs
+  const order = orderOf(prefs)
+  // Outside a game view the slots may run by debut generation; a game keeps its own Pokédex order.
+  const collection = orderedCollection(dex, gameView.collection, order, game !== null)
 
   const frameRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
@@ -276,18 +280,20 @@ export default function LivingDexPage() {
   const onJumpSection = (section: number): void => jumpTo(layout.order.find((index) => index >= (sections[section]?.start ?? 0)) ?? -1)
 
   // Switching the view or the filter re-flows everything: once scrolled into the boxes, stay with the slot that led the screen.
-  const keepPlace = useRef<number | null>(null)
-  const relayout = (patch: { view?: LivingView; missingOnly?: boolean }): void => {
-    if (toolbarRef.current?.hasAttribute('data-stuck') && visible[0] >= 0) keepPlace.current = visible[0]
+  // The slot is remembered by key: a change of order moves it to another index.
+  const keepPlace = useRef<string | null>(null)
+  const relayout = (patch: { view?: LivingView; missingOnly?: boolean; order?: DexOrder }): void => {
+    if (toolbarRef.current?.hasAttribute('data-stuck') && visible[0] >= 0) keepPlace.current = slots[visible[0]]?.key ?? null
     setPrefs(patch)
   }
   useEffect(() => {
-    const anchor = keepPlace.current
-    if (anchor === null) return
+    const key = keepPlace.current
+    if (key === null) return
     keepPlace.current = null
+    const anchor = indexOf.get(key) ?? 0
     const index = layout.order.find((each) => each >= anchor) ?? layout.order[layout.order.length - 1]
     if (index !== undefined) gridRef.current?.scrollToSlot(index, { align: 'start' })
-  }, [layout])
+  }, [layout, indexOf])
 
   /** Brings a search hit to the middle of the screen and gives it a nudge. */
   const revealSlot = useCallback(
@@ -476,6 +482,9 @@ export default function LivingDexPage() {
         mode={mode}
         view={view}
         onView={(next) => relayout({ view: next })}
+        order={order}
+        onOrder={(next) => relayout({ order: next })}
+        orderUnavailable={game !== null}
         missingOnly={missingOnly}
         onMissingOnly={(on) => relayout({ missingOnly: on })}
         stats={stats}

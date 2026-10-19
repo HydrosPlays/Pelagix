@@ -9,6 +9,7 @@ import { t, type MessageKey } from '@renderer/i18n/runtime'
 import { gameShortName } from '@renderer/i18n/terms'
 import type { Dex } from '@renderer/lib/data'
 import { dexNo } from '@renderer/lib/format'
+import { debutGenerationsOf } from '@renderer/domain/debut'
 import { gameOfSection, OTHER_SECTION, pokedexName, sectionsOf, type DexSection } from '@renderer/domain/gamedex'
 import { matchRulePreset, RULE_KEYS, RULE_PRESETS, type Collection, type LivingSlot } from '@renderer/domain/slots'
 import { offsetsOf } from './rows'
@@ -50,6 +51,8 @@ export interface BoxModel {
   sectionRef?: DexSection
   /** In a section: places of its first and last slot there, from 1 (the section runs in the game's Pokédex order, not National order). */
   positions?: readonly [number, number]
+  /** In debut-generation order (see domain/debut): the debut generations of its first and last slot. */
+  gens?: readonly [number, number]
 }
 
 const boxCache = new WeakMap<readonly LivingSlot[], BoxModel[]>()
@@ -63,6 +66,7 @@ export function buildBoxes(slots: readonly LivingSlot[]): BoxModel[] {
   if (!boxes) {
     boxes = []
     const sections = sectionsOf(slots)
+    const debut = debutGenerationsOf(slots)
     const spans: ReadonlyArray<{ start: number; count: number }> = sections.length > 0 ? sections : [{ start: 0, count: slots.length }]
     for (const [s, span] of spans.entries()) {
       const section = sections[s]
@@ -77,6 +81,7 @@ export function buildBoxes(slots: readonly LivingSlot[]): BoxModel[] {
           lastDex: own[own.length - 1]?.species ?? 0,
           no: from / BOX_SIZE + 1,
           section: section ? s : -1,
+          ...(debut && own.length > 0 && { gens: [debut[start] ?? 0, debut[start + own.length - 1] ?? 0] as const }),
           ...(section && { sectionRef: section, positions: [from + 1, from + own.length] as const })
         }
         // A getter: the boxes are cached and outlive a language switch.
@@ -141,8 +146,15 @@ export function slotIndexByKey(slots: readonly LivingSlot[]): ReadonlyMap<string
   return index
 }
 
-/** "#0001 – #0030", or one number when the whole box is one species. In a section: the places it holds there, "31 – 60". */
-export function boxRange(box: Pick<BoxModel, 'firstDex' | 'lastDex' | 'positions'>): string {
+/**
+ * "#0001 – #0030", or one number when the whole box is one species. In a section: the places it
+ * holds there, "31 – 60". In debut-generation order: the generations it holds, "Gen I" or "Gen I – II".
+ */
+export function boxRange(box: Pick<BoxModel, 'firstDex' | 'lastDex' | 'positions' | 'gens'>): string {
+  if (box.gens) {
+    const [first, last] = box.gens
+    return first === last ? t('living.box.gen', { gen: romanNumeral(first) }) : t('living.box.genSpan', { first: romanNumeral(first), last: romanNumeral(last) })
+  }
   if (box.positions) return box.positions[0] === box.positions[1] ? String(box.positions[0]) : `${box.positions[0]} – ${box.positions[1]}`
   return box.firstDex === box.lastDex ? dexNo(box.firstDex) : `${dexNo(box.firstDex)} – ${dexNo(box.lastDex)}`
 }
@@ -163,8 +175,10 @@ function genIndex(dex: Dex, slots: readonly LivingSlot[]): { gens: Uint8Array; s
   if (hit && hit.dex === dex) return hit
   const gens = new Uint8Array(slots.length)
   const spans: GenSpan[] = []
+  // A list in debut-generation order goes by the generation of each form, not of each species.
+  const debut = debutGenerationsOf(slots)
   slots.forEach((slot, i) => {
-    const gen = dex.species(slot.species)?.gen ?? 0
+    const gen = debut ? (debut[i] ?? 0) : (dex.species(slot.species)?.gen ?? 0)
     gens[i] = gen
     const last = spans[spans.length - 1]
     if (last && last.gen === gen) last.count++
@@ -175,7 +189,7 @@ function genIndex(dex: Dex, slots: readonly LivingSlot[]): { gens: Uint8Array; s
   return value
 }
 
-/** Debut generation of every slot's species (0 when the dataset does not say), by slot index. */
+/** Debut generation of every slot's species (of its form, in debut-generation order; 0 when the dataset does not say), by slot index. */
 export function slotGenerations(dex: Dex, slots: readonly LivingSlot[]): Uint8Array {
   return genIndex(dex, slots).gens
 }

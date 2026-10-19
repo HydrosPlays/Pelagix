@@ -4,13 +4,19 @@ import { OTHER_SECTION, pokedexShortName, type DexSection } from '@renderer/doma
 import { generationName } from '@renderer/domain/generation'
 import { useT } from '@renderer/i18n'
 import { formatCount, ratio } from '@renderer/lib/format'
+import type { DexOrder } from '@renderer/domain/debut'
 import { FloatingTip, useHoverTarget } from './HoverTip'
 import { boxIndexAt, boxName, boxRange, romanNumeral, type BoxModel, type LivingMode, type LivingStats, type LivingView } from './model'
+import { OrderControl } from './OrderControl'
 
 export interface LivingToolbarProps {
   mode: LivingMode
   view: LivingView
   onView: (view: LivingView) => void
+  order: DexOrder
+  onOrder: (order: DexOrder) => void
+  /** A game view: the game's own Pokédex order wins over `order`. */
+  orderUnavailable: boolean
   missingOnly: boolean
   onMissingOnly: (on: boolean) => void
   stats: LivingStats
@@ -46,10 +52,10 @@ function rove(event: KeyboardEvent<HTMLElement>, selector: string): HTMLElement 
 }
 
 /**
- * The bar that stays on screen while the boxes scroll: view switch, "Missing only", jump to a
+ * The bar that stays on screen while the boxes scroll: view and order switches, "Missing only", jump to a
  * generation, find a Pokémon, and the box index (one cell per box, filled as far as the box is).
  */
-export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, stats, boxes, visible, currentGen, searchOptions, found, onFind, onJumpGen, onJumpBox, sections, onJumpSection, ref }: LivingToolbarProps) {
+export function LivingToolbar({ mode, view, onView, order, onOrder, orderUnavailable, missingOnly, onMissingOnly, stats, boxes, visible, currentGen, searchOptions, found, onFind, onJumpGen, onJumpBox, sections, onJumpSection, ref }: LivingToolbarProps) {
   const t = useT()
   const tip = useHoverTarget('[data-cell]', 220)
   const [genStop, setGenStop] = useState<number | null>(null)
@@ -103,6 +109,7 @@ export function LivingToolbar({ mode, view, onView, missingOnly, onMissingOnly, 
             { value: 'list', label: t('living.toolbar.view.list'), icon: 'grid' }
           ]}
         />
+        <OrderControl value={order} onChange={onOrder} unavailable={orderUnavailable} />
         <Chip icon="filter" tone={mode === 'shiny' ? 'gold' : 'accent'} selected={missingOnly} onClick={() => onMissingOnly(!missingOnly)}>
           {t('living.toolbar.missingOnly')}
           <span className="living-toolbar__missing"> {formatCount(missing)}</span>

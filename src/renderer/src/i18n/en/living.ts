@@ -131,6 +131,15 @@ const messages = {
   'toolbar.view': 'View',
   'toolbar.view.boxes': 'Boxes',
   'toolbar.view.list': 'List',
+  // How the slots are laid out outside a game view: by National Dex number, or by the generation each form debuted in, then by number.
+  'toolbar.order': 'Order',
+  'toolbar.order.national': 'National Dex',
+  'toolbar.order.debut': 'Debut generation',
+  // Tooltip of the order switch while a game is chosen in "Obtainable in".
+  'toolbar.order.unavailable': 'While a game is chosen, its own Pokédex order is used.',
+  // What a box holds in debut-generation order, in place of "#0001 – #0030". {gen}, {first} and {last} are Roman numerals ("VII").
+  'box.gen': 'Gen {gen}',
+  'box.genSpan': 'Gen {first} – {last}',
   // A switch; the number of missing slots is printed after it.
   'toolbar.missingOnly': 'Missing only',
   'toolbar.jumpDex': 'Jump to a Pokédex',

@@ -31,3 +31,8 @@
   color: var(--text-3);
   font-size: var(--fs-sm);
 }
+
+/* The order switch sits beside the filters; the hint keeps the far end. */
+.hdex-bar .living-order {
+  margin-right: auto;
+}

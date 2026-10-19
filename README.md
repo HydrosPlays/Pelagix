@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <sub>Windows 10 and 11 · version 0.8.0 · GPL-3.0 · an unofficial fan project</sub>
+  <sub>Windows 10 and 11 · version 0.9.0 · GPL-3.0 · an unofficial fan project</sub>
 </p>
 
 > The screenshots on this page come from version 0.1.0 running a generated demo collection
@@ -220,6 +220,13 @@ An entry records:
 - A header with your completion: percentage, caught and total slots, shinies, how many are still
   to go, completed boxes and species.
 - **Missing only** narrows the view to what you still need.
+- **Order**, from 0.9.0: **National Dex** (the default) or **Debut generation**. Debut
+  generation puts every form in the generation that introduced it, then by National Dex number,
+  for an "origin dex": Meowth stays in Generation I, Alolan Meowth moves to Generation VII just
+  before Rowlet, and Galarian Meowth to Generation VIII. Gigantamax slots count as Generation VIII,
+  and a separate female slot stays with its form. Box subtitles then name the generations a box
+  holds ("Gen VI – VII") instead of its numbers. The HOME Dex follows the same choice. While a game
+  is chosen in **Obtainable in**, that game's own Pokédex order applies instead.
 - **Jump** to any generation, **find** a Pokémon by name, or click the box index strip, which
   shows how full each box is.
 - Click a slot to open its drawer: every entry in that slot, a link to where to find the
@@ -651,7 +658,7 @@ npm install
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Starts the app in Electron with hot reload. The first run downloads the Electron binary. |
-| `npm test` | Runs the unit tests (1,868 tests in 56 files). |
+| `npm test` | Runs the unit tests (1,878 tests in 57 files). |
 | `npm run dist` | Builds the save reader, type-checks, builds, and packages the installer, the portable executable and the updater's files into `dist/`. Needs the .NET 10 SDK and the `PKHeX/` tree. Nothing is uploaded. |
 
 The datasets and the game icons are part of the repository, so nothing else has to be generated
